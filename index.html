@@ -1491,7 +1491,6 @@ async function redeemPromoCode() {
 // === INSERT MODULE: events list ===
 // ============================================
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: СОБЫТИЯ ===
     const EVENTS_LIST = [
       {
         id: 'toty',
@@ -1499,11 +1498,9 @@ async function redeemPromoCode() {
         emoji: '🏆',
         description: 'Лучшие игроки сезона доступны в специальных паках и драфтах! '
                    + 'Собери состав мечты из звёзд мирового футбола.',
-        endDate: '2025-01-31',
+        endDate: '2026-01-31',
         active: true,
         color: '#f0c040'
-        // draftId: 'toty',   // раскомментируй, когда добавишь DRAFT_CONFIGS['toty']
-        // packId:  'toty',   // раскомментируй, когда добавишь SHOP_PACKS['toty']
       }
     ];
 
@@ -1549,7 +1546,6 @@ async function redeemPromoCode() {
            + `</div>`;
     }
 
-    // Показ списка событий в чате
     async function showEvents() {
       const activeEvents = getActiveEvents();
       if (activeEvents.length === 0) {
@@ -1563,8 +1559,6 @@ async function redeemPromoCode() {
       await botReply(html, 500, { html: true });
     }
 
-    // Замена заглушки handleNavEvents
-    const _origHandleNavEvents = handleNavEvents;
     handleNavEvents = function() {
       if (!gameState.registered) { promptRegister(); return; }
       setActiveNav('nav-events');
@@ -1658,7 +1652,6 @@ async function redeemPromoCode() {
       if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'inventory-modal';
-        overlay.className = 'modal-overlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
         overlay.innerHTML = `
           <div id="inv-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;">
@@ -1784,8 +1777,6 @@ async function redeemPromoCode() {
       }
     }
 
-    // Переопределяем навигационную функцию
-    const _origHandleNavInventory2 = handleNavInventory;
     handleNavInventory = function() {
       if (!gameState.registered) { promptRegister(); return; }
       setActiveNav('nav-inventory');
