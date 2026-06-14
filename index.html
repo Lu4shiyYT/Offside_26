@@ -898,9 +898,263 @@ function init() {
 document.addEventListener('DOMContentLoaded', init);
 if (document.readyState !== 'loading') init();
 
+// shop packs & draft pools
+
+```javascript
 // ============================================
 // === INSERT MODULE: shop packs & draft pools ===
 // ============================================
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ПАКЕТЫ В МАГАЗИНЕ ===
+    // Each pack:
+    //   id       – unique string identifier
+    //   name     – display name
+    //   emoji    – icon shown in shop UI
+    //   currency – 'rubins' | 'offsideTokens'
+    //   price    – cost in the chosen currency
+    //   count    – how many player cards the pack contains
+    //   ovrRanges – array of { minOvr, maxOvr, chance }
+    //               Cards are drawn by matching a player's BASE ovr (no upgrades)
+    //               against these ranges. `chance` is a relative weight (not %).
+    //               If no players exist in allPlayers for a given range it is skipped.
+    //
+    // Example pack structure:
+    // {
+    //   id: 'standard',
+    //   name: 'Стандартный пак',
+    //   emoji: '📦',
+    //   currency: 'rubins',
+    //   price: 500,
+    //   count: 3,
+    //   ovrRanges: [
+    //     { minOvr: 45, maxOvr: 64, chance: 60 },
+    //     { minOvr: 65, maxOvr: 74, chance: 30 },
+    //     { minOvr: 75, maxOvr: 84, chance: 9  },
+    //     { minOvr: 85, maxOvr: 99, chance: 1  }
+    //   ]
+    // }
+
+    const SHOP_PACKS = [
+      {
+        id: 'standard',
+        name: 'Стандартный пак',
+        emoji: '📦',
+        currency: 'rubins',
+        price: 500,
+        count: 3,
+        ovrRanges: [
+          { minOvr: 45, maxOvr: 64, chance: 60 },
+          { minOvr: 65, maxOvr: 74, chance: 30 },
+          { minOvr: 75, maxOvr: 84, chance: 9  },
+          { minOvr: 85, maxOvr: 99, chance: 1  }
+        ]
+      }
+      // ── Add more packs below this line ───────────────────────────────────────
+      // {
+      //   id: 'premium',
+      //   name: 'Премиум пак',
+      //   emoji: '💎',
+      //   currency: 'rubins',
+      //   price: 1500,
+      //   count: 5,
+      //   ovrRanges: [
+      //     { minOvr: 65, maxOvr: 74, chance: 55 },
+      //     { minOvr: 75, maxOvr: 84, chance: 35 },
+      //     { minOvr: 85, maxOvr: 94, chance: 9  },
+      //     { minOvr: 95, maxOvr: 99, chance: 1  }
+      //   ]
+      // },
+    ];
+
+    // ── Internal helper: pick a weighted OVR range from a pack definition ───────
+    /**
+     * Given a pack's ovrRanges array, returns one range object chosen by
+     * weighted-random selection.  Returns null if the array is empty.
+     * @param {Array<{minOvr:number, maxOvr:number, chance:number}>} ovrRanges
+     * @returns {{minOvr:number, maxOvr:number, chance:number}|null}
+     */
+    function pickWeightedRange(ovrRanges) {
+      if (!ovrRanges || ovrRanges.length === 0) return null;
+      const totalWeight = ovrRanges.reduce((sum, r) => sum + (r.chance || 0), 0);
+      if (totalWeight <= 0) return ovrRanges[0];
+      let rand = Math.random() * totalWeight;
+      for (const range of ovrRanges) {
+        rand -= range.chance || 0;
+        if (rand <= 0) return range;
+      }
+      return ovrRanges[ovrRanges.length - 1];
+    }
+
+    /**
+     * Returns all players from `allPlayers` whose BASE ovr falls within
+     * [minOvr, maxOvr] (inclusive).
+     * @param {number} minOvr
+     * @param {number} maxOvr
+     * @returns {Object[]}
+     */
+    function getPlayersInOvrRange(minOvr, maxOvr) {
+      return allPlayers.filter(p => p.ovr >= minOvr && p.ovr <= maxOvr);
+    }
+
+    /**
+     * Draws `count` player cards from `allPlayers` according to a pack's
+     * ovrRanges probability table.  Returns an array of deep-cloned player
+     * objects (ready to push into gameState.myPlayers).
+     * Duplicates within a single draw ARE allowed (as in real pack openings).
+     * @param {Object} pack  – one entry from SHOP_PACKS
+     * @returns {Object[]}   – array of player objects (length === pack.count)
+     */
+    function drawPackCards(pack) {
+      const drawn = [];
+      for (let i = 0; i < (pack.count || 1); i++) {
+        // Try up to 10 times to find a non-empty range
+        let player = null;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const range = pickWeightedRange(pack.ovrRanges);
+          if (!range) break;
+          const candidates = getPlayersInOvrRange(range.minOvr, range.maxOvr);
+          if (candidates.length > 0) {
+            const template = candidates[Math.floor(Math.random() * candidates.length)];
+            player = JSON.parse(JSON.stringify(template));
+            // Reset upgrade counters on the fresh copy
+            player.trainingLevel = 0;
+            player.ovrUpgrade    = 0;
+            break;
+          }
+        }
+        if (player) drawn.push(player);
+      }
+      return drawn;
+    }
+
+    // ── Pack lookup helper ────────────────────────────────────────────────────────
+    /**
+     * Returns the pack definition for the given id, or null.
+     * @param {string} packId
+     * @returns {Object|null}
+     */
+    function getPackById(packId) {
+      return SHOP_PACKS.find(p => p.id === packId) || null;
+    }
+
+    // =============================================================================
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ДРАФТ-ПУЛЫ ===
+    // =============================================================================
+    // DRAFT_CONFIGS – configuration object for every draft event.
+    // Key   = draftId  (string, e.g. 'toty')
+    // Value = {
+    //   name:      string   – display name shown in UI
+    //   emoji:     string   – icon
+    //   cost:      number   – дraftTokens spent per single pull
+    //   costBulk:  number   – дraftTokens spent per 10-pull
+    //   poolA:     number[] – player IDs with  ~1 % base chance  (iconic / elite)
+    //   poolB:     number[] – player IDs with ~12 % base chance  (rare / good)
+    //   poolC:     number[] – player IDs with ~87 % base chance  (common)
+    // }
+    //
+    // Guarantee system (managed by draftCounterB / draftCounterA in gameState):
+    //   • Every 10  pulls  → guaranteed ≥ 1 card from poolB or higher
+    //     (draftCounterB resets when a poolB/A card is obtained naturally or by pity)
+    //   • Every 100 pulls  → guaranteed ≥ 1 card from poolA
+    //     (both counters reset when a poolA card is obtained)
+    //   • 10-pull bulk:    guarantees at least 1 poolB-or-better card in the batch;
+    //     the best card triggers a "walkout" highlight, rest listed best→worst.
+    //
+    // IDs must exist in ALL_PLAYERS_TEMPLATE / allPlayers.
+    // Leave pools empty ([]) if you have no players assigned yet.
+    //
+    // Example (commented out — fill in real IDs):
+    // const DRAFT_CONFIGS = {
+    //   'toty': {
+    //     name: 'TOTY Draft',
+    //     emoji: '🏆',
+    //     cost: 1,
+    //     costBulk: 10,
+    //     poolA: [],   // e.g. [101, 102]
+    //     poolB: [],   // e.g. [201, 202, 203]
+    //     poolC: []    // e.g. [301, 302, 303]
+    //   }
+    // };
+
+    const DRAFT_CONFIGS = {
+      // ── Add draft events below this line ─────────────────────────────────────
+      // 'toty': {
+      //   name: 'TOTY Draft',
+      //   emoji: '🏆',
+      //   cost: 1,
+      //   costBulk: 10,
+      //   poolA: [],
+      //   poolB: [],
+      //   poolC: []
+      // },
+    };
+
+    // ── Draft pull probability constants ─────────────────────────────────────────
+    const DRAFT_PROB_A = 0.01;   // 1 %  base chance for pool A
+    const DRAFT_PROB_B = 0.12;   // 12 % base chance for pool B
+    // pool C fills the remainder: ~87 %
+
+    // ── Draft helper: resolve a single pull from a draft config ──────────────────
+    /**
+     * Resolves one draft pull (without pity/guarantee adjustments).
+     * Returns { tier: 'A'|'B'|'C', player: Object|null }.
+     * The caller is responsible for pity counter management.
+     * @param {Object} draftConfig  – one entry from DRAFT_CONFIGS
+     * @returns {{ tier: string, player: Object|null }}
+     */
+    function resolveDraftPull(draftConfig) {
+      const roll = Math.random();
+      let tier;
+
+      if (roll < DRAFT_PROB_A && draftConfig.poolA && draftConfig.poolA.length > 0) {
+        tier = 'A';
+      } else if (roll < DRAFT_PROB_A + DRAFT_PROB_B && draftConfig.poolB && draftConfig.poolB.length > 0) {
+        tier = 'B';
+      } else {
+        tier = 'C';
+      }
+
+      // Fallback: if chosen tier pool is empty, cascade down
+      if (tier === 'A' && (!draftConfig.poolA || draftConfig.poolA.length === 0)) tier = 'B';
+      if (tier === 'B' && (!draftConfig.poolB || draftConfig.poolB.length === 0)) tier = 'C';
+      if (tier === 'C' && (!draftConfig.poolC || draftConfig.poolC.length === 0)) {
+        return { tier: 'C', player: null }; // nothing to give
+      }
+
+      const pool = tier === 'A' ? draftConfig.poolA
+                 : tier === 'B' ? draftConfig.poolB
+                 :                draftConfig.poolC;
+
+      const pickedId = pool[Math.floor(Math.random() * pool.length)];
+      const template = allPlayers.find(p => p.id === pickedId) || null;
+      const player   = template ? JSON.parse(JSON.stringify(template)) : null;
+      if (player) {
+        player.trainingLevel = 0;
+        player.ovrUpgrade    = 0;
+      }
+
+      return { tier, player };
+    }
+
+    /**
+     * Returns the draft config for the given draftId, or null.
+     * @param {string} draftId
+     * @returns {Object|null}
+     */
+    function getDraftConfig(draftId) {
+      return DRAFT_CONFIGS[draftId] || null;
+    }
+
+    /**
+     * Returns an array of all draftId strings currently defined.
+     * @returns {string[]}
+     */
+    function getDraftIds() {
+      return Object.keys(DRAFT_CONFIGS);
+    }
+
+// === END MODULE: shop packs & draft pools ===
+```
 
 // ============================================
 // === INSERT MODULE: SBC exchanges ===
