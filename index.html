@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Тренер — Футбольный Менеджер</title>
   <style>
-    /* ===== RESET & BASE ===== */
+    /* === RESET & BASE === */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -50,7 +50,7 @@
       box-shadow: 0 0 40px rgba(0,0,0,0.6);
     }
 
-    /* ===== START OVERLAY ===== */
+    /* START OVERLAY */
     #start-overlay {
       position: absolute;
       inset: 0;
@@ -85,7 +85,7 @@
     #btn-start:hover { background: var(--btn-primary-hover); }
     #btn-start:active { transform: scale(0.97); }
 
-    /* ===== HEADER ===== */
+    /* HEADER */
     #header {
       background: var(--bg-header); padding: 8px 12px;
       display: flex; align-items: center; gap: 10px;
@@ -106,7 +106,7 @@
     .resource-item span.emoji { font-size: 13px; }
     .resource-item span.val { font-weight: 600; color: var(--text-primary); min-width: 20px; }
 
-    /* ===== CHAT AREA ===== */
+    /* CHAT */
     #chat {
       flex: 1; overflow-y: auto; overflow-x: hidden;
       padding: 12px 8px 8px; display: flex; flex-direction: column; gap: 4px;
@@ -150,7 +150,7 @@
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:0.5} 30%{transform:translateY(-4px);opacity:1} }
 
-    /* ===== INPUT AREA ===== */
+    /* INPUT */
     #input-area { background: var(--bg-input); border-top: 1px solid var(--border); padding: 8px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; z-index: 10; }
     #msg-input { flex: 1; background: #0e1621; border: 1px solid #1e2d3d; border-radius: 20px; padding: 9px 14px; color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.2s; font-family: inherit; resize: none; line-height: 1.4; }
     #msg-input:focus { border-color: var(--accent); }
@@ -159,7 +159,7 @@
     #btn-send:hover { background: var(--btn-primary-hover); }
     #btn-send:active { transform: scale(0.92); }
 
-    /* ===== BOTTOM NAV ===== */
+    /* BOTTOM NAV */
     #bottom-nav { background: var(--bg-nav); border-top: 1px solid var(--border); display: flex; flex-shrink: 0; z-index: 10; }
     .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 2px 8px; gap: 3px; background: none; border: none; cursor: pointer; color: var(--nav-inactive); font-size: 10px; transition: color 0.2s; min-width: 0; -webkit-tap-highlight-color: transparent; }
     .nav-btn .nav-emoji { font-size: 20px; line-height: 1; }
@@ -227,93 +227,38 @@
 </div>
 
 <script>
-/* ======================================================
-   CONSTANTS & CONFIG
-====================================================== */
+// === CONSTANTS & CONFIG ===
 const STORAGE_KEY = 'footballManager_gameState';
 
-/* ======================================================
-   DEFAULT / INITIAL GAME STATE (расширен позже)
-====================================================== */
+// === DEFAULT STATE ===
 const DEFAULT_STATE = {
-  rubins: 1500,
-  offsideTokens: 0,
-  trainingPoints: 1000,
-  ovrUpgradePoints: 500,
-  passCredits: 0,
-  fragments: 500,
-  draftTokens: 10,
-  xp: 0,
-  level: 0,
-  nickname: '',
-  playerId: '',
-  stars: 0,
-  matchesPlayed: 0,
-  goalsScored: 0,
-  registered: false,
-  awaitingNickname: false
+  rubins: 1500, offsideTokens: 0, trainingPoints: 1000, ovrUpgradePoints: 500,
+  passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0,
+  nickname: '', playerId: '', stars: 0, matchesPlayed: 0, goalsScored: 0,
+  registered: false, awaitingNickname: false
 };
 
-/* ======================================================
-   GAME STATE
-====================================================== */
 let gameState = {};
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      gameState = Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
-    } else {
-      gameState = Object.assign({}, DEFAULT_STATE);
-    }
-  } catch (e) {
-    console.warn('loadState error:', e);
-    gameState = Object.assign({}, DEFAULT_STATE);
-  }
+    gameState = raw ? Object.assign({}, DEFAULT_STATE, JSON.parse(raw)) : Object.assign({}, DEFAULT_STATE);
+  } catch (e) { gameState = Object.assign({}, DEFAULT_STATE); }
 }
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState)); }
 
-function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
-  } catch (e) {
-    console.warn('saveState error:', e);
-  }
-}
-
-/* ======================================================
-   UTILITY HELPERS
-====================================================== */
-function getTimestamp() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-
+// === UTILS ===
+function getTimestamp() { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function generatePlayerId() {
   try {
-    const arr = new Uint32Array(2);
-    crypto.getRandomValues(arr);
-    const part1 = String(arr[0]).padStart(10, '0');
-    const part2 = String(arr[1]).padStart(10, '0');
-    const combined = (part1 + part2).replace(/\D/g, '');
-    return combined.slice(0, 15).padEnd(15, '0');
-  } catch (e) {
-    const ts = String(Date.now());
-    const rnd = String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
-    return (ts + rnd).slice(0, 15);
-  }
+    const arr = new Uint32Array(2); crypto.getRandomValues(arr);
+    return (String(arr[0]).padStart(10,'0')+String(arr[1]).padStart(10,'0')).replace(/\D/g,'').slice(0,15).padEnd(15,'0');
+  } catch(e) { return (String(Date.now())+String(Math.floor(Math.random()*1e9)).padStart(9,'0')).slice(0,15); }
 }
+function escapeHtml(t) { const m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return String(t).replace(/[&<>"']/g,c=>m[c]); }
 
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return String(text).replace(/[&<>"']/g, m => map[m]);
-}
-
-/* ======================================================
-   HEADER RESOURCES UPDATE
-====================================================== */
+// === HEADER ===
 function updateHeaderResources() {
   document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
   document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
@@ -321,90 +266,52 @@ function updateHeaderResources() {
   document.getElementById('hdr-level').textContent = gameState.level ?? 0;
 }
 
-/* ======================================================
-   CHAT MESSAGE FUNCTIONS
-====================================================== */
+// === CHAT ===
 const chatEl = document.getElementById('chat');
 let lastDateLabel = '';
-let lastBotSequence = false;
 
 function getTodayLabel() {
   const now = new Date();
-  const days = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-  const d = now.getDate();
   const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  return `${d} ${months[now.getMonth()]}`;
+  return `${now.getDate()} ${months[now.getMonth()]}`;
 }
-
 function ensureDateDivider() {
   const label = getTodayLabel();
   if (label !== lastDateLabel) {
     lastDateLabel = label;
-    const div = document.createElement('div');
-    div.className = 'date-divider';
-    div.innerHTML = `<span>${label}</span>`;
+    const div = document.createElement('div'); div.className = 'date-divider'; div.innerHTML = `<span>${label}</span>`;
     chatEl.appendChild(div);
   }
 }
+function scrollChatToBottom() { setTimeout(()=>{ chatEl.scrollTop = chatEl.scrollHeight; }, 50); }
 
-function scrollChatToBottom() {
-  setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 50);
-}
-
-function addMessage(content, type = 'bot', options = {}) {
+function addMessage(content, type='bot', options={}) {
   ensureDateDivider();
-  const wrapper = document.createElement('div');
-  wrapper.className = `msg-wrapper ${type}`;
+  const wrapper = document.createElement('div'); wrapper.className = `msg-wrapper ${type}`;
   const time = getTimestamp();
 
   if (type === 'bot') {
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'msg-avatar' + (options.noAvatar ? ' hidden' : '');
-    avatarDiv.textContent = '⚽';
-    wrapper.appendChild(avatarDiv);
-
-    const bubble = document.createElement('div');
-    bubble.className = 'msg-bubble';
-
-    if (options.card) {
-      bubble.innerHTML = options.card;
-    } else if (options.html) {
-      const textDiv = document.createElement('div');
-      textDiv.className = 'msg-text';
-      textDiv.innerHTML = content;
-      bubble.appendChild(textDiv);
-    } else {
-      const textDiv = document.createElement('div');
-      textDiv.className = 'msg-text';
-      textDiv.textContent = content;
+    const avatar = document.createElement('div'); avatar.className = 'msg-avatar'+(options.noAvatar?' hidden':''); avatar.textContent='⚽';
+    wrapper.appendChild(avatar);
+    const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+    if (options.card) bubble.innerHTML = options.card;
+    else {
+      const textDiv = document.createElement('div'); textDiv.className = 'msg-text';
+      if (options.html) textDiv.innerHTML = content; else textDiv.textContent = content;
       bubble.appendChild(textDiv);
     }
-
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'msg-time';
-    timeDiv.textContent = time;
+    const timeDiv = document.createElement('div'); timeDiv.className = 'msg-time'; timeDiv.textContent = time;
     bubble.appendChild(timeDiv);
     wrapper.appendChild(bubble);
-    lastBotSequence = true;
   } else {
-    const bubble = document.createElement('div');
-    bubble.className = 'msg-bubble';
-    const textDiv = document.createElement('div');
-    textDiv.className = 'msg-text';
-    if (options.html) {
-      textDiv.innerHTML = content;
-    } else {
-      textDiv.textContent = content;
-    }
+    const bubble = document.createElement('div'); bubble.className = 'msg-bubble';
+    const textDiv = document.createElement('div'); textDiv.className = 'msg-text';
+    if (options.html) textDiv.innerHTML = content; else textDiv.textContent = content;
     bubble.appendChild(textDiv);
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'msg-time';
-    timeDiv.innerHTML = `${time} <span>✓✓</span>`;
+    const timeDiv = document.createElement('div'); timeDiv.className = 'msg-time'; timeDiv.innerHTML = `${time} <span>✓✓</span>`;
     bubble.appendChild(timeDiv);
     wrapper.appendChild(bubble);
-    lastBotSequence = false;
   }
-
   chatEl.appendChild(wrapper);
   scrollChatToBottom();
   return wrapper;
@@ -412,187 +319,119 @@ function addMessage(content, type = 'bot', options = {}) {
 
 function addTypingIndicator() {
   ensureDateDivider();
-  const wrapper = document.createElement('div');
-  wrapper.className = 'msg-wrapper bot';
-  wrapper.id = 'typing-indicator';
-  const avatarDiv = document.createElement('div');
-  avatarDiv.className = 'msg-avatar';
-  avatarDiv.textContent = '⚽';
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  bubble.innerHTML = `<div class="typing-indicator"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
-  wrapper.appendChild(avatarDiv);
-  wrapper.appendChild(bubble);
-  chatEl.appendChild(wrapper);
-  scrollChatToBottom();
-  return wrapper;
+  const wrapper = document.createElement('div'); wrapper.className = 'msg-wrapper bot'; wrapper.id='typing-indicator';
+  wrapper.innerHTML = `<div class="msg-avatar">⚽</div><div class="msg-bubble"><div class="typing-indicator"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+  chatEl.appendChild(wrapper); scrollChatToBottom(); return wrapper;
 }
-
-function removeTypingIndicator() {
-  const el = document.getElementById('typing-indicator');
-  if (el) el.remove();
-}
-
-function botReply(content, delay = 600, options = {}) {
+function removeTypingIndicator() { const el=document.getElementById('typing-indicator'); if(el)el.remove(); }
+function botReply(content, delay=600, options={}) {
   return new Promise(resolve => {
     const typing = addTypingIndicator();
-    setTimeout(() => {
-      removeTypingIndicator();
-      const msg = addMessage(content, 'bot', options);
-      resolve(msg);
-    }, delay);
+    setTimeout(()=>{ removeTypingIndicator(); resolve(addMessage(content,'bot',options)); }, delay);
   });
 }
 
-/* ======================================================
-   PROFILE CARD HTML
-====================================================== */
-function buildProfileCardHTML(state) {
-  return `
-    <div class="profile-card">
-      <div class="profile-card-title">📊 Профиль менеджера</div>
-      <div class="profile-card-row"><span class="label">👤 Ник</span><span class="value">${escapeHtml(state.nickname)}</span></div>
-      <div class="profile-card-row"><span class="label">🏆 Уровень</span><span class="value">${state.level}</span></div>
-      <div class="profile-card-row"><span class="label">⭐ XP</span><span class="value">${state.xp}</span></div>
-      <div class="profile-card-row"><span class="label">💎 Рубины</span><span class="value">${state.rubins}</span></div>
-      <div class="profile-card-row"><span class="label">🔮 Оффсайд-токены</span><span class="value">${state.offsideTokens}</span></div>
-      <div class="profile-card-row"><span class="label">🎯 Очки тренировок</span><span class="value">${state.trainingPoints}</span></div>
-      <div class="profile-card-row"><span class="label">⚡ Очки OVR</span><span class="value">${state.ovrUpgradePoints}</span></div>
-      <div class="profile-card-row"><span class="label">🧩 Фрагменты</span><span class="value">${state.fragments}</span></div>
-      <div class="profile-card-row"><span class="label">🎟️ Драфт-токены</span><span class="value">${state.draftTokens}</span></div>
-      <div class="profile-card-row"><span class="label">⚽ Матчей сыграно</span><span class="value">${state.matchesPlayed}</span></div>
-      <div class="profile-card-row"><span class="label">🥅 Голов забито</span><span class="value">${state.goalsScored}</span></div>
-      <div class="profile-card-id">🆔 ID: ${escapeHtml(state.playerId)}</div>
-    </div>`;
+// === PROFILE CARD ===
+function buildProfileCardHTML(s) {
+  return `<div class="profile-card"><div class="profile-card-title">📊 Профиль менеджера</div>
+    <div class="profile-card-row"><span class="label">👤 Ник</span><span class="value">${escapeHtml(s.nickname)}</span></div>
+    <div class="profile-card-row"><span class="label">🏆 Уровень</span><span class="value">${s.level}</span></div>
+    <div class="profile-card-row"><span class="label">⭐ XP</span><span class="value">${s.xp}</span></div>
+    <div class="profile-card-row"><span class="label">💎 Рубины</span><span class="value">${s.rubins}</span></div>
+    <div class="profile-card-row"><span class="label">🔮 Оффсайд-токены</span><span class="value">${s.offsideTokens}</span></div>
+    <div class="profile-card-row"><span class="label">🎯 Очки тренировок</span><span class="value">${s.trainingPoints}</span></div>
+    <div class="profile-card-row"><span class="label">⚡ Очки OVR</span><span class="value">${s.ovrUpgradePoints}</span></div>
+    <div class="profile-card-row"><span class="label">🧩 Фрагменты</span><span class="value">${s.fragments}</span></div>
+    <div class="profile-card-row"><span class="label">🎟️ Драфт-токены</span><span class="value">${s.draftTokens}</span></div>
+    <div class="profile-card-row"><span class="label">⚽ Матчей сыграно</span><span class="value">${s.matchesPlayed}</span></div>
+    <div class="profile-card-row"><span class="label">🥅 Голов забито</span><span class="value">${s.goalsScored}</span></div>
+    <div class="profile-card-id">🆔 ID: ${escapeHtml(s.playerId)}</div></div>`;
 }
 
-/* ======================================================
-   REGISTRATION FLOW
-====================================================== */
+// === REGISTRATION ===
 async function startRegistrationFlow() {
   await botReply('Привет! Я — твой виртуальный тренер. 👋\n\nКак тебя зовут? Введи свой никнейм:', 800);
-  gameState.awaitingNickname = true;
-  saveState();
+  gameState.awaitingNickname = true; saveState();
 }
-
 async function completeRegistration(nickname) {
   const trimmed = nickname.trim();
-  if (!trimmed || trimmed.length < 2) {
-    await botReply('Никнейм должен содержать минимум 2 символа. Попробуй ещё раз! 😊', 500);
-    return;
-  }
-  if (trimmed.length > 20) {
-    await botReply('Никнейм слишком длинный (максимум 20 символов). Попробуй ещё раз! 😊', 500);
-    return;
-  }
-
+  if (!trimmed || trimmed.length < 2) { await botReply('Никнейм должен содержать минимум 2 символа.', 500); return; }
+  if (trimmed.length > 20) { await botReply('Никнейм слишком длинный (макс. 20).', 500); return; }
   const playerId = generatePlayerId();
-  gameState.nickname = trimmed;
-  gameState.playerId = playerId;
-  gameState.awaitingNickname = false;
-  gameState.registered = true;
-  saveState();
-  updateHeaderResources();
-
-  await botReply(`Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>\n\nТеперь ты — менеджер своей команды мечты. Собирай игроков, побеждай в дивизионах и веди свою команду к чемпионству! 🏆`, 700, { html: true });
-  await botReply(null, 900, { card: buildProfileCardHTML(gameState) });
+  gameState.nickname = trimmed; gameState.playerId = playerId;
+  gameState.awaitingNickname = false; gameState.registered = true;
+  saveState(); updateHeaderResources();
+  await botReply(`Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>`, 700, {html:true});
+  await botReply(null, 900, {card: buildProfileCardHTML(gameState)});
   await botReply('Используй кнопки внизу для навигации. Удачи на поле! ⚽', 600);
 }
 
-/* ======================================================
-   START SCREEN LOGIC
-====================================================== */
+// === START SCREEN ===
 const startOverlay = document.getElementById('start-overlay');
 const btnStart = document.getElementById('btn-start');
+function hideStartOverlay() { startOverlay.classList.add('hidden'); }
+btnStart.addEventListener('click', ()=>{ hideStartOverlay(); startRegistrationFlow(); });
 
-function hideStartOverlay() {
-  startOverlay.classList.add('hidden');
-}
-
-btnStart.addEventListener('click', () => {
-  hideStartOverlay();
-  startRegistrationFlow();
-});
-
-/* ======================================================
-   SEND MESSAGE LOGIC
-====================================================== */
+// === SEND MESSAGE ===
 const msgInput = document.getElementById('msg-input');
 const btnSend = document.getElementById('btn-send');
-
 function sendUserMessage() {
-  const text = msgInput.value.trim();
-  if (!text) return;
-  msgInput.value = '';
-  msgInput.style.height = '';
-  addMessage(text, 'user');
-  processUserMessage(text);
+  const text = msgInput.value.trim(); if (!text) return;
+  msgInput.value = ''; addMessage(text,'user'); processUserMessage(text);
 }
-
 btnSend.addEventListener('click', sendUserMessage);
-msgInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendUserMessage();
-  }
-});
+msgInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendUserMessage(); } });
 
-/* ======================================================
-   PROCESS USER MESSAGE
-====================================================== */
 function processUserMessage(text) {
   const lower = text.toLowerCase().trim();
-
-  if (gameState.awaitingNickname) {
-    completeRegistration(text);
-    return;
-  }
-  if (!gameState.registered) {
-    botReply('Нажми кнопку «НАЧАТЬ ИГРУ», чтобы начать! 😊', 500);
-    return;
-  }
-
-  if (lower === 'профиль' || lower === '/profile' || lower === '/профиль') { showProfile(); return; }
-  if (lower === 'помощь' || lower === '/help' || lower === '/помощь' || lower === 'помоги') { showHelp(); return; }
-  if (lower === 'состав' || lower === '/состав' || lower === '/squad') { handleNavSquad(); return; }
-  if (lower === 'магазин' || lower === '/магазин' || lower === '/shop') { handleNavShop(); return; }
-  if (lower === 'игроки' || lower === '/игроки' || lower === '/inventory') { handleNavInventory(); return; }
-  if (lower === 'события' || lower === '/события' || lower === '/events') { handleNavEvents(); return; }
-  if (lower === 'дивизион' || lower === '/дивизион' || lower === '/division') { handleNavDivision(); return; }
-  if (lower === 'квесты' || lower === '/квесты' || lower === '/quests') { handleNavQuests(); return; }
-
-  botReply(`Я не понял команду «${escapeHtml(text)}». 🤔\n\nНапиши «помощь» или воспользуйся кнопками навигации внизу.`, 600, { html: true });
+  if (gameState.awaitingNickname) { completeRegistration(text); return; }
+  if (!gameState.registered) { botReply('Нажми кнопку «НАЧАТЬ ИГРУ»!', 500); return; }
+  if (lower==='профиль'||lower==='/profile') showProfile();
+  else if (lower==='помощь'||lower==='/help') showHelp();
+  else if (lower==='состав'||lower==='/squad') handleNavSquad();
+  else if (lower==='магазин'||lower==='/shop') handleNavShop();
+  else if (lower==='игроки'||lower==='/inventory') handleNavInventory();
+  else if (lower==='события'||lower==='/events') handleNavEvents();
+  else if (lower==='дивизион'||lower==='/division') handleNavDivision();
+  else if (lower==='квесты'||lower==='/quests') handleNavQuests();
+  else botReply(`Не понял команду. Напиши «помощь».`, 600);
 }
 
-/* ======================================================
-   SHOW PROFILE / HELP
-====================================================== */
-function showProfile() {
-  botReply(null, 500, { card: buildProfileCardHTML(gameState) });
-}
-
+function showProfile() { botReply(null, 500, {card: buildProfileCardHTML(gameState)}); }
 function showHelp() {
-  const helpHtml = `<div class="msg-text"><b>📖 Доступные команды:</b><br><br><b>профиль</b> — показать профиль<br><b>состав</b> — управление составом<br><b>игроки</b> — инвентарь игроков<br><b>магазин</b> — магазин паков<br><b>события</b> — активные события<br><b>дивизион</b> — матчи дивизиона<br><b>квесты</b> — ежедневные квесты<br><b>помощь</b> — это сообщение<br><br><span style="color:#7d8e9e;">Или используй кнопки внизу экрана ↓</span></div>`;
-  botReply(helpHtml, 400, { html: true });
+  botReply(`<div class="msg-text"><b>📖 Доступные команды:</b><br><br><b>профиль</b> — профиль<br><b>состав</b> — состав<br><b>игроки</b> — инвентарь<br><b>магазин</b> — магазин<br><b>события</b> — события<br><b>дивизион</b> — матчи<br><b>квесты</b> — квесты</div>`, 400, {html:true});
 }
 
-/* ======================================================
-   NAVIGATION HANDLERS (пока заглушки, будут заменены)
-====================================================== */
+// === NAVIGATION ===
 function setActiveNav(btnId) {
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-  const active = document.getElementById(btnId);
-  if (active) active.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const a=document.getElementById(btnId); if(a)a.classList.add('active');
 }
+function promptRegister() { botReply('Сначала зарегистрируйся!', 400); }
 
-function handleNavSquad() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-squad'); botReply('👥 <b>Состав команды</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
-function handleNavInventory() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-inventory'); botReply('🎒 <b>Инвентарь игроков</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
-function handleNavShop() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-shop'); botReply('🏪 <b>Магазин</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
-function handleNavEvents() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-events'); botReply('📋 <b>События</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
-function handleNavDivision() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-division'); botReply('⚽ <b>Дивизион</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
-function handleNavQuests() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavSquad() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-squad'); botReply('👥 <b>Состав</b> — в разработке.', 500, {html:true}); }
+function handleNavInventory() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-inventory'); botReply('🎒 <b>Игроки</b> — в разработке.', 500, {html:true}); }
+function handleNavEvents() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-events'); botReply('📋 <b>События</b> — в разработке.', 500, {html:true}); }
+function handleNavDivision() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-division'); botReply('⚽ <b>Дивизион</b> — в разработке.', 500, {html:true}); }
+function handleNavQuests() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
 
-function promptRegister() { botReply('Сначала зарегистрируйся! Нажми «НАЧАТЬ ИГРУ». 😊', 400); }
+// --- SHOP (заменяем заглушку) ---
+function handleNavShop() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-shop');
+  let html = '<div class="msg-text"><b>🏪 Магазин</b></div><div class="inline-btn-row">';
+  for (const pack of SHOP_PACKS) {
+    const currEmoji = pack.currency === 'rubins' ? '💎' : '🔮';
+    html += `<button class="inline-btn" onclick="buyPack('${pack.id}')" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 14px;">
+      <span style="font-size:22px;">${pack.emoji}</span><span style="font-weight:600;">${pack.name}</span>
+      <span style="font-size:11px;color:#f0c040;">${currEmoji} ${pack.price} • ${pack.count} карт.</span></button>`;
+  }
+  html += '</div><div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;">';
+  html += '<span style="font-size:12px;color:#7d8e9e;">🔑 Промокод:</span>';
+  html += '<div style="display:flex;gap:6px;margin-top:4px;"><input id="promo-input" type="text" placeholder="Введите код..." style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:5px 8px;color:#fff;font-size:13px;" /><button class="inline-btn" onclick="redeemPromoCode()" style="padding:5px 10px;">Активировать</button></div>';
+  html += '</div>';
+  botReply(html, 500, {html:true});
+}
 
 document.getElementById('nav-squad').addEventListener('click', handleNavSquad);
 document.getElementById('nav-inventory').addEventListener('click', handleNavInventory);
@@ -601,11 +440,7 @@ document.getElementById('nav-events').addEventListener('click', handleNavEvents)
 document.getElementById('nav-division').addEventListener('click', handleNavDivision);
 document.getElementById('nav-quests').addEventListener('click', handleNavQuests);
 
-// ============================================
-// === INSERT MODULE: gameState & data structures ===
-// ============================================
-
-// === РЕДАКТИРУЙ ЗДЕСЬ: КАРТОЧКИ ИГРОКОВ (allPlayers) ===
+// ========== MODULE: GAMESTATE & DATA ==========
 const ALL_PLAYERS_TEMPLATE = [
   { id: 1, name: 'Алексей Громов', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
   { id: 2, name: 'Андрей Соколов', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
@@ -626,603 +461,291 @@ const ALL_PLAYERS_TEMPLATE = [
 ];
 
 const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
-
-const FRAGMENT_EXCHANGE_RATES = [
-  [0,   64,   50],
-  [65,  74,  100],
-  [75,  84,  200],
-  [85,  89,  400],
-  [90,  94,  700],
-  [95,  99, 1200],
-  [100, 120, 2500]
-];
-
+const FRAGMENT_EXCHANGE_RATES = [[0,64,50],[65,74,100],[75,84,200],[85,89,400],[90,94,700],[95,99,1200],[100,120,2500]];
 const TRAINING_COST_PER_LEVEL = 100;
 const OVR_UPGRADE_COSTS = [120, 270, 450, 610, 750];
 
 Object.assign(DEFAULT_STATE, {
-  myPlayers: [],
-  squadSlots: {},
-  benchSlots: {},
-  captain: null,
-  cornerKicker: null,
-  freeKicker: null,
-  penaltyKicker: null,
-  squadFormation: '4-3-3',
-  reachedDivisions: [],
-  dailyQuests: [],
-  dailyQuestsDate: '',
-  allQuestsBonus: false,
-  dailyRewardLastDate: '',
-  passLevel: 0,
-  passClaimedLevels: [],
-  draftCounterB: 0,
-  draftCounterA: 0,
-  promoUsed: [],
-  goalsForQuest: 0,
-  matchesForQuest: 0,
-  packsOpened: 0,
-  levelsGained: 0
+  myPlayers: [], squadSlots: {}, benchSlots: {}, captain: null, cornerKicker: null, freeKicker: null, penaltyKicker: null,
+  squadFormation: '4-3-3', reachedDivisions: [], dailyQuests: [], dailyQuestsDate: '', allQuestsBonus: false,
+  dailyRewardLastDate: '', passLevel: 0, passClaimedLevels: [], draftCounterB: 0, draftCounterA: 0,
+  promoUsed: [], goalsForQuest: 0, matchesForQuest: 0, packsOpened: 0, levelsGained: 0
 });
 
 let allPlayers = [];
 
-function getEffectiveOvr(player) {
-  if (!player) return 0;
-  return (player.ovr || 0) + (player.ovrUpgrade || 0);
+function getEffectiveOvr(p) { return p ? (p.ovr||0)+(p.ovrUpgrade||0) : 0; }
+function getEffectiveStats(p) {
+  if (!p||!p.stats) return {};
+  const s = {...p.stats}; const b = p.trainingLevel||0;
+  for (const k in s) s[k] = (s[k]||0)+b;
+  return s;
 }
-
-function getEffectiveStats(player) {
-  if (!player || !player.stats) return {};
-  const stats = Object.assign({}, player.stats);
-  const bonus = player.trainingLevel || 0;
-  for (const key in stats) stats[key] = (stats[key] || 0) + bonus;
-  return stats;
-}
-
-function findPlayerById(id) {
-  if (!gameState || !Array.isArray(gameState.myPlayers)) return null;
-  return gameState.myPlayers.find(p => p.id === id) || null;
-}
-
+function findPlayerById(id) { return gameState?.myPlayers?.find(p=>p.id===id)||null; }
 function getFragmentReward(ovr) {
-  for (const [min, max, frags] of FRAGMENT_EXCHANGE_RATES) {
-    if (ovr >= min && ovr <= max) return frags;
-  }
+  for (const [min,max,f] of FRAGMENT_EXCHANGE_RATES) if (ovr>=min&&ovr<=max) return f;
   return 50;
 }
 
-// === END MODULE: gameState & data structures ===
-
-// ============================================
-// === INSERT MODULE: formations & tactics ===
-// ============================================
-
+// ========== FORMATIONS & TACTICS ==========
 const FORMATIONS = {
-  '4-3-3': { name: '4-3-3', positions: ['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
-  '4-3-3 Атака': { name: '4-3-3 Атака', positions: ['GK','LB','CB','CB','RB','CM','CAM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
-  '4-3-3 Оборона': { name: '4-3-3 Оборона', positions: ['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
-  '4-5-1': { name: '4-5-1', positions: ['GK','LB','CB','CB','RB','LM','CM','CAM','CM','RM','ST'], rows: [[0],[1,2,3,4],[5,6,7,8,9],[10]] },
-  '3-4-3 Ромб': { name: '3-4-3 Ромб', positions: ['GK','CB','CB','CB','LM','CDM','CAM','RM','LW','ST','RW'], rows: [[0],[1,2,3],[4,5,6,7],[8,9,10]] },
-  '4-4-2': { name: '4-4-2', positions: ['GK','LB','CB','CB','RB','LM','CM','CM','RM','ST','ST'], rows: [[0],[1,2,3,4],[5,6,7,8],[9,10]] },
-  '3-5-2 Ложная девятка': { name: '3-5-2 Ложная девятка', positions: ['GK','CB','CB','CB','LM','CM','CAM','CM','RM','CF','ST'], rows: [[0],[1,2,3],[4,5,6,7,8],[9,10]] },
-  '4-3-2-1': { name: '4-3-2-1', positions: ['GK','LB','CB','CB','RB','CDM','CM','CDM','CAM','CAM','ST'], rows: [[0],[1,2,3,4],[5,6,7],[8,9],[10]] }
+  '4-3-3':{name:'4-3-3',positions:['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
+  '4-3-3 Атака':{name:'4-3-3 Атака',positions:['GK','LB','CB','CB','RB','CM','CAM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
+  '4-3-3 Оборона':{name:'4-3-3 Оборона',positions:['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
+  '4-5-1':{name:'4-5-1',positions:['GK','LB','CB','CB','RB','LM','CM','CAM','CM','RM','ST'],rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]]},
+  '3-4-3 Ромб':{name:'3-4-3 Ромб',positions:['GK','CB','CB','CB','LM','CDM','CAM','RM','LW','ST','RW'],rows:[[0],[1,2,3],[4,5,6,7],[8,9,10]]},
+  '4-4-2':{name:'4-4-2',positions:['GK','LB','CB','CB','RB','LM','CM','CM','RM','ST','ST'],rows:[[0],[1,2,3,4],[5,6,7,8],[9,10]]},
+  '3-5-2 Ложная девятка':{name:'3-5-2 Ложная девятка',positions:['GK','CB','CB','CB','LM','CM','CAM','CM','RM','CF','ST'],rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]]},
+  '4-3-2-1':{name:'4-3-2-1',positions:['GK','LB','CB','CB','RB','CDM','CM','CDM','CAM','CAM','ST'],rows:[[0],[1,2,3,4],[5,6,7],[8,9],[10]]}
 };
-
 const DEFAULT_FORMATION = '4-3-3';
-
 const TACTICS = {
-  'Атака': { attackMult: 1.2, defMult: 0.8, fastAttackChance: 0.05, counterChance: 0.03 },
-  'Баланс': { attackMult: 1.0, defMult: 1.0, fastAttackChance: 0.0, counterChance: 0.0 },
-  'Защита': { attackMult: 0.8, defMult: 1.2, fastAttackChance: 0.0, counterChance: -0.02 },
-  'Тики-така': { attackMult: 0.9, defMult: 1.2, fastAttackChance: 0.02, counterChance: -0.01 },
-  'Длинные передачи': { attackMult: 1.2, defMult: 0.9, fastAttackChance: 0.08, counterChance: 0.06 }
+  'Атака':{attackMult:1.2,defMult:0.8,fastAttackChance:0.05,counterChance:0.03},
+  'Баланс':{attackMult:1.0,defMult:1.0,fastAttackChance:0.0,counterChance:0.0},
+  'Защита':{attackMult:0.8,defMult:1.2,fastAttackChance:0.0,counterChance:-0.02},
+  'Тики-така':{attackMult:0.9,defMult:1.2,fastAttackChance:0.02,counterChance:-0.01},
+  'Длинные передачи':{attackMult:1.2,defMult:0.9,fastAttackChance:0.08,counterChance:0.06}
 };
-
 const DEFAULT_TACTIC = 'Баланс';
+const POSITION_COLORS = {GK:'#e8a020',LB:'#2070c8',RB:'#2070c8',CB:'#1060b8',CDM:'#308050',CM:'#28a060',CAM:'#40b870',LM:'#38c080',RM:'#38c080',LW:'#c04040',RW:'#c04040',ST:'#d03030',CF:'#b82828',DEFAULT:'#5060a0'};
 
-const POSITION_COLORS = {
-  GK:'#e8a020', LB:'#2070c8', RB:'#2070c8', CB:'#1060b8', CDM:'#308050', CM:'#28a060', CAM:'#40b870',
-  LM:'#38c080', RM:'#38c080', LW:'#c04040', RW:'#c04040', ST:'#d03030', CF:'#b82828', DEFAULT:'#5060a0'
+function getPositionColor(pos) { return POSITION_COLORS[pos]||POSITION_COLORS.DEFAULT; }
+function getCurrentFormation() { return FORMATIONS[gameState?.squadFormation]||FORMATIONS[DEFAULT_FORMATION]; }
+function getCurrentTactic() { return TACTICS[gameState?.squadTactic]||TACTICS[DEFAULT_TACTIC]; }
+function isPositionCompatible(pPos, alt, slotPos) { return pPos===slotPos || (Array.isArray(alt)&&alt.includes(slotPos)); }
+function getSquadAverageOvr() {
+  if (!gameState?.squadSlots) return 0;
+  let t=0,c=0;
+  for (let i=0;i<11;i++) { const pid=gameState.squadSlots[String(i)]; if(pid!=null){ const p=findPlayerById(pid); if(p){t+=getEffectiveOvr(p);c++;} } }
+  return c>0?Math.round(t/c):0;
+}
+
+// ========== BOTS & DIVISIONS ==========
+const BOTS = [
+  {name:'FC Краснодар Б',ovr:45,minDiv:0,maxDiv:2},{name:'Спартак-2',ovr:50,minDiv:0,maxDiv:3},{name:'Динамо Резерв',ovr:52,minDiv:1,maxDiv:4},
+  {name:'Локо Молодёжь',ovr:55,minDiv:2,maxDiv:5},{name:'Зенит-2',ovr:58,minDiv:3,maxDiv:6},{name:'ЦСКА Резерв',ovr:60,minDiv:4,maxDiv:7},
+  {name:'Ростов-на-Дону',ovr:63,minDiv:5,maxDiv:8},{name:'Рубин Казань',ovr:66,minDiv:6,maxDiv:9},{name:'Крылья Советов',ovr:69,minDiv:7,maxDiv:10},
+  {name:'Урал FC',ovr:72,minDiv:8,maxDiv:11},{name:'Торпедо Москва',ovr:75,minDiv:9,maxDiv:12},{name:'Спартак Москва',ovr:78,minDiv:10,maxDiv:13},
+  {name:'Зенит СПб',ovr:81,minDiv:11,maxDiv:13},{name:'Легион Элит',ovr:85,minDiv:12,maxDiv:14},{name:'FC Мечта',ovr:90,minDiv:13,maxDiv:14}
+];
+const DIVISIONS = [
+  {index:0,name:'Bronze III',minStars:0,maxStars:3,color:'#cd7f32',rewards:{rubins:0,passCredits:0,ovrPoints:0,draftTokens:0}},
+  {index:1,name:'Bronze II',minStars:4,maxStars:6,color:'#cd7f32',rewards:{rubins:1000,passCredits:150,ovrPoints:100,draftTokens:0}},
+  {index:2,name:'Bronze I',minStars:7,maxStars:9,color:'#cd7f32',rewards:{rubins:1000,passCredits:150,ovrPoints:100,draftTokens:0}},
+  {index:3,name:'Silver III',minStars:10,maxStars:12,color:'#c0c0c0',rewards:{rubins:1000,passCredits:150,ovrPoints:100,draftTokens:0}},
+  {index:4,name:'Silver II',minStars:13,maxStars:15,color:'#c0c0c0',rewards:{rubins:1000,passCredits:150,ovrPoints:100,draftTokens:0}},
+  {index:5,name:'Silver I',minStars:16,maxStars:18,color:'#c0c0c0',rewards:{rubins:1000,passCredits:150,ovrPoints:100,draftTokens:0}},
+  {index:6,name:'Gold III',minStars:19,maxStars:23,color:'#f0c040',rewards:{rubins:2000,passCredits:150,ovrPoints:150,draftTokens:1}},
+  {index:7,name:'Gold II',minStars:24,maxStars:28,color:'#f0c040',rewards:{rubins:2000,passCredits:150,ovrPoints:150,draftTokens:1}},
+  {index:8,name:'Gold I',minStars:29,maxStars:33,color:'#f0c040',rewards:{rubins:2000,passCredits:150,ovrPoints:150,draftTokens:1}},
+  {index:9,name:'Platinum III',minStars:34,maxStars:38,color:'#00d2ff',rewards:{rubins:5000,passCredits:150,ovrPoints:150,draftTokens:3}},
+  {index:10,name:'Platinum II',minStars:39,maxStars:43,color:'#00d2ff',rewards:{rubins:5000,passCredits:150,ovrPoints:150,draftTokens:3}},
+  {index:11,name:'Platinum I',minStars:44,maxStars:48,color:'#00d2ff',rewards:{rubins:5000,passCredits:150,ovrPoints:150,draftTokens:3}},
+  {index:12,name:'Diamond III',minStars:49,maxStars:58,color:'#b9f2ff',rewards:{rubins:10000,passCredits:200,ovrPoints:200,draftTokens:5}},
+  {index:13,name:'Diamond II',minStars:59,maxStars:69,color:'#b9f2ff',rewards:{rubins:20000,passCredits:300,ovrPoints:400,draftTokens:10}},
+  {index:14,name:'Diamond I',minStars:70,maxStars:9999,color:'#b9f2ff',rewards:{rubins:50000,passCredits:500,ovrPoints:1000,draftTokens:20}}
+];
+function getCurrentDivision() {
+  for (const d of DIVISIONS) if (gameState.stars>=d.minStars&&gameState.stars<=d.maxStars) return d;
+  return DIVISIONS[DIVISIONS.length-1];
+}
+function getRandomBot() {
+  const idx = getCurrentDivision().index;
+  const suit = BOTS.filter(b=>idx>=b.minDiv&&idx<=b.maxDiv);
+  return suit.length ? suit[Math.floor(Math.random()*suit.length)] : BOTS[BOTS.length-1];
+}
+const MATCH_REWARDS = {
+  win:{rubinsBase:30,rubinsPerGoal:6,rubinsPerConceded:-3,xp:20},
+  draw:{rubinsBase:13,xp:10},
+  loss:{rubinsBase:5,xp:5}
 };
 
-function getPositionColor(pos) { return POSITION_COLORS[pos] || POSITION_COLORS.DEFAULT; }
-function getCurrentFormation() { const key = (gameState && gameState.squadFormation) || DEFAULT_FORMATION; return FORMATIONS[key] || FORMATIONS[DEFAULT_FORMATION]; }
-function getFormationKeys() { return Object.keys(FORMATIONS); }
-function getCurrentTactic() { const key = (gameState && gameState.squadTactic) || DEFAULT_TACTIC; return TACTICS[key] || TACTICS[DEFAULT_TACTIC]; }
-function getTacticKeys() { return Object.keys(TACTICS); }
-function isPositionCompatible(playerPosition, altPositions, slotPosition) {
-  if (playerPosition === slotPosition) return true;
-  if (Array.isArray(altPositions) && altPositions.includes(slotPosition)) return true;
-  return false;
+// ========== DAILY QUESTS & REWARDS ==========
+const DAILY_QUEST_POOL = [
+  {id:'q1',title:'Сыграть 2 матча',type:'matches',target:2,rewards:{rubins:100,xp:20,passCredits:75}},
+  {id:'q2',title:'Сыграть 5 матчей',type:'matches',target:5,rewards:{rubins:150,xp:20,passCredits:75}},
+  {id:'q3',title:'Забить 10 голов',type:'goals',target:10,rewards:{rubins:150,xp:20,passCredits:75}},
+  {id:'q4',title:'Забить 20 голов',type:'goals',target:20,rewards:{rubins:200,xp:20,passCredits:75}},
+  {id:'q5',title:'Открыть 1 пак',type:'packs',target:1,rewards:{rubins:0,xp:20,passCredits:75,fragments:30}},
+  {id:'q6',title:'Повысить уровень',type:'levels',target:1,rewards:{rubins:150,xp:20,passCredits:75}},
+  {id:'q7',title:'Получить ежедневную награду',type:'daily',target:1,rewards:{rubins:30,xp:20,passCredits:75}}
+];
+const ALL_QUESTS_BONUS = {rubins:500,draftTokens:1,fragments:150,xp:50,passCredits:150};
+const DAILY_REWARD_TABLE = [
+  {label:'50 фрагментов',weight:28,reward:{fragments:50}},
+  {label:'100 рубинов',weight:26,reward:{rubins:100}},
+  {label:'50 очков тренировки',weight:25,reward:{trainingPoints:50}},
+  {label:'30 очков повышения OVR',weight:19,reward:{ovrUpgradePoints:30}},
+  {label:'1 жетон открытия',weight:2,reward:{draftTokens:1}}
+];
+function getDailyReward() {
+  const tw = DAILY_REWARD_TABLE.reduce((s,i)=>s+i.weight,0);
+  let r = Math.random()*tw;
+  for (const i of DAILY_REWARD_TABLE) if ((r-=i.weight)<=0) return i;
+  return DAILY_REWARD_TABLE[DAILY_REWARD_TABLE.length-1];
 }
-function getSquadAverageOvr() {
-  if (!gameState || !gameState.squadSlots) return 0;
-  const slots = gameState.squadSlots;
-  let total = 0, count = 0;
-  for (let i = 0; i < 11; i++) {
-    const pid = slots[String(i)];
-    if (pid != null) {
-      const player = findPlayerById(pid);
-      if (player) { total += getEffectiveOvr(player); count++; }
+function pickDailyQuests() {
+  const sh = [...DAILY_QUEST_POOL].sort(()=>Math.random()-0.5);
+  return sh.slice(0,4).map(q=>({id:q.id,title:q.title,type:q.type,target:q.target,rewards:{...q.rewards},progress:0,completed:false}));
+}
+function getMoscowDateString() { const d=new Date(); d.setHours(d.getHours()+3); return d.toISOString().split('T')[0]; }
+
+// ========== SHOP PACKS & DRAFT POOLS ==========
+const SHOP_PACKS = [
+  {
+    id:'standard', name:'Стандартный пак', emoji:'📦', currency:'rubins', price:500, count:3,
+    ovrRanges:[{minOvr:45,maxOvr:64,chance:60},{minOvr:65,maxOvr:74,chance:30},{minOvr:75,maxOvr:84,chance:9},{minOvr:85,maxOvr:99,chance:1}]
+  }
+];
+const DRAFT_CONFIGS = {
+  // 'toty': { name:'TOTY Draft', emoji:'🏆', cost:1, costBulk:10, poolA:[], poolB:[], poolC:[] }
+};
+const DRAFT_PROB_A = 0.01, DRAFT_PROB_B = 0.12;
+
+function pickWeightedRange(ranges) {
+  if (!ranges?.length) return null;
+  const tw = ranges.reduce((s,r)=>s+(r.chance||0),0);
+  if (tw<=0) return ranges[0];
+  let rand = Math.random()*tw;
+  for (const r of ranges) if ((rand-=r.chance||0)<=0) return r;
+  return ranges[ranges.length-1];
+}
+function getPlayersInOvrRange(min,max) { return allPlayers.filter(p=>p.ovr>=min&&p.ovr<=max); }
+function drawPackCards(pack) {
+  const drawn = [];
+  for (let i=0;i<(pack.count||1);i++) {
+    let player = null;
+    for (let a=0;a<10;a++) {
+      const range = pickWeightedRange(pack.ovrRanges); if (!range) break;
+      const candidates = getPlayersInOvrRange(range.minOvr,range.maxOvr);
+      if (candidates.length) {
+        player = JSON.parse(JSON.stringify(candidates[Math.floor(Math.random()*candidates.length)]));
+        player.trainingLevel = 0; player.ovrUpgrade = 0; break;
+      }
+    }
+    if (player) drawn.push(player);
+  }
+  return drawn;
+}
+function getPackById(id) { return SHOP_PACKS.find(p=>p.id===id)||null; }
+function resolveDraftPull(cfg) {
+  const roll = Math.random(); let tier;
+  if (roll<DRAFT_PROB_A && cfg.poolA?.length) tier='A';
+  else if (roll<DRAFT_PROB_A+DRAFT_PROB_B && cfg.poolB?.length) tier='B';
+  else tier='C';
+  if (tier==='A'&&!cfg.poolA?.length) tier='B';
+  if (tier==='B'&&!cfg.poolB?.length) tier='C';
+  if (tier==='C'&&!cfg.poolC?.length) return {tier:'C',player:null};
+  const pool = tier==='A'?cfg.poolA:tier==='B'?cfg.poolB:cfg.poolC;
+  const pickedId = pool[Math.floor(Math.random()*pool.length)];
+  const tpl = allPlayers.find(p=>p.id===pickedId)||null;
+  const player = tpl ? JSON.parse(JSON.stringify(tpl)) : null;
+  if (player) { player.trainingLevel=0; player.ovrUpgrade=0; }
+  return {tier,player};
+}
+function getDraftConfig(draftId) { return DRAFT_CONFIGS[draftId]||null; }
+function getDraftIds() { return Object.keys(DRAFT_CONFIGS); }
+
+// ========== SHOP LOGIC ==========
+function buildPlayerCardHTML(player) {
+  const effOvr = getEffectiveOvr(player);
+  const color = getPositionColor(player.position);
+  const stats = getEffectiveStats(player);
+  const keys = player.position==='GK' ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
+  let statsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
+  for (const k of keys) statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:5px;padding:2px 6px;text-align:center;min-width:38px;"><div style="font-size:9px;color:#7d8e9e;">${k}</div><div style="font-size:12px;font-weight:700;">${stats[k]||0}</div></div>`;
+  statsHtml += '</div>';
+  return `<div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:1px solid ${color};border-radius:10px;padding:10px 12px;cursor:pointer;" onclick="showPlayerDetail(${player.id})">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
+      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">${player.name}</div><div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}</div>${player.program?`<div style="font-size:10px;color:#5288c1;margin-top:2px;">${player.program}</div>`:''}</div>
+      <div style="font-size:24px;font-weight:900;color:#f0c040;min-width:40px;text-align:center;">${effOvr}</div>
+    </div>${statsHtml}</div>`;
+}
+function showPlayerDetail(pid) {
+  const player = findPlayerById(pid);
+  if (player) botReply(null, 200, {card: buildPlayerCardHTML(player)});
+}
+async function buyPack(packId) {
+  const pack = getPackById(packId);
+  if (!pack) { await botReply('❌ Пак не найден.', 300); return; }
+  const currencyKey = pack.currency==='rubins'?'rubins':'offsideTokens';
+  if ((gameState[currencyKey]||0) < pack.price) { await botReply(`❌ Недостаточно ${pack.currency==='rubins'?'рубинов':'offside tokens'}.`, 400); return; }
+  gameState[currencyKey] -= pack.price;
+  const drawn = drawPackCards(pack);
+  if (!drawn.length) { gameState[currencyKey] += pack.price; await botReply('⚠️ Нет доступных игроков.', 400); saveState(); updateHeaderResources(); return; }
+  for (const p of drawn) gameState.myPlayers.push(p);
+  gameState.packsOpened = (gameState.packsOpened||0)+1;
+  saveState(); updateHeaderResources();
+  await botReply(`🎉 Ты открыл <b>${pack.name}</b>!`, 400, {html:true});
+  for (const p of drawn) await botReply(null, 800, {card: buildPlayerCardHTML(p)});
+  await botReply(`💎 Остаток: <b>${gameState[currencyKey]||0}</b> ${pack.currency==='rubins'?'рубинов':'offside tokens'}.`, 400, {html:true});
+}
+
+// ========== PROMO CODES ==========
+const PROMO_CODES = [
+  // { code:'WELCOME', limit:'once_per_player', globalLimit:null, rewards:{ rubins:500, draftTokens:2 } }
+];
+async function redeemPromoCode() {
+  const input = document.getElementById('promo-input');
+  if (!input) { await botReply('⚠️ Ошибка интерфейса.', 300); return; }
+  const code = input.value.trim().toUpperCase();
+  if (!code) { await botReply('❌ Введи промокод.', 300); return; }
+  const def = PROMO_CODES.find(p=>p.code.toUpperCase()===code);
+  if (!def) { await botReply('❌ Неверный промокод.', 400); return; }
+  if (!gameState.promoUsed) gameState.promoUsed = [];
+  if (def.limit==='once_per_player' && gameState.promoUsed.includes(code)) { await botReply('❌ Ты уже использовал этот код.', 400); return; }
+  if (typeof def.globalLimit==='number') {
+    const gk = `promo_global_${code}`;
+    let gc = parseInt(localStorage.getItem(gk)||'0',10);
+    if (gc >= def.globalLimit) { await botReply('❌ Лимит использований исчерпан.', 400); return; }
+    gc++; localStorage.setItem(gk, String(gc));
+  }
+  gameState.promoUsed.push(code);
+  const r = def.rewards||{};
+  if (r.rubins) gameState.rubins = (gameState.rubins||0)+r.rubins;
+  if (r.offsideTokens) gameState.offsideTokens = (gameState.offsideTokens||0)+r.offsideTokens;
+  if (r.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints||0)+r.trainingPoints;
+  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints||0)+r.ovrUpgradePoints;
+  if (r.fragments) gameState.fragments = (gameState.fragments||0)+r.fragments;
+  if (r.draftTokens) gameState.draftTokens = (gameState.draftTokens||0)+r.draftTokens;
+  if (r.passCredits) gameState.passCredits = (gameState.passCredits||0)+r.passCredits;
+  if (r.playerIds?.length) {
+    for (const pid of r.playerIds) {
+      const tpl = allPlayers.find(p=>p.id===pid);
+      if (tpl) { const np = JSON.parse(JSON.stringify(tpl)); np.trainingLevel=0; np.ovrUpgrade=0; gameState.myPlayers.push(np); }
     }
   }
-  return count > 0 ? Math.round(total / count) : 0;
+  saveState(); updateHeaderResources();
+  let msg = `✅ Промокод <b>${code}</b> активирован! Получено: `;
+  const parts = [];
+  if (r.rubins) parts.push(`💎 ${r.rubins} руб.`);
+  if (r.offsideTokens) parts.push(`🔮 ${r.offsideTokens} офф.`);
+  if (r.trainingPoints) parts.push(`🎯 ${r.trainingPoints} очк.трен.`);
+  if (r.ovrUpgradePoints) parts.push(`⚡ ${r.ovrUpgradePoints} очк.OVR`);
+  if (r.fragments) parts.push(`🧩 ${r.fragments} фрагм.`);
+  if (r.draftTokens) parts.push(`🎟️ ${r.draftTokens} жет.`);
+  if (r.passCredits) parts.push(`🪙 ${r.passCredits} кред.`);
+  if (r.playerIds?.length) parts.push(`👤 ${r.playerIds.length} игр.`);
+  msg += parts.join(', ')+'.';
+  await botReply(msg, 600, {html:true});
+  input.value = '';
 }
 
-// === END MODULE: formations & tactics ===
-
-// ============================================
-// === INSERT MODULE: bots & divisions ===
-// ============================================
-
-const BOTS = [
-  { name: 'FC Краснодар Б', ovr: 45, minDiv: 0, maxDiv: 2 },
-  { name: 'Спартак-2', ovr: 50, minDiv: 0, maxDiv: 3 },
-  { name: 'Динамо Резерв', ovr: 52, minDiv: 1, maxDiv: 4 },
-  { name: 'Локо Молодёжь', ovr: 55, minDiv: 2, maxDiv: 5 },
-  { name: 'Зенит-2', ovr: 58, minDiv: 3, maxDiv: 6 },
-  { name: 'ЦСКА Резерв', ovr: 60, minDiv: 4, maxDiv: 7 },
-  { name: 'Ростов-на-Дону', ovr: 63, minDiv: 5, maxDiv: 8 },
-  { name: 'Рубин Казань', ovr: 66, minDiv: 6, maxDiv: 9 },
-  { name: 'Крылья Советов', ovr: 69, minDiv: 7, maxDiv: 10 },
-  { name: 'Урал FC', ovr: 72, minDiv: 8, maxDiv: 11 },
-  { name: 'Торпедо Москва', ovr: 75, minDiv: 9, maxDiv: 12 },
-  { name: 'Спартак Москва', ovr: 78, minDiv: 10, maxDiv: 13 },
-  { name: 'Зенит СПб', ovr: 81, minDiv: 11, maxDiv: 13 },
-  { name: 'Легион Элит', ovr: 85, minDiv: 12, maxDiv: 14 },
-  { name: 'FC Мечта', ovr: 90, minDiv: 13, maxDiv: 14 }
-];
-
-const DIVISIONS = [
-  { index:0,  name:'Bronze III',   minStars:0,  maxStars:3,  color:'#cd7f32', rewards:{ rubins:0,     passCredits:0,   ovrPoints:0,   draftTokens:0  } },
-  { index:1,  name:'Bronze II',    minStars:4,  maxStars:6,  color:'#cd7f32', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
-  { index:2,  name:'Bronze I',     minStars:7,  maxStars:9,  color:'#cd7f32', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
-  { index:3,  name:'Silver III',   minStars:10, maxStars:12, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
-  { index:4,  name:'Silver II',    minStars:13, maxStars:15, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
-  { index:5,  name:'Silver I',     minStars:16, maxStars:18, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
-  { index:6,  name:'Gold III',     minStars:19, maxStars:23, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
-  { index:7,  name:'Gold II',      minStars:24, maxStars:28, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
-  { index:8,  name:'Gold I',       minStars:29, maxStars:33, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
-  { index:9,  name:'Platinum III', minStars:34, maxStars:38, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
-  { index:10, name:'Platinum II',  minStars:39, maxStars:43, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
-  { index:11, name:'Platinum I',   minStars:44, maxStars:48, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
-  { index:12, name:'Diamond III',  minStars:49, maxStars:58, color:'#b9f2ff', rewards:{ rubins:10000, passCredits:200, ovrPoints:200, draftTokens:5  } },
-  { index:13, name:'Diamond II',   minStars:59, maxStars:69, color:'#b9f2ff', rewards:{ rubins:20000, passCredits:300, ovrPoints:400, draftTokens:10 } },
-  { index:14, name:'Diamond I',    minStars:70, maxStars:9999,color:'#b9f2ff', rewards:{ rubins:50000, passCredits:500, ovrPoints:1000, draftTokens:20 } }
-];
-
-function getCurrentDivision() {
-  if (!gameState) return DIVISIONS[0];
-  for (const div of DIVISIONS) {
-    if (gameState.stars >= div.minStars && gameState.stars <= div.maxStars) return div;
-  }
-  return DIVISIONS[DIVISIONS.length - 1];
-}
-
-function getRandomBot() {
-  const currentDivIndex = getCurrentDivision().index;
-  const suitable = BOTS.filter(b => currentDivIndex >= b.minDiv && currentDivIndex <= b.maxDiv);
-  if (suitable.length === 0) return BOTS[BOTS.length - 1];
-  return suitable[Math.floor(Math.random() * suitable.length)];
-}
-
-const MATCH_REWARDS = {
-  win:  { rubinsBase: 30, rubinsPerGoal: 6, rubinsPerConceded: -3, xp: 20 },
-  draw: { rubinsBase: 13, xp: 10 },
-  loss: { rubinsBase: 5,  xp: 5 }
-};
-
-// === END MODULE: bots & divisions ===
-
-// ============================================
-// === INSERT MODULE: daily quests & rewards ===
-// ============================================
-
-const DAILY_QUEST_POOL = [
-  { id:'q1', title:'Сыграть 2 матча',       type:'matches', target:2,  rewards:{ rubins:100, xp:20, passCredits:75 } },
-  { id:'q2', title:'Сыграть 5 матчей',      type:'matches', target:5,  rewards:{ rubins:150, xp:20, passCredits:75 } },
-  { id:'q3', title:'Забить 10 голов',        type:'goals',   target:10, rewards:{ rubins:150, xp:20, passCredits:75 } },
-  { id:'q4', title:'Забить 20 голов',        type:'goals',   target:20, rewards:{ rubins:200, xp:20, passCredits:75 } },
-  { id:'q5', title:'Открыть 1 пак',          type:'packs',   target:1,  rewards:{ rubins:0,   xp:20, passCredits:75, fragments:30 } },
-  { id:'q6', title:'Повысить уровень',       type:'levels',  target:1,  rewards:{ rubins:150, xp:20, passCredits:75 } },
-  { id:'q7', title:'Получить ежедневную награду', type:'daily', target:1, rewards:{ rubins:30,  xp:20, passCredits:75 } }
-];
-
-const ALL_QUESTS_BONUS = { rubins:500, draftTokens:1, fragments:150, xp:50, passCredits:150 };
-
-const DAILY_REWARD_TABLE = [
-  { label:'50 фрагментов',            weight:28, reward:{ fragments:50 } },
-  { label:'100 рубинов',              weight:26, reward:{ rubins:100 } },
-  { label:'50 очков тренировки',      weight:25, reward:{ trainingPoints:50 } },
-  { label:'30 очков повышения OVR',   weight:19, reward:{ ovrUpgradePoints:30 } },
-  { label:'1 жетон открытия',         weight:2,  reward:{ draftTokens:1 } }
-];
-
-function getDailyReward() {
-  const totalWeight = DAILY_REWARD_TABLE.reduce((sum, item) => sum + item.weight, 0);
-  let random = Math.random() * totalWeight;
-  for (const item of DAILY_REWARD_TABLE) {
-    random -= item.weight;
-    if (random <= 0) return item;
-  }
-  return DAILY_REWARD_TABLE[DAILY_REWARD_TABLE.length - 1];
-}
-
-function pickDailyQuests() {
-  const shuffled = [...DAILY_QUEST_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 4).map(q => ({
-    id: q.id, title: q.title, type: q.type, target: q.target,
-    rewards: {...q.rewards}, progress: 0, completed: false
-  }));
-}
-
-function getMoscowDateString() {
-  const now = new Date();
-  const msk = new Date(now.getTime() + 3 * 3600 * 1000);
-  return msk.toISOString().split('T')[0];
-}
-
-// === END MODULE: daily quests & rewards ===
-
-/* ======================================================
-   INITIALIZATION (with starter players seeding)
-====================================================== */
+// ========== INIT ==========
 function init() {
-  loadState();
-  updateHeaderResources();
-
-  // Load allPlayers catalogue
+  loadState(); updateHeaderResources();
   allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
-
-  // Seed starter players if collection is empty
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
-    gameState.myPlayers = STARTER_PLAYER_IDS
-      .map(id => allPlayers.find(p => p.id === id))
-      .filter(p => p !== undefined)
-      .map(p => JSON.parse(JSON.stringify(p)));
+    gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>JSON.parse(JSON.stringify(p)));
     saveState();
   }
-
-  if (gameState.registered) {
-    hideStartOverlay();
-    botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽\n\nГотов к игре? Используй кнопки внизу для навигации.`, 600, { html: true });
-  } else if (gameState.awaitingNickname) {
-    hideStartOverlay();
-    botReply('Введи свой никнейм, чтобы продолжить регистрацию:', 400);
-  } else {
-    startOverlay.classList.remove('hidden');
-  }
+  if (gameState.registered) { hideStartOverlay(); botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true}); }
+  else if (gameState.awaitingNickname) { hideStartOverlay(); botReply('Введи никнейм для продолжения регистрации:', 400); }
+  else { startOverlay.classList.remove('hidden'); }
 }
-
 document.addEventListener('DOMContentLoaded', init);
 if (document.readyState !== 'loading') init();
-
-// shop packs & draft pools
-
-```javascript
-// ============================================
-// === INSERT MODULE: shop packs & draft pools ===
-// ============================================
-
-    // === РЕДАКТИРУЙ ЗДЕСЬ: ПАКЕТЫ В МАГАЗИНЕ ===
-    // Each pack:
-    //   id       – unique string identifier
-    //   name     – display name
-    //   emoji    – icon shown in shop UI
-    //   currency – 'rubins' | 'offsideTokens'
-    //   price    – cost in the chosen currency
-    //   count    – how many player cards the pack contains
-    //   ovrRanges – array of { minOvr, maxOvr, chance }
-    //               Cards are drawn by matching a player's BASE ovr (no upgrades)
-    //               against these ranges. `chance` is a relative weight (not %).
-    //               If no players exist in allPlayers for a given range it is skipped.
-    //
-    // Example pack structure:
-    // {
-    //   id: 'standard',
-    //   name: 'Стандартный пак',
-    //   emoji: '📦',
-    //   currency: 'rubins',
-    //   price: 500,
-    //   count: 3,
-    //   ovrRanges: [
-    //     { minOvr: 45, maxOvr: 64, chance: 60 },
-    //     { minOvr: 65, maxOvr: 74, chance: 30 },
-    //     { minOvr: 75, maxOvr: 84, chance: 9  },
-    //     { minOvr: 85, maxOvr: 99, chance: 1  }
-    //   ]
-    // }
-
-    const SHOP_PACKS = [
-      {
-        id: 'standard',
-        name: 'Стандартный пак',
-        emoji: '📦',
-        currency: 'rubins',
-        price: 500,
-        count: 3,
-        ovrRanges: [
-          { minOvr: 45, maxOvr: 64, chance: 60 },
-          { minOvr: 65, maxOvr: 74, chance: 30 },
-          { minOvr: 75, maxOvr: 84, chance: 9  },
-          { minOvr: 85, maxOvr: 99, chance: 1  }
-        ]
-      }
-      // ── Add more packs below this line ───────────────────────────────────────
-      // {
-      //   id: 'premium',
-      //   name: 'Премиум пак',
-      //   emoji: '💎',
-      //   currency: 'rubins',
-      //   price: 1500,
-      //   count: 5,
-      //   ovrRanges: [
-      //     { minOvr: 65, maxOvr: 74, chance: 55 },
-      //     { minOvr: 75, maxOvr: 84, chance: 35 },
-      //     { minOvr: 85, maxOvr: 94, chance: 9  },
-      //     { minOvr: 95, maxOvr: 99, chance: 1  }
-      //   ]
-      // },
-    ];
-
-    // ── Internal helper: pick a weighted OVR range from a pack definition ───────
-    /**
-     * Given a pack's ovrRanges array, returns one range object chosen by
-     * weighted-random selection.  Returns null if the array is empty.
-     * @param {Array<{minOvr:number, maxOvr:number, chance:number}>} ovrRanges
-     * @returns {{minOvr:number, maxOvr:number, chance:number}|null}
-     */
-    function pickWeightedRange(ovrRanges) {
-      if (!ovrRanges || ovrRanges.length === 0) return null;
-      const totalWeight = ovrRanges.reduce((sum, r) => sum + (r.chance || 0), 0);
-      if (totalWeight <= 0) return ovrRanges[0];
-      let rand = Math.random() * totalWeight;
-      for (const range of ovrRanges) {
-        rand -= range.chance || 0;
-        if (rand <= 0) return range;
-      }
-      return ovrRanges[ovrRanges.length - 1];
-    }
-
-    /**
-     * Returns all players from `allPlayers` whose BASE ovr falls within
-     * [minOvr, maxOvr] (inclusive).
-     * @param {number} minOvr
-     * @param {number} maxOvr
-     * @returns {Object[]}
-     */
-    function getPlayersInOvrRange(minOvr, maxOvr) {
-      return allPlayers.filter(p => p.ovr >= minOvr && p.ovr <= maxOvr);
-    }
-
-    /**
-     * Draws `count` player cards from `allPlayers` according to a pack's
-     * ovrRanges probability table.  Returns an array of deep-cloned player
-     * objects (ready to push into gameState.myPlayers).
-     * Duplicates within a single draw ARE allowed (as in real pack openings).
-     * @param {Object} pack  – one entry from SHOP_PACKS
-     * @returns {Object[]}   – array of player objects (length === pack.count)
-     */
-    function drawPackCards(pack) {
-      const drawn = [];
-      for (let i = 0; i < (pack.count || 1); i++) {
-        // Try up to 10 times to find a non-empty range
-        let player = null;
-        for (let attempt = 0; attempt < 10; attempt++) {
-          const range = pickWeightedRange(pack.ovrRanges);
-          if (!range) break;
-          const candidates = getPlayersInOvrRange(range.minOvr, range.maxOvr);
-          if (candidates.length > 0) {
-            const template = candidates[Math.floor(Math.random() * candidates.length)];
-            player = JSON.parse(JSON.stringify(template));
-            // Reset upgrade counters on the fresh copy
-            player.trainingLevel = 0;
-            player.ovrUpgrade    = 0;
-            break;
-          }
-        }
-        if (player) drawn.push(player);
-      }
-      return drawn;
-    }
-
-    // ── Pack lookup helper ────────────────────────────────────────────────────────
-    /**
-     * Returns the pack definition for the given id, or null.
-     * @param {string} packId
-     * @returns {Object|null}
-     */
-    function getPackById(packId) {
-      return SHOP_PACKS.find(p => p.id === packId) || null;
-    }
-
-    // =============================================================================
-    // === РЕДАКТИРУЙ ЗДЕСЬ: ДРАФТ-ПУЛЫ ===
-    // =============================================================================
-    // DRAFT_CONFIGS – configuration object for every draft event.
-    // Key   = draftId  (string, e.g. 'toty')
-    // Value = {
-    //   name:      string   – display name shown in UI
-    //   emoji:     string   – icon
-    //   cost:      number   – дraftTokens spent per single pull
-    //   costBulk:  number   – дraftTokens spent per 10-pull
-    //   poolA:     number[] – player IDs with  ~1 % base chance  (iconic / elite)
-    //   poolB:     number[] – player IDs with ~12 % base chance  (rare / good)
-    //   poolC:     number[] – player IDs with ~87 % base chance  (common)
-    // }
-    //
-    // Guarantee system (managed by draftCounterB / draftCounterA in gameState):
-    //   • Every 10  pulls  → guaranteed ≥ 1 card from poolB or higher
-    //     (draftCounterB resets when a poolB/A card is obtained naturally or by pity)
-    //   • Every 100 pulls  → guaranteed ≥ 1 card from poolA
-    //     (both counters reset when a poolA card is obtained)
-    //   • 10-pull bulk:    guarantees at least 1 poolB-or-better card in the batch;
-    //     the best card triggers a "walkout" highlight, rest listed best→worst.
-    //
-    // IDs must exist in ALL_PLAYERS_TEMPLATE / allPlayers.
-    // Leave pools empty ([]) if you have no players assigned yet.
-    //
-    // Example (commented out — fill in real IDs):
-    // const DRAFT_CONFIGS = {
-    //   'toty': {
-    //     name: 'TOTY Draft',
-    //     emoji: '🏆',
-    //     cost: 1,
-    //     costBulk: 10,
-    //     poolA: [],   // e.g. [101, 102]
-    //     poolB: [],   // e.g. [201, 202, 203]
-    //     poolC: []    // e.g. [301, 302, 303]
-    //   }
-    // };
-
-    const DRAFT_CONFIGS = {
-      // ── Add draft events below this line ─────────────────────────────────────
-      // 'toty': {
-      //   name: 'TOTY Draft',
-      //   emoji: '🏆',
-      //   cost: 1,
-      //   costBulk: 10,
-      //   poolA: [],
-      //   poolB: [],
-      //   poolC: []
-      // },
-    };
-
-    // ── Draft pull probability constants ─────────────────────────────────────────
-    const DRAFT_PROB_A = 0.01;   // 1 %  base chance for pool A
-    const DRAFT_PROB_B = 0.12;   // 12 % base chance for pool B
-    // pool C fills the remainder: ~87 %
-
-    // ── Draft helper: resolve a single pull from a draft config ──────────────────
-    /**
-     * Resolves one draft pull (without pity/guarantee adjustments).
-     * Returns { tier: 'A'|'B'|'C', player: Object|null }.
-     * The caller is responsible for pity counter management.
-     * @param {Object} draftConfig  – one entry from DRAFT_CONFIGS
-     * @returns {{ tier: string, player: Object|null }}
-     */
-    function resolveDraftPull(draftConfig) {
-      const roll = Math.random();
-      let tier;
-
-      if (roll < DRAFT_PROB_A && draftConfig.poolA && draftConfig.poolA.length > 0) {
-        tier = 'A';
-      } else if (roll < DRAFT_PROB_A + DRAFT_PROB_B && draftConfig.poolB && draftConfig.poolB.length > 0) {
-        tier = 'B';
-      } else {
-        tier = 'C';
-      }
-
-      // Fallback: if chosen tier pool is empty, cascade down
-      if (tier === 'A' && (!draftConfig.poolA || draftConfig.poolA.length === 0)) tier = 'B';
-      if (tier === 'B' && (!draftConfig.poolB || draftConfig.poolB.length === 0)) tier = 'C';
-      if (tier === 'C' && (!draftConfig.poolC || draftConfig.poolC.length === 0)) {
-        return { tier: 'C', player: null }; // nothing to give
-      }
-
-      const pool = tier === 'A' ? draftConfig.poolA
-                 : tier === 'B' ? draftConfig.poolB
-                 :                draftConfig.poolC;
-
-      const pickedId = pool[Math.floor(Math.random() * pool.length)];
-      const template = allPlayers.find(p => p.id === pickedId) || null;
-      const player   = template ? JSON.parse(JSON.stringify(template)) : null;
-      if (player) {
-        player.trainingLevel = 0;
-        player.ovrUpgrade    = 0;
-      }
-
-      return { tier, player };
-    }
-
-    /**
-     * Returns the draft config for the given draftId, or null.
-     * @param {string} draftId
-     * @returns {Object|null}
-     */
-    function getDraftConfig(draftId) {
-      return DRAFT_CONFIGS[draftId] || null;
-    }
-
-    /**
-     * Returns an array of all draftId strings currently defined.
-     * @returns {string[]}
-     */
-    function getDraftIds() {
-      return Object.keys(DRAFT_CONFIGS);
-    }
-
-// === END MODULE: shop packs & draft pools ===
-```
-
-// ============================================
-// === INSERT MODULE: SBC exchanges ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: battle pass (абонемент) ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: events list ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: player cards rendering ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: inventory modal ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: squad management ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: match engine ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: division matches ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: shop logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: draft logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: quests logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: daily reward logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: SBC logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: battle pass logic ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: promo codes ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: admin panel ===
-// ============================================
-
-// ============================================
-// === INSERT MODULE: init & final wiring ===
-// ============================================
 </script>
 </body>
 </html>
