@@ -1772,6 +1772,411 @@ async function redeemPromoCode() {
       setActiveNav('nav-inventory');
       openInventoryModal();
     };
+// ============================================
+// === INSERT MODULE: squad management ===
+// ============================================
+
+    // === REPLACE handleNavSquad ===
+    handleNavSquad = function() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-squad');
+      showSquadScreen();
+    };
+
+    // === SQUAD SCREEN ===
+    async function showSquadScreen() {
+      const formation = getCurrentFormation();
+      const positions = formation.positions;
+      const rows      = formation.rows;
+
+      // ── Formation selector options ──────────────────────────────────────────
+      let formOptions = '';
+      for (const key of getFormationKeys()) {
+        const sel = key === gameState.squadFormation ? ' selected' : '';
+        formOptions += `<option value="${key}"${sel}>${key}</option>`;
+      }
+
+      // ── Pitch field ─────────────────────────────────────────────────────────
+      let fieldHtml =
+        `<div class="formation-field" style="`
+        + `background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);`
+        + `border-radius:12px;padding:12px;margin:6px 0;`
+        + `border:2px solid rgba(255,255,255,0.1);">`;
+
+      for (const row of rows) {
+        fieldHtml += `<div class="field-row" style="display:flex;justify-content:center;gap:6px;margin:4px 0;">`;
+
+        for (const slotIndex of row) {
+          const pos      = positions[slotIndex];
+          const pid      = gameState.squadSlots ? gameState.squadSlots[String(slotIndex)] : null;
+          const player   = pid ? findPlayerById(pid) : null;
+          const posColor = getPositionColor(pos);
+
+          // Position-mismatch warning badge
+          let mismatchBadge = '';
+          if (player && !isPositionCompatible(player.position, player.altPositions || [], pos)) {
+            mismatchBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;`
+              + `text-align:center;font-size:8px;color:#f0a040;">⚠️ pos</div>`;
+          }
+
+          // Remove button (only when filled)
+          const removeBtn = player
+            ? `<button onclick="removeFromSlot(${slotIndex})" `
+              + `style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);`
+              + `border:none;color:#fff;border-radius:50%;width:16px;height:16px;`
+              + `font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
+            : '';
+
+          // Player info inside slot
+          const playerInfo = player
+            ? `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;`
+              + `overflow:hidden;text-overflow:ellipsis;max-width:48px;">${player.name}</div>`
+              + `<div style="font-size:11px;color:#f0c040;font-weight:700;">${getEffectiveOvr(player)}</div>`
+            : '';
+
+          fieldHtml +=
+            `<div class="slot${player ? ' filled' : ''}" `
+            + `data-slot="${slotIndex}" data-pos="${pos}" `
+            + `ondragover="handleDragOver(event)" `
+            + `ondragleave="handleDragLeave(event)" `
+            + `ondrop="handleDrop(event)" `
+            + `style="width:54px;min-height:64px;`
+            + `background:${player ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.3)'};`
+            + `border:2px dashed rgba(255,255,255,0.2);border-radius:8px;`
+            + `display:flex;flex-direction:column;align-items:center;justify-content:center;`
+            + `cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);`
+            + `text-align:center;transition:border-color 0.2s,background 0.2s;position:relative;">`
+            + `<div style="font-size:9px;color:rgba(255,255,255,0.4);margin-bottom:2px;">${pos}</div>`
+            + playerInfo
+            + removeBtn
+            + mismatchBadge
+            + `</div>`;
+        }
+
+        fieldHtml += `</div>`; // end field-row
+      }
+
+      fieldHtml += `</div>`; // end formation-field
+
+      // ── Team average OVR ────────────────────────────────────────────────────
+      const teamOvr = getSquadAverageOvr();
+      fieldHtml +=
+        `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">`
+        + `Средний OVR состава: <b style="color:#f0c040;">${teamOvr}</b></div>`;
+
+      // ── Bench (7 slots) ─────────────────────────────────────────────────────
+      fieldHtml +=
+        `<div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">📋 Скамейка запасных (7 мест)</div>`;
+      fieldHtml +=
+        `<div class="bench-row" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0;">`;
+
+      for (let i = 0; i < 7; i++) {
+        const pid    = gameState.benchSlots ? gameState.benchSlots[String(i)] : null;
+        const player = pid ? findPlayerById(pid) : null;
+
+        const removeBtn = player
+          ? `<button onclick="removeFromBench(${i})" `
+            + `style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);`
+            + `border:none;color:#fff;border-radius:50%;width:16px;height:16px;`
+            + `font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
+          : '';
+
+        const playerInfo = player
+          ? `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;`
+            + `overflow:hidden;text-overflow:ellipsis;max-width:48px;">${player.name}</div>`
+            + `<div style="font-size:11px;color:#f0c040;font-weight:700;">${getEffectiveOvr(player)}</div>`
+          : `<div style="font-size:9px;color:rgba(255,255,255,0.3);">пусто</div>`;
+
+        fieldHtml +=
+          `<div class="bench-slot${player ? ' filled' : ''}" data-bench="${i}" `
+          + `ondragover="handleDragOver(event)" `
+          + `ondragleave="handleDragLeave(event)" `
+          + `ondrop="handleDrop(event)" `
+          + `style="flex-shrink:0;width:54px;min-height:64px;`
+          + `background:${player ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.3)'};`
+          + `border:2px dashed rgba(255,255,255,0.2);border-radius:8px;`
+          + `display:flex;flex-direction:column;align-items:center;justify-content:center;`
+          + `cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);`
+          + `text-align:center;position:relative;">`
+          + playerInfo
+          + removeBtn
+          + `</div>`;
+      }
+
+      fieldHtml += `</div>`; // end bench-row
+
+      // ── Available players (not in squad or bench) ───────────────────────────
+      const usedIds = new Set();
+      if (gameState.squadSlots) {
+        for (const k in gameState.squadSlots) {
+          if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
+        }
+      }
+      if (gameState.benchSlots) {
+        for (const k in gameState.benchSlots) {
+          if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
+        }
+      }
+
+      const availablePlayers = (gameState.myPlayers || [])
+        .filter(p => !usedIds.has(p.id))
+        .sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
+
+      fieldHtml +=
+        `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">`
+        + `📦 Доступные игроки (перетащи в слот)</div>`;
+      fieldHtml +=
+        `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
+
+      if (availablePlayers.length === 0) {
+        fieldHtml +=
+          `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">`
+          + `Все игроки уже расставлены.</div>`;
+      }
+
+      for (const player of availablePlayers) {
+        const posColor = getPositionColor(player.position);
+        fieldHtml +=
+          `<div class="mini-card" draggable="true" data-player-id="${player.id}" `
+          + `ondragstart="handleDragStart(event)" `
+          + `style="width:54px;min-height:70px;background:#1e2d3d;`
+          + `border:1px solid #2a4060;border-radius:8px;`
+          + `display:flex;flex-direction:column;align-items:center;`
+          + `justify-content:center;gap:2px;flex-shrink:0;cursor:grab;`
+          + `font-size:10px;padding:4px;user-select:none;">`
+          + `<div style="width:26px;height:26px;border-radius:50%;background:${posColor};`
+          + `display:flex;align-items:center;justify-content:center;`
+          + `font-size:9px;font-weight:700;color:#fff;">${player.position}</div>`
+          + `<div style="font-size:9px;text-align:center;white-space:nowrap;`
+          + `overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
+          + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${getEffectiveOvr(player)}</div>`
+          + `</div>`;
+      }
+
+      fieldHtml += `</div>`; // end players-scroll
+
+      // ── Special role assignments ────────────────────────────────────────────
+      const squadPlayers = [];
+      if (gameState.squadSlots) {
+        for (const k in gameState.squadSlots) {
+          if (gameState.squadSlots[k]) {
+            const p = findPlayerById(gameState.squadSlots[k]);
+            if (p) squadPlayers.push(p);
+          }
+        }
+      }
+
+      const roles = [
+        { key: 'captain',       label: 'Капитан'   },
+        { key: 'cornerKicker',  label: 'Угловые'   },
+        { key: 'freeKicker',    label: 'Штрафные'  },
+        { key: 'penaltyKicker', label: 'Пенальти'  }
+      ];
+
+      fieldHtml +=
+        `<div style="font-size:12px;color:#7d8e9e;margin-top:10px;margin-bottom:4px;">⭐ Назначения</div>`;
+      fieldHtml += `<div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+
+      for (const role of roles) {
+        fieldHtml +=
+          `<select onchange="assignRole('${role.key}', this.value)" `
+          + `style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;`
+          + `border-radius:6px;padding:4px 8px;font-size:12px;">`
+          + `<option value="">${role.label}: не выбран</option>`;
+
+        for (const p of squadPlayers) {
+          if (!p) continue;
+          const sel = gameState[role.key] === p.id ? ' selected' : '';
+          fieldHtml += `<option value="${p.id}"${sel}>${p.name} (${p.position})</option>`;
+        }
+
+        fieldHtml += `</select>`;
+      }
+
+      fieldHtml += `</div>`; // end roles row
+
+      // ── Assemble full HTML with formation selector at top ───────────────────
+      const fullHtml =
+        `<div style="margin-bottom:8px;">`
+        + `<span style="font-size:12px;color:#7d8e9e;">Формация: </span>`
+        + `<select onchange="changeFormation(this.value)" `
+        + `style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;`
+        + `border-radius:6px;padding:4px 8px;font-size:12px;">`
+        + formOptions
+        + `</select>`
+        + `</div>`
+        + fieldHtml;
+
+      await botReply(fullHtml, 500, { html: true });
+    }
+
+    // === DRAG AND DROP ===
+    let dragPlayerId = null;
+
+    function handleDragStart(event) {
+      const el = event.target.closest('[data-player-id]');
+      if (!el) return;
+      dragPlayerId = parseInt(el.getAttribute('data-player-id'));
+      event.dataTransfer.setData('text/plain', String(dragPlayerId));
+      event.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const target = event.target.closest('.slot, .bench-slot');
+      if (target) {
+        target.style.borderColor = '#f0c040';
+        target.style.background  = 'rgba(240,192,64,0.12)';
+      }
+    }
+
+    function handleDragLeave(event) {
+      const target = event.target.closest('.slot, .bench-slot');
+      if (target) {
+        target.style.borderColor = '';
+        target.style.background  = '';
+      }
+    }
+
+    function handleDrop(event) {
+      event.preventDefault();
+      const target = event.target.closest('.slot, .bench-slot');
+      if (!target) return;
+
+      // Reset visual state
+      target.style.borderColor = '';
+      target.style.background  = '';
+
+      const playerId = dragPlayerId
+        || parseInt(event.dataTransfer.getData('text/plain'));
+      dragPlayerId = null;
+
+      if (!playerId || isNaN(playerId)) return;
+
+      const player = findPlayerById(playerId);
+      if (!player) return;
+
+      if (target.hasAttribute('data-slot')) {
+        const slotIndex = parseInt(target.getAttribute('data-slot'));
+        const slotPos   = target.getAttribute('data-pos');
+        assignToSlot(playerId, slotIndex, slotPos);
+      } else if (target.hasAttribute('data-bench')) {
+        const benchIndex = parseInt(target.getAttribute('data-bench'));
+        assignToBench(playerId, benchIndex);
+      }
+    }
+
+    // ── Touch-to-tap fallback: tap a mini-card then tap a slot ────────────────
+    let _tapSelectedPlayerId = null;
+
+    function handleMiniCardTap(playerId) {
+      _tapSelectedPlayerId = playerId;
+      botReply(
+        `👆 Игрок выбран. Теперь нажми на пустой слот на поле или скамейке.`,
+        200
+      );
+    }
+
+    function handleSlotTap(slotIndex, slotPos) {
+      if (!_tapSelectedPlayerId) return;
+      assignToSlot(_tapSelectedPlayerId, slotIndex, slotPos);
+      _tapSelectedPlayerId = null;
+    }
+
+    function handleBenchSlotTap(benchIndex) {
+      if (!_tapSelectedPlayerId) return;
+      assignToBench(_tapSelectedPlayerId, benchIndex);
+      _tapSelectedPlayerId = null;
+    }
+
+    // === SLOT / BENCH ASSIGNMENT ===
+    function assignToSlot(playerId, slotIndex, slotPos) {
+      if (!gameState.squadSlots) gameState.squadSlots = {};
+      if (!gameState.benchSlots) gameState.benchSlots = {};
+
+      const player = findPlayerById(playerId);
+      if (!player) return;
+
+      // ── Remove from any current position first ─────────────────────────────
+      for (const k in gameState.squadSlots) {
+        if (gameState.squadSlots[k] === playerId) delete gameState.squadSlots[k];
+      }
+      for (const k in gameState.benchSlots) {
+        if (gameState.benchSlots[k] === playerId) delete gameState.benchSlots[k];
+      }
+
+      // ── Position compatibility warning ─────────────────────────────────────
+      if (!isPositionCompatible(player.position, player.altPositions || [], slotPos)) {
+        botReply(
+          `⚠️ ${player.name} не может играть на позиции ${slotPos}. OVR снижен на 2.`,
+          300
+        );
+      }
+
+      // ── Duplicate name guard ───────────────────────────────────────────────
+      for (const k in gameState.squadSlots) {
+        if (!gameState.squadSlots[k]) continue;
+        const existing = findPlayerById(gameState.squadSlots[k]);
+        if (existing && existing.name === player.name && existing.id !== player.id) {
+          botReply(`❌ Игрок с именем «${player.name}» уже в составе.`, 300);
+          return;
+        }
+      }
+
+      gameState.squadSlots[String(slotIndex)] = playerId;
+      saveState();
+      showSquadScreen();
+    }
+
+    function assignToBench(playerId, benchIndex) {
+      if (!gameState.squadSlots) gameState.squadSlots = {};
+      if (!gameState.benchSlots) gameState.benchSlots = {};
+
+      const player = findPlayerById(playerId);
+      if (!player) return;
+
+      // ── Remove from any current position first ─────────────────────────────
+      for (const k in gameState.squadSlots) {
+        if (gameState.squadSlots[k] === playerId) delete gameState.squadSlots[k];
+      }
+      for (const k in gameState.benchSlots) {
+        if (gameState.benchSlots[k] === playerId) delete gameState.benchSlots[k];
+      }
+
+      gameState.benchSlots[String(benchIndex)] = playerId;
+      saveState();
+      showSquadScreen();
+    }
+
+    function removeFromSlot(slotIndex) {
+      if (gameState.squadSlots) delete gameState.squadSlots[String(slotIndex)];
+      saveState();
+      showSquadScreen();
+    }
+
+    function removeFromBench(benchIndex) {
+      if (gameState.benchSlots) delete gameState.benchSlots[String(benchIndex)];
+      saveState();
+      showSquadScreen();
+    }
+
+    // === FORMATION CHANGE ===
+    function changeFormation(newFormation) {
+      gameState.squadFormation = newFormation;
+      // Note: existing slot assignments are kept but may now be mismatched.
+      // The field will display position warnings where applicable.
+      saveState();
+      showSquadScreen();
+    }
+
+    // === SPECIAL ROLE ASSIGNMENT ===
+    function assignRole(roleKey, value) {
+      gameState[roleKey] = value ? parseInt(value) : null;
+      saveState();
+      // No full re-render needed — just persist silently
+      // (selects update themselves via onchange)
+    }
 // ========== INIT ==========
 function init() {
   loadState(); updateHeaderResources();
