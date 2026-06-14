@@ -1487,6 +1487,11 @@ async function redeemPromoCode() {
     //
     // Add as many events as you like; set active: false to archive them.
 
+    // ============================================
+// === INSERT MODULE: events list ===
+// ============================================
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: СОБЫТИЯ ===
     const EVENTS_LIST = [
       {
         id: 'toty',
@@ -1497,48 +1502,22 @@ async function redeemPromoCode() {
         endDate: '2025-01-31',
         active: true,
         color: '#f0c040'
-        // draftId: 'toty',   // uncomment and set when DRAFT_CONFIGS has a 'toty' entry
-        // packId:  'toty',   // uncomment and set when SHOP_PACKS has a 'toty' entry
+        // draftId: 'toty',   // раскомментируй, когда добавишь DRAFT_CONFIGS['toty']
+        // packId:  'toty',   // раскомментируй, когда добавишь SHOP_PACKS['toty']
       }
-      // ── Add more events below ─────────────────────────────────────────────────
-      // {
-      //   id: 'winter_wildcards',
-      //   title: 'Winter Wildcards',
-      //   emoji: '❄️',
-      //   description: 'Зимние специальные карточки с улучшенными характеристиками.',
-      //   endDate: '2025-02-14',
-      //   active: false,
-      //   color: '#40b0f0',
-      //   draftId: 'winter'
-      // },
     ];
 
-    // ── Helper: returns only active events ───────────────────────────────────────
-    /**
-     * @returns {Object[]} filtered list of active events
-     */
     function getActiveEvents() {
       return EVENTS_LIST.filter(e => e.active);
     }
 
-    // ── Helper: days remaining until endDate ─────────────────────────────────────
-    /**
-     * @param {string} endDateStr  'YYYY-MM-DD'
-     * @returns {number}  days remaining (negative = expired)
-     */
     function eventDaysRemaining(endDateStr) {
       if (!endDateStr) return 0;
       const end  = new Date(endDateStr);
       const now  = new Date();
-      const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-      return diff;
+      return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
     }
 
-    // ── Helper: build a single event card HTML string ────────────────────────────
-    /**
-     * @param {Object} event  – one entry from EVENTS_LIST
-     * @returns {string}  HTML string
-     */
     function buildEventCardHTML(event) {
       const days    = eventDaysRemaining(event.endDate);
       const expired = days <= 0;
@@ -1549,12 +1528,10 @@ async function redeemPromoCode() {
       let buttonsHtml = '';
       if (!expired) {
         if (event.draftId) {
-          buttonsHtml += `<button class="inline-btn" onclick="showDraftMenu('${event.draftId}')">`
-                       + `🎟️ Открыть драфт</button>`;
+          buttonsHtml += `<button class="inline-btn" onclick="showDraftMenu('${event.draftId}')">🎟️ Открыть драфт</button>`;
         }
         if (event.packId) {
-          buttonsHtml += `<button class="inline-btn" onclick="openPackMenu('${event.packId}')">`
-                       + `📦 Открыть пак</button>`;
+          buttonsHtml += `<button class="inline-btn" onclick="openPackMenu('${event.packId}')">📦 Открыть пак</button>`;
         }
       }
 
@@ -1571,6 +1548,28 @@ async function redeemPromoCode() {
            + (buttonsHtml ? `<div class="inline-btn-row">${buttonsHtml}</div>` : '')
            + `</div>`;
     }
+
+    // Показ списка событий в чате
+    async function showEvents() {
+      const activeEvents = getActiveEvents();
+      if (activeEvents.length === 0) {
+        await botReply('📋 Нет активных событий.', 400);
+        return;
+      }
+      let html = '<div class="msg-text"><b>📋 События</b></div>';
+      for (const event of activeEvents) {
+        html += buildEventCardHTML(event);
+      }
+      await botReply(html, 500, { html: true });
+    }
+
+    // Замена заглушки handleNavEvents
+    const _origHandleNavEvents = handleNavEvents;
+    handleNavEvents = function() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-events');
+      showEvents();
+    };
 // ============================================
 // === INSERT MODULE: player cards rendering ===
 // ============================================
