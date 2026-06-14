@@ -1658,16 +1658,19 @@ async function redeemPromoCode() {
       if (overlay) overlay.style.display = 'none';
     }
 
-    function renderInventoryFilters() {
+        function renderInventoryFilters() {
       const container = document.getElementById('inv-filters');
       if (!container) return;
+
+      // === ПОИСК ПО ИМЕНИ ===
+      let html = '<input id="filter-name" type="text" placeholder="🔍 Имя игрока..." oninput="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;margin-bottom:4px;" />';
 
       const clubs = [...new Set((gameState.myPlayers || []).map(p => p.club))].sort();
       const nations = [...new Set((gameState.myPlayers || []).map(p => p.nation))].sort();
       const programs = [...new Set((gameState.myPlayers || []).map(p => p.program).filter(Boolean))].sort();
       const positions = [...new Set((gameState.myPlayers || []).map(p => p.position))].sort();
 
-      let html = '<select id="filter-club" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
+      html += '<select id="filter-club" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
       html += '<option value="">Все клубы</option>';
       for (const c of clubs) html += `<option value="${c}">${c}</option>`;
       html += '</select>';
@@ -1709,6 +1712,11 @@ async function redeemPromoCode() {
 
       let filtered = [...(gameState.myPlayers || [])];
 
+      const nameFilter = document.getElementById('filter-name')?.value?.trim().toLowerCase() || '';
+      if (nameFilter) {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(nameFilter));
+      }
+      
       if (clubFilter) filtered = filtered.filter(p => p.club === clubFilter);
       if (nationFilter) filtered = filtered.filter(p => p.nation === nationFilter);
       if (posFilter) filtered = filtered.filter(p => p.position === posFilter);
