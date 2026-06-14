@@ -6,11 +6,7 @@
   <title>Тренер — Футбольный Менеджер</title>
   <style>
     /* ===== RESET & BASE ===== */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg-main: #0e1621;
@@ -30,7 +26,6 @@
       --btn-primary-hover: #4a7ab0;
       --nav-active: #5288c1;
       --nav-inactive: #6b7d8d;
-      --shadow: rgba(0,0,0,0.4);
     }
 
     html, body {
@@ -43,7 +38,6 @@
       overflow: hidden;
     }
 
-    /* ===== MAIN WRAPPER ===== */
     #app {
       max-width: 600px;
       width: 100%;
@@ -70,1836 +64,698 @@
       text-align: center;
       gap: 16px;
     }
-
-    #start-overlay.hidden {
-      display: none;
-    }
+    #start-overlay.hidden { display: none; }
 
     .start-logo {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
+      width: 90px; height: 90px; border-radius: 50%;
       background: var(--avatar-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-      margin-bottom: 8px;
-      box-shadow: 0 4px 24px rgba(82, 136, 193, 0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; margin-bottom: 8px;
+      box-shadow: 0 4px 24px rgba(82,136,193,0.4);
     }
-
-    .start-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text-primary);
-      line-height: 1.3;
-    }
-
-    .start-subtitle {
-      font-size: 14px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      max-width: 320px;
-    }
+    .start-title { font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+    .start-subtitle { font-size: 14px; color: var(--text-secondary); line-height: 1.6; max-width: 320px; }
 
     #btn-start {
-      margin-top: 12px;
-      padding: 14px 48px;
-      background: var(--btn-primary);
-      color: #fff;
-      border: none;
-      border-radius: 24px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      letter-spacing: 0.3px;
+      margin-top: 12px; padding: 14px 48px;
+      background: var(--btn-primary); color: #fff; border: none;
+      border-radius: 24px; font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: background 0.2s, transform 0.1s; letter-spacing: 0.3px;
     }
-
-    #btn-start:hover {
-      background: var(--btn-primary-hover);
-    }
-
-    #btn-start:active {
-      transform: scale(0.97);
-    }
+    #btn-start:hover { background: var(--btn-primary-hover); }
+    #btn-start:active { transform: scale(0.97); }
 
     /* ===== HEADER ===== */
     #header {
-      background: var(--bg-header);
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      min-height: 56px;
-      z-index: 10;
+      background: var(--bg-header); padding: 8px 12px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      min-height: 56px; z-index: 10;
     }
-
     .header-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--avatar-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--avatar-bg); display: flex;
+      align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
     }
-
-    .header-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .header-name {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .header-status {
-      font-size: 12px;
-      color: #4dcd6c;
-      margin-top: 1px;
-    }
-
-    .header-resources {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 3px;
-      flex-shrink: 0;
-    }
-
-    .resources-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .resource-item {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      white-space: nowrap;
-    }
-
-    .resource-item span.emoji {
-      font-size: 13px;
-    }
-
-    .resource-item span.val {
-      font-weight: 600;
-      color: var(--text-primary);
-      min-width: 20px;
-    }
+    .header-info { flex: 1; min-width: 0; }
+    .header-name { font-size: 15px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-status { font-size: 12px; color: #4dcd6c; margin-top: 1px; }
+    .header-resources { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .resources-row { display: flex; gap: 8px; align-items: center; }
+    .resource-item { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+    .resource-item span.emoji { font-size: 13px; }
+    .resource-item span.val { font-weight: 600; color: var(--text-primary); min-width: 20px; }
 
     /* ===== CHAT AREA ===== */
     #chat {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 12px 8px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 12px 8px 8px; display: flex; flex-direction: column; gap: 4px;
       scroll-behavior: smooth;
     }
+    #chat::-webkit-scrollbar { width: 4px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: #2a3a4a; border-radius: 2px; }
 
-    #chat::-webkit-scrollbar {
-      width: 4px;
-    }
+    .date-divider { text-align: center; margin: 8px 0; font-size: 12px; color: var(--text-time); position: relative; }
+    .date-divider span { background: var(--bg-main); padding: 0 10px; position: relative; z-index: 1; }
+    .date-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); }
 
-    #chat::-webkit-scrollbar-track {
-      background: transparent;
-    }
+    .msg-wrapper { display: flex; align-items: flex-end; gap: 6px; max-width: 100%; animation: fadeIn 0.25s ease forwards; }
+    .msg-wrapper.bot { align-self: flex-start; flex-direction: row; max-width: 88%; }
+    .msg-wrapper.user { align-self: flex-end; flex-direction: row-reverse; max-width: 80%; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    #chat::-webkit-scrollbar-thumb {
-      background: #2a3a4a;
-      border-radius: 2px;
-    }
+    .msg-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--avatar-bg); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; align-self: flex-end; }
+    .msg-avatar.hidden { visibility: hidden; }
 
-    /* ===== DATE DIVIDER ===== */
-    .date-divider {
-      text-align: center;
-      margin: 8px 0;
-      font-size: 12px;
-      color: var(--text-time);
-      position: relative;
-    }
+    .msg-bubble { padding: 8px 10px 6px; border-radius: 12px; line-height: 1.5; word-break: break-word; position: relative; max-width: 100%; }
+    .msg-wrapper.bot .msg-bubble { background: var(--bg-bot-bubble); border-bottom-left-radius: 4px; color: var(--text-primary); }
+    .msg-wrapper.user .msg-bubble { background: var(--bg-user-bubble); border-bottom-right-radius: 4px; color: #fff; }
+    .msg-text { font-size: 14px; line-height: 1.5; }
+    .msg-time { font-size: 11px; color: var(--text-time); text-align: right; margin-top: 3px; display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+    .msg-wrapper.user .msg-time { color: rgba(255,255,255,0.55); }
 
-    .date-divider span {
-      background: var(--bg-main);
-      padding: 0 10px;
-      position: relative;
-      z-index: 1;
-    }
+    .profile-card { background: linear-gradient(135deg, #1a2f45 0%, #182533 100%); border: 1px solid #2a4060; border-radius: 10px; padding: 12px 14px; min-width: 220px; max-width: 280px; }
+    .profile-card-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .profile-card-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+    .profile-card-row:last-child { border-bottom: none; }
+    .profile-card-row .label { color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
+    .profile-card-row .value { font-weight: 600; color: var(--text-primary); }
+    .profile-card-id { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: var(--text-time); word-break: break-all; }
 
-    .date-divider::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: var(--border);
-    }
-
-    /* ===== MESSAGE WRAPPER ===== */
-    .msg-wrapper {
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
-      max-width: 100%;
-      animation: fadeIn 0.25s ease forwards;
-    }
-
-    .msg-wrapper.bot {
-      align-self: flex-start;
-      flex-direction: row;
-      max-width: 88%;
-    }
-
-    .msg-wrapper.user {
-      align-self: flex-end;
-      flex-direction: row-reverse;
-      max-width: 80%;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* ===== BOT AVATAR (small, in chat) ===== */
-    .msg-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--avatar-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-      align-self: flex-end;
-    }
-
-    .msg-avatar.hidden {
-      visibility: hidden;
-    }
-
-    /* ===== BUBBLES ===== */
-    .msg-bubble {
-      padding: 8px 10px 6px;
-      border-radius: 12px;
-      line-height: 1.5;
-      word-break: break-word;
-      position: relative;
-      max-width: 100%;
-    }
-
-    .msg-wrapper.bot .msg-bubble {
-      background: var(--bg-bot-bubble);
-      border-bottom-left-radius: 4px;
-      color: var(--text-primary);
-    }
-
-    .msg-wrapper.user .msg-bubble {
-      background: var(--bg-user-bubble);
-      border-bottom-right-radius: 4px;
-      color: #fff;
-    }
-
-    .msg-text {
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .msg-time {
-      font-size: 11px;
-      color: var(--text-time);
-      text-align: right;
-      margin-top: 3px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 3px;
-    }
-
-    .msg-wrapper.user .msg-time {
-      color: rgba(255,255,255,0.55);
-    }
-
-    /* ===== PROFILE CARD BUBBLE ===== */
-    .profile-card {
-      background: linear-gradient(135deg, #1a2f45 0%, #182533 100%);
-      border: 1px solid #2a4060;
-      border-radius: 10px;
-      padding: 12px 14px;
-      min-width: 220px;
-      max-width: 280px;
-    }
-
-    .profile-card-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .profile-card-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 3px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      font-size: 13px;
-    }
-
-    .profile-card-row:last-child {
-      border-bottom: none;
-    }
-
-    .profile-card-row .label {
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .profile-card-row .value {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .profile-card-id {
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      font-size: 11px;
-      color: var(--text-time);
-      word-break: break-all;
-    }
-
-    /* ===== TYPING INDICATOR ===== */
-    .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 0;
-    }
-
-    .typing-dots {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-
-    .typing-dots span {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--text-secondary);
-      animation: typingBounce 1.2s infinite;
-    }
-
+    .typing-indicator { display: flex; align-items: center; gap: 6px; padding: 4px 0; }
+    .typing-dots { display: flex; gap: 4px; align-items: center; }
+    .typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); animation: typingBounce 1.2s infinite; }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes typingBounce {
-      0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-      30% { transform: translateY(-4px); opacity: 1; }
-    }
+    @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:0.5} 30%{transform:translateY(-4px);opacity:1} }
 
     /* ===== INPUT AREA ===== */
-    #input-area {
-      background: var(--bg-input);
-      border-top: 1px solid var(--border);
-      padding: 8px 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-      z-index: 10;
-    }
-
-    #msg-input {
-      flex: 1;
-      background: #0e1621;
-      border: 1px solid #1e2d3d;
-      border-radius: 20px;
-      padding: 9px 14px;
-      color: var(--text-primary);
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-      font-family: inherit;
-      resize: none;
-      line-height: 1.4;
-    }
-
-    #msg-input:focus {
-      border-color: var(--accent);
-    }
-
-    #msg-input::placeholder {
-      color: var(--text-secondary);
-    }
-
-    #btn-send {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--btn-primary);
-      border: none;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: background 0.2s, transform 0.1s;
-    }
-
-    #btn-send:hover {
-      background: var(--btn-primary-hover);
-    }
-
-    #btn-send:active {
-      transform: scale(0.92);
-    }
+    #input-area { background: var(--bg-input); border-top: 1px solid var(--border); padding: 8px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; z-index: 10; }
+    #msg-input { flex: 1; background: #0e1621; border: 1px solid #1e2d3d; border-radius: 20px; padding: 9px 14px; color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.2s; font-family: inherit; resize: none; line-height: 1.4; }
+    #msg-input:focus { border-color: var(--accent); }
+    #msg-input::placeholder { color: var(--text-secondary); }
+    #btn-send { width: 40px; height: 40px; border-radius: 50%; background: var(--btn-primary); border: none; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s, transform 0.1s; }
+    #btn-send:hover { background: var(--btn-primary-hover); }
+    #btn-send:active { transform: scale(0.92); }
 
     /* ===== BOTTOM NAV ===== */
-    #bottom-nav {
-      background: var(--bg-nav);
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-shrink: 0;
-      z-index: 10;
-    }
+    #bottom-nav { background: var(--bg-nav); border-top: 1px solid var(--border); display: flex; flex-shrink: 0; z-index: 10; }
+    .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 2px 8px; gap: 3px; background: none; border: none; cursor: pointer; color: var(--nav-inactive); font-size: 10px; transition: color 0.2s; min-width: 0; -webkit-tap-highlight-color: transparent; }
+    .nav-btn .nav-emoji { font-size: 20px; line-height: 1; }
+    .nav-btn .nav-label { font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; font-family: inherit; }
+    .nav-btn:hover, .nav-btn.active { color: var(--nav-active); }
+    .nav-btn.active .nav-emoji { filter: drop-shadow(0 0 4px rgba(82,136,193,0.6)); }
 
-    .nav-btn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 2px 8px;
-      gap: 3px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--nav-inactive);
-      font-size: 10px;
-      transition: color 0.2s;
-      min-width: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
+    .inline-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .inline-btn { padding: 6px 12px; background: rgba(82,136,193,0.2); border: 1px solid rgba(82,136,193,0.4); border-radius: 16px; color: var(--accent); font-size: 13px; cursor: pointer; transition: background 0.2s; font-family: inherit; }
+    .inline-btn:hover { background: rgba(82,136,193,0.35); }
+    .inline-btn:active { background: rgba(82,136,193,0.5); }
 
-    .nav-btn .nav-emoji {
-      font-size: 20px;
-      line-height: 1;
-    }
-
-    .nav-btn .nav-label {
-      font-size: 9.5px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-      text-align: center;
-      font-family: inherit;
-    }
-
-    .nav-btn:hover,
-    .nav-btn.active {
-      color: var(--nav-active);
-    }
-
-    .nav-btn.active .nav-emoji {
-      filter: drop-shadow(0 0 4px rgba(82, 136, 193, 0.6));
-    }
-
-    /* ===== INLINE BUTTONS in messages ===== */
-    .inline-btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .inline-btn {
-      padding: 6px 12px;
-      background: rgba(82, 136, 193, 0.2);
-      border: 1px solid rgba(82, 136, 193, 0.4);
-      border-radius: 16px;
-      color: var(--accent);
-      font-size: 13px;
-      cursor: pointer;
-      transition: background 0.2s;
-      font-family: inherit;
-    }
-
-    .inline-btn:hover {
-      background: rgba(82, 136, 193, 0.35);
-    }
-
-    .inline-btn:active {
-      background: rgba(82, 136, 193, 0.5);
-    }
-
-    /* ===== RESPONSIVE ===== */
     @media (max-width: 400px) {
-      .nav-btn .nav-label {
-        font-size: 8.5px;
-      }
-      .nav-btn .nav-emoji {
-        font-size: 18px;
-      }
-      .header-resources {
-        gap: 2px;
-      }
-      .resource-item {
-        font-size: 11px;
-      }
+      .nav-btn .nav-label { font-size: 8.5px; }
+      .nav-btn .nav-emoji { font-size: 18px; }
+      .header-resources { gap: 2px; }
+      .resource-item { font-size: 11px; }
     }
 
-    /* ===== UTILITY ===== */
     .hidden { display: none !important; }
-
-    .text-accent { color: var(--accent); }
-    .text-muted { color: var(--text-secondary); }
-    .text-bold { font-weight: 700; }
-
-    /* Scrollbar for webkit */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: #2a3a4a transparent;
-    }
   </style>
 </head>
 <body>
-  <div id="app">
+<div id="app">
+  <div id="start-overlay">
+    <div class="start-logo">⚽</div>
+    <div class="start-title">Тренер<br>Футбольный Менеджер</div>
+    <div class="start-subtitle">Собери команду мечты, побеждай в дивизионах<br>и стань лучшим менеджером!</div>
+    <button id="btn-start">▶ НАЧАТЬ ИГРУ</button>
+  </div>
 
-    <!-- ===== START OVERLAY ===== -->
-    <div id="start-overlay">
-      <div class="start-logo">⚽</div>
-      <div class="start-title">Тренер<br>Футбольный Менеджер</div>
-      <div class="start-subtitle">
-        Собери команду мечты, побеждай в дивизионах<br>и стань лучшим менеджером!
-      </div>
-      <button id="btn-start">▶ НАЧАТЬ ИГРУ</button>
+  <div id="header">
+    <div class="header-avatar">⚽</div>
+    <div class="header-info">
+      <div class="header-name">Тренер</div>
+      <div class="header-status">online</div>
     </div>
-
-    <!-- ===== HEADER ===== -->
-    <div id="header">
-      <div class="header-avatar">⚽</div>
-      <div class="header-info">
-        <div class="header-name">Тренер</div>
-        <div class="header-status">online</div>
+    <div class="header-resources">
+      <div class="resources-row">
+        <div class="resource-item"><span class="emoji">💎</span><span class="val" id="hdr-rubins">0</span></div>
+        <div class="resource-item"><span class="emoji">🔮</span><span class="val" id="hdr-offside">0</span></div>
       </div>
-      <div class="header-resources">
-        <div class="resources-row">
-          <div class="resource-item">
-            <span class="emoji">💎</span>
-            <span class="val" id="hdr-rubins">0</span>
-          </div>
-          <div class="resource-item">
-            <span class="emoji">🔮</span>
-            <span class="val" id="hdr-offside">0</span>
-          </div>
-        </div>
-        <div class="resources-row">
-          <div class="resource-item">
-            <span class="emoji">⭐</span>
-            <span class="val" id="hdr-xp">0</span>
-          </div>
-          <div class="resource-item">
-            <span class="emoji">🏆</span>
-            <span class="val" id="hdr-level">0</span>
-          </div>
-        </div>
+      <div class="resources-row">
+        <div class="resource-item"><span class="emoji">⭐</span><span class="val" id="hdr-xp">0</span></div>
+        <div class="resource-item"><span class="emoji">🏆</span><span class="val" id="hdr-level">0</span></div>
       </div>
     </div>
+  </div>
 
-    <!-- ===== CHAT AREA ===== -->
-    <div id="chat"></div>
+  <div id="chat"></div>
 
-    <!-- ===== INPUT AREA ===== -->
-    <div id="input-area">
-      <input
-        type="text"
-        id="msg-input"
-        placeholder="Написать сообщение..."
-        autocomplete="off"
-        autocorrect="off"
-        spellcheck="false"
-        maxlength="200"
-      />
-      <button id="btn-send" title="Отправить">➤</button>
-    </div>
+  <div id="input-area">
+    <input type="text" id="msg-input" placeholder="Написать сообщение..." autocomplete="off" autocorrect="off" spellcheck="false" maxlength="200" />
+    <button id="btn-send" title="Отправить">➤</button>
+  </div>
 
-    <!-- ===== BOTTOM NAV ===== -->
-    <nav id="bottom-nav">
-      <button class="nav-btn" id="nav-squad">
-        <span class="nav-emoji">👥</span>
-        <span class="nav-label">Состав</span>
-      </button>
-      <button class="nav-btn" id="nav-inventory">
-        <span class="nav-emoji">🎒</span>
-        <span class="nav-label">Игроки</span>
-      </button>
-      <button class="nav-btn" id="nav-shop">
-        <span class="nav-emoji">🏪</span>
-        <span class="nav-label">Магазин</span>
-      </button>
-      <button class="nav-btn" id="nav-events">
-        <span class="nav-emoji">📋</span>
-        <span class="nav-label">События</span>
-      </button>
-      <button class="nav-btn" id="nav-division">
-        <span class="nav-emoji">⚽</span>
-        <span class="nav-label">Дивизион</span>
-      </button>
-      <button class="nav-btn" id="nav-quests">
-        <span class="nav-emoji">🏅</span>
-        <span class="nav-label">Квесты</span>
-      </button>
-    </nav>
+  <nav id="bottom-nav">
+    <button class="nav-btn" id="nav-squad"><span class="nav-emoji">👥</span><span class="nav-label">Состав</span></button>
+    <button class="nav-btn" id="nav-inventory"><span class="nav-emoji">🎒</span><span class="nav-label">Игроки</span></button>
+    <button class="nav-btn" id="nav-shop"><span class="nav-emoji">🏪</span><span class="nav-label">Магазин</span></button>
+    <button class="nav-btn" id="nav-events"><span class="nav-emoji">📋</span><span class="nav-label">События</span></button>
+    <button class="nav-btn" id="nav-division"><span class="nav-emoji">⚽</span><span class="nav-label">Дивизион</span></button>
+    <button class="nav-btn" id="nav-quests"><span class="nav-emoji">🏅</span><span class="nav-label">Квесты</span></button>
+  </nav>
+</div>
 
-  </div><!-- /#app -->
+<script>
+/* ======================================================
+   CONSTANTS & CONFIG
+====================================================== */
+const STORAGE_KEY = 'footballManager_gameState';
 
-  <script>
-    /* ======================================================
-       CONSTANTS & CONFIG
-    ====================================================== */
-    const STORAGE_KEY = 'footballManager_gameState';
+/* ======================================================
+   DEFAULT / INITIAL GAME STATE (расширен позже)
+====================================================== */
+const DEFAULT_STATE = {
+  rubins: 1500,
+  offsideTokens: 0,
+  trainingPoints: 1000,
+  ovrUpgradePoints: 500,
+  passCredits: 0,
+  fragments: 500,
+  draftTokens: 10,
+  xp: 0,
+  level: 0,
+  nickname: '',
+  playerId: '',
+  stars: 0,
+  matchesPlayed: 0,
+  goalsScored: 0,
+  registered: false,
+  awaitingNickname: false
+};
 
-    /* ======================================================
-       DEFAULT / INITIAL GAME STATE
-    ====================================================== */
-    const DEFAULT_STATE = {
-      rubins: 1500,
-      offsideTokens: 0,
-      trainingPoints: 1000,
-      ovrUpgradePoints: 500,
-      passCredits: 0,
-      fragments: 500,
-      draftTokens: 10,
-      xp: 0,
-      level: 0,
-      nickname: '',
-      playerId: '',
-      stars: 0,
-      matchesPlayed: 0,
-      goalsScored: 0,
-      registered: false,
-      awaitingNickname: false
-    };
+/* ======================================================
+   GAME STATE
+====================================================== */
+let gameState = {};
 
-    /* ======================================================
-       GAME STATE
-    ====================================================== */
-    let gameState = {};
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      gameState = Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+    } else {
+      gameState = Object.assign({}, DEFAULT_STATE);
+    }
+  } catch (e) {
+    console.warn('loadState error:', e);
+    gameState = Object.assign({}, DEFAULT_STATE);
+  }
+}
 
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          gameState = Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
-        } else {
-          gameState = Object.assign({}, DEFAULT_STATE);
-        }
-      } catch (e) {
-        console.warn('loadState error:', e);
-        gameState = Object.assign({}, DEFAULT_STATE);
-      }
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+  } catch (e) {
+    console.warn('saveState error:', e);
+  }
+}
+
+/* ======================================================
+   UTILITY HELPERS
+====================================================== */
+function getTimestamp() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function generatePlayerId() {
+  try {
+    const arr = new Uint32Array(2);
+    crypto.getRandomValues(arr);
+    const part1 = String(arr[0]).padStart(10, '0');
+    const part2 = String(arr[1]).padStart(10, '0');
+    const combined = (part1 + part2).replace(/\D/g, '');
+    return combined.slice(0, 15).padEnd(15, '0');
+  } catch (e) {
+    const ts = String(Date.now());
+    const rnd = String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
+    return (ts + rnd).slice(0, 15);
+  }
+}
+
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+/* ======================================================
+   HEADER RESOURCES UPDATE
+====================================================== */
+function updateHeaderResources() {
+  document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
+  document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
+  document.getElementById('hdr-xp').textContent = gameState.xp ?? 0;
+  document.getElementById('hdr-level').textContent = gameState.level ?? 0;
+}
+
+/* ======================================================
+   CHAT MESSAGE FUNCTIONS
+====================================================== */
+const chatEl = document.getElementById('chat');
+let lastDateLabel = '';
+let lastBotSequence = false;
+
+function getTodayLabel() {
+  const now = new Date();
+  const days = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+  const d = now.getDate();
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  return `${d} ${months[now.getMonth()]}`;
+}
+
+function ensureDateDivider() {
+  const label = getTodayLabel();
+  if (label !== lastDateLabel) {
+    lastDateLabel = label;
+    const div = document.createElement('div');
+    div.className = 'date-divider';
+    div.innerHTML = `<span>${label}</span>`;
+    chatEl.appendChild(div);
+  }
+}
+
+function scrollChatToBottom() {
+  setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 50);
+}
+
+function addMessage(content, type = 'bot', options = {}) {
+  ensureDateDivider();
+  const wrapper = document.createElement('div');
+  wrapper.className = `msg-wrapper ${type}`;
+  const time = getTimestamp();
+
+  if (type === 'bot') {
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'msg-avatar' + (options.noAvatar ? ' hidden' : '');
+    avatarDiv.textContent = '⚽';
+    wrapper.appendChild(avatarDiv);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+
+    if (options.card) {
+      bubble.innerHTML = options.card;
+    } else if (options.html) {
+      const textDiv = document.createElement('div');
+      textDiv.className = 'msg-text';
+      textDiv.innerHTML = content;
+      bubble.appendChild(textDiv);
+    } else {
+      const textDiv = document.createElement('div');
+      textDiv.className = 'msg-text';
+      textDiv.textContent = content;
+      bubble.appendChild(textDiv);
     }
 
-    function saveState() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
-      } catch (e) {
-        console.warn('saveState error:', e);
-      }
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'msg-time';
+    timeDiv.textContent = time;
+    bubble.appendChild(timeDiv);
+    wrapper.appendChild(bubble);
+    lastBotSequence = true;
+  } else {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    const textDiv = document.createElement('div');
+    textDiv.className = 'msg-text';
+    if (options.html) {
+      textDiv.innerHTML = content;
+    } else {
+      textDiv.textContent = content;
     }
-
-    /* ======================================================
-       UTILITY HELPERS
-    ====================================================== */
-    function getTimestamp() {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      return `${h}:${m}`;
-    }
-
-    function generatePlayerId() {
-      // 15-digit unique ID
-      try {
-        const arr = new Uint32Array(2);
-        crypto.getRandomValues(arr);
-        const part1 = String(arr[0]).padStart(10, '0');
-        const part2 = String(arr[1]).padStart(10, '0');
-        const combined = (part1 + part2).replace(/\D/g, '');
-        return combined.slice(0, 15).padEnd(15, '0');
-      } catch (e) {
-        // fallback
-        const ts = String(Date.now());
-        const rnd = String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
-        return (ts + rnd).slice(0, 15);
-      }
-    }
-
-    function escapeHtml(text) {
-      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-      return String(text).replace(/[&<>"']/g, m => map[m]);
-    }
-
-    /* ======================================================
-       HEADER RESOURCES UPDATE
-    ====================================================== */
-    function updateHeaderResources() {
-      document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
-      document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
-      document.getElementById('hdr-xp').textContent = gameState.xp ?? 0;
-      document.getElementById('hdr-level').textContent = gameState.level ?? 0;
-    }
-
-    /* ======================================================
-       CHAT MESSAGE FUNCTIONS
-    ====================================================== */
-    const chatEl = document.getElementById('chat');
-    let lastDateLabel = '';
-    let lastBotSequence = false;
-
-    function getTodayLabel() {
-      const now = new Date();
-      const days = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-      const d = now.getDate();
-      const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-      return `${d} ${months[now.getMonth()]}`;
-    }
-
-    function ensureDateDivider() {
-      const label = getTodayLabel();
-      if (label !== lastDateLabel) {
-        lastDateLabel = label;
-        const div = document.createElement('div');
-        div.className = 'date-divider';
-        div.innerHTML = `<span>${label}</span>`;
-        chatEl.appendChild(div);
-      }
-    }
-
-    function scrollChatToBottom() {
-      setTimeout(() => {
-        chatEl.scrollTop = chatEl.scrollHeight;
-      }, 50);
-    }
-
-    /**
-     * addMessage(text, type, options)
-     * type: 'bot' | 'user'
-     * options: { html: bool, noAvatar: bool, card: html-string }
-     */
-    function addMessage(content, type = 'bot', options = {}) {
-      ensureDateDivider();
-
-      const wrapper = document.createElement('div');
-      wrapper.className = `msg-wrapper ${type}`;
-
-      const time = getTimestamp();
-
-      if (type === 'bot') {
-        // Avatar
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'msg-avatar' + (options.noAvatar ? ' hidden' : '');
-        avatarDiv.textContent = '⚽';
-        wrapper.appendChild(avatarDiv);
-
-        // Bubble
-        const bubble = document.createElement('div');
-        bubble.className = 'msg-bubble';
-
-        if (options.card) {
-          bubble.innerHTML = options.card;
-        } else if (options.html) {
-          const textDiv = document.createElement('div');
-          textDiv.className = 'msg-text';
-          textDiv.innerHTML = content;
-          bubble.appendChild(textDiv);
-        } else {
-          const textDiv = document.createElement('div');
-          textDiv.className = 'msg-text';
-          textDiv.textContent = content;
-          bubble.appendChild(textDiv);
-        }
-
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'msg-time';
-        timeDiv.textContent = time;
-        bubble.appendChild(timeDiv);
-
-        wrapper.appendChild(bubble);
-        lastBotSequence = true;
-      } else {
-        // User message
-        const bubble = document.createElement('div');
-        bubble.className = 'msg-bubble';
-
-        const textDiv = document.createElement('div');
-        textDiv.className = 'msg-text';
-        if (options.html) {
-          textDiv.innerHTML = content;
-        } else {
-          textDiv.textContent = content;
-        }
-        bubble.appendChild(textDiv);
-
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'msg-time';
-        timeDiv.innerHTML = `${time} <span>✓✓</span>`;
-        bubble.appendChild(timeDiv);
-
-        wrapper.appendChild(bubble);
-        lastBotSequence = false;
-      }
-
-      chatEl.appendChild(wrapper);
-      scrollChatToBottom();
-      return wrapper;
-    }
-
-    function addTypingIndicator() {
-      ensureDateDivider();
-      const wrapper = document.createElement('div');
-      wrapper.className = 'msg-wrapper bot';
-      wrapper.id = 'typing-indicator';
-
-      const avatarDiv = document.createElement('div');
-      avatarDiv.className = 'msg-avatar';
-      avatarDiv.textContent = '⚽';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'msg-bubble';
-      bubble.innerHTML = `
-        <div class="typing-indicator">
-          <div class="typing-dots">
-            <span></span><span></span><span></span>
-          </div>
-        </div>`;
-
-      wrapper.appendChild(avatarDiv);
-      wrapper.appendChild(bubble);
-      chatEl.appendChild(wrapper);
-      scrollChatToBottom();
-      return wrapper;
-    }
-
-    function removeTypingIndicator() {
-      const el = document.getElementById('typing-indicator');
-      if (el) el.remove();
-    }
-
-    function botReply(content, delay = 600, options = {}) {
-      return new Promise(resolve => {
-        const typing = addTypingIndicator();
-        setTimeout(() => {
-          removeTypingIndicator();
-          const msg = addMessage(content, 'bot', options);
-          resolve(msg);
-        }, delay);
-      });
-    }
-
-    /* ======================================================
-       PROFILE CARD HTML
-    ====================================================== */
-    function buildProfileCardHTML(state) {
-      return `
-        <div class="profile-card">
-          <div class="profile-card-title">📊 Профиль менеджера</div>
-          <div class="profile-card-row">
-            <span class="label">👤 Ник</span>
-            <span class="value">${escapeHtml(state.nickname)}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🏆 Уровень</span>
-            <span class="value">${state.level}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">⭐ XP</span>
-            <span class="value">${state.xp}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">💎 Рубины</span>
-            <span class="value">${state.rubins}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🔮 Оффсайд-токены</span>
-            <span class="value">${state.offsideTokens}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🎯 Очки тренировок</span>
-            <span class="value">${state.trainingPoints}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">⚡ Очки OVR</span>
-            <span class="value">${state.ovrUpgradePoints}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🧩 Фрагменты</span>
-            <span class="value">${state.fragments}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🎟️ Драфт-токены</span>
-            <span class="value">${state.draftTokens}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">⚽ Матчей сыграно</span>
-            <span class="value">${state.matchesPlayed}</span>
-          </div>
-          <div class="profile-card-row">
-            <span class="label">🥅 Голов забито</span>
-            <span class="value">${state.goalsScored}</span>
-          </div>
-          <div class="profile-card-id">🆔 ID: ${escapeHtml(state.playerId)}</div>
-        </div>
-      `;
-    }
-
-    /* ======================================================
-       REGISTRATION FLOW
-    ====================================================== */
-    async function startRegistrationFlow() {
-      await botReply(
-        'Привет! Я — твой виртуальный тренер. 👋\n\nКак тебя зовут? Введи свой никнейм:',
-        800
-      );
-      gameState.awaitingNickname = true;
-      saveState();
-    }
-
-    async function completeRegistration(nickname) {
-      const trimmed = nickname.trim();
-      if (!trimmed || trimmed.length < 2) {
-        await botReply('Никнейм должен содержать минимум 2 символа. Попробуй ещё раз! 😊', 500);
-        return;
-      }
-      if (trimmed.length > 20) {
-        await botReply('Никнейм слишком длинный (максимум 20 символов). Попробуй ещё раз! 😊', 500);
-        return;
-      }
-
-      const playerId = generatePlayerId();
-      gameState.nickname = trimmed;
-      gameState.playerId = playerId;
-      gameState.awaitingNickname = false;
-      gameState.registered = true;
-      saveState();
-      updateHeaderResources();
-
-      await botReply(
-        `Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>\n\nТеперь ты — менеджер своей команды мечты. Собирай игроков, побеждай в дивизионах и веди свою команду к чемпионству! 🏆`,
-        700,
-        { html: true }
-      );
-
-      await botReply(
-        null,
-        900,
-        { card: buildProfileCardHTML(gameState) }
-      );
-
-      await botReply(
-        'Используй кнопки внизу для навигации. Удачи на поле! ⚽',
-        600
-      );
-    }
-
-    /* ======================================================
-       START SCREEN LOGIC
-    ====================================================== */
-    const startOverlay = document.getElementById('start-overlay');
-    const btnStart = document.getElementById('btn-start');
-
-    function hideStartOverlay() {
-      startOverlay.classList.add('hidden');
-    }
-
-    btnStart.addEventListener('click', () => {
-      hideStartOverlay();
-      startRegistrationFlow();
-    });
-
-    /* ======================================================
-       SEND MESSAGE LOGIC
-    ====================================================== */
-    const msgInput = document.getElementById('msg-input');
-    const btnSend = document.getElementById('btn-send');
-
-    function sendUserMessage() {
-      const text = msgInput.value.trim();
-      if (!text) return;
-
-      msgInput.value = '';
-      msgInput.style.height = '';
-
-      addMessage(text, 'user');
-      processUserMessage(text);
-    }
-
-    btnSend.addEventListener('click', sendUserMessage);
-
-    msgInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendUserMessage();
-      }
-    });
-
-    /* ======================================================
-       PROCESS USER MESSAGE
-    ====================================================== */
-    function processUserMessage(text) {
-      const lower = text.toLowerCase().trim();
-
-      // --- Registration: awaiting nickname ---
-      if (gameState.awaitingNickname) {
-        completeRegistration(text);
-        return;
-      }
-
-      // --- Not registered yet ---
-      if (!gameState.registered) {
-        botReply('Нажми кнопку «НАЧАТЬ ИГРУ», чтобы начать! 😊', 500);
-        return;
-      }
-
-      // --- Basic command routing ---
-      if (lower === 'профиль' || lower === '/profile' || lower === '/профиль') {
-        showProfile();
-        return;
-      }
-
-      if (lower === 'помощь' || lower === '/help' || lower === '/помощь' || lower === 'помоги') {
-        showHelp();
-        return;
-      }
-
-      if (lower === 'состав' || lower === '/состав' || lower === '/squad') {
-        handleNavSquad();
-        return;
-      }
-
-      if (lower === 'магазин' || lower === '/магазин' || lower === '/shop') {
-        handleNavShop();
-        return;
-      }
-
-      if (lower === 'игроки' || lower === '/игроки' || lower === '/inventory') {
-        handleNavInventory();
-        return;
-      }
-
-      if (lower === 'события' || lower === '/события' || lower === '/events') {
-        handleNavEvents();
-        return;
-      }
-
-      if (lower === 'дивизион' || lower === '/дивизион' || lower === '/division') {
-        handleNavDivision();
-        return;
-      }
-
-      if (lower === 'квесты' || lower === '/квесты' || lower === '/quests') {
-        handleNavQuests();
-        return;
-      }
-
-      // --- Default fallback ---
-      botReply(
-        `Я не понял команду «${escapeHtml(text)}». 🤔\n\nНапиши «помощь» или воспользуйся кнопками навигации внизу.`,
-        600,
-        { html: true }
-      );
-    }
-
-    /* ======================================================
-       SHOW PROFILE
-    ====================================================== */
-    function showProfile() {
-      botReply(null, 500, { card: buildProfileCardHTML(gameState) });
-    }
-
-    /* ======================================================
-       SHOW HELP
-    ====================================================== */
-    function showHelp() {
-      const helpHtml = `
-        <div class="msg-text">
-          <b>📖 Доступные команды:</b><br><br>
-          <b>профиль</b> — показать профиль<br>
-          <b>состав</b> — управление составом<br>
-          <b>игроки</b> — инвентарь игроков<br>
-          <b>магазин</b> — магазин паков<br>
-          <b>события</b> — активные события<br>
-          <b>дивизион</b> — матчи дивизиона<br>
-          <b>квесты</b> — ежедневные квесты<br>
-          <b>помощь</b> — это сообщение<br><br>
-          <span style="color:#7d8e9e;">Или используй кнопки внизу экрана ↓</span>
-        </div>`;
-      botReply(helpHtml, 400, { html: true });
-    }
-
-    /* ======================================================
-       NAVIGATION HANDLERS
-    ====================================================== */
-
-    function setActiveNav(btnId) {
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-      const active = document.getElementById(btnId);
-      if (active) active.classList.add('active');
-    }
-
-    // --- Squad ---
-    function handleNavSquad() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-squad');
-      botReply(
-        '👥 <b>Состав команды</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет расставлять игроков по позициям и выбирать тактику!',
-        500,
-        { html: true }
-      );
-    }
-
-    // --- Inventory ---
-    function handleNavInventory() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-inventory');
-      botReply(
-        '🎒 <b>Инвентарь игроков</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут отображаться все твои игроки с характеристиками!',
-        500,
-        { html: true }
-      );
-    }
-
-    // --- Shop ---
-    function handleNavShop() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-shop');
-      botReply(
-        '🏪 <b>Магазин</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет покупать паки с игроками за 💎 рубины!',
-        500,
-        { html: true }
-      );
-    }
-
-    // --- Events ---
-    function handleNavEvents() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-events');
-      botReply(
-        '📋 <b>События</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут появляться специальные события и турниры!',
-        500,
-        { html: true }
-      );
-    }
-
-    // --- Division ---
-    function handleNavDivision() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-division');
-      botReply(
-        '⚽ <b>Дивизион</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет играть матчи против других команд и подниматься по дивизионам!',
-        500,
-        { html: true }
-      );
-    }
-
-    // --- Quests ---
-    function handleNavQuests() {
-      if (!gameState.registered) { promptRegister(); return; }
-      setActiveNav('nav-quests');
-      botReply(
-        '🏅 <b>Квесты</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут ежедневные квесты и награды за их выполнение!',
-        500,
-        { html: true }
-      );
-    }
-
-    function promptRegister() {
-      botReply('Сначала зарегистрируйся! Нажми «НАЧАТЬ ИГРУ». 😊', 400);
-    }
-
-    /* ======================================================
-       NAV BUTTON EVENT LISTENERS
-    ====================================================== */
-    document.getElementById('nav-squad').addEventListener('click', handleNavSquad);
-    document.getElementById('nav-inventory').addEventListener('click', handleNavInventory);
-    document.getElementById('nav-shop').addEventListener('click', handleNavShop);
-    document.getElementById('nav-events').addEventListener('click', handleNavEvents);
-    document.getElementById('nav-division').addEventListener('click', handleNavDivision);
-    document.getElementById('nav-quests').addEventListener('click', handleNavQuests);
-
-    /* ======================================================
-       INITIALIZATION
-    ====================================================== */
-    function init() {
-      loadState();
-          // Даём стартовых игроков, если коллекция пуста
-        // Загрузка каталога игроков
-      allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
-    
-      // Выдача стартовых игроков новому аккаунту
-      if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
-        gameState.myPlayers = STARTER_PLAYER_IDS
-          .map(id => allPlayers.find(p => p.id === id))
-          .filter(p => p !== undefined)
-          .map(p => JSON.parse(JSON.stringify(p)));
-        saveState();
-      }
-      updateHeaderResources();
-
-      if (gameState.registered) {
-        // Already registered — hide overlay and show welcome back
-        hideStartOverlay();
-
-        botReply(
-          `С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽\n\nГотов к игре? Используй кнопки внизу для навигации.`,
-          600,
-          { html: true }
-        );
-      } else if (gameState.awaitingNickname) {
-        // Was in the middle of registration
-        hideStartOverlay();
-        botReply('Введи свой никнейм, чтобы продолжить регистрацию:', 400);
-      } else {
-        // Fresh start — show overlay
-        startOverlay.classList.remove('hidden');
-      }
-    }
-
-    // Run init on DOM ready
-    document.addEventListener('DOMContentLoaded', init);
-    // Also run immediately in case DOMContentLoaded already fired
-    if (document.readyState !== 'loading') {
-      init();
-    }
-
-      
-
-    // gameState & data structures
-    // ============================================
+    bubble.appendChild(textDiv);
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'msg-time';
+    timeDiv.innerHTML = `${time} <span>✓✓</span>`;
+    bubble.appendChild(timeDiv);
+    wrapper.appendChild(bubble);
+    lastBotSequence = false;
+  }
+
+  chatEl.appendChild(wrapper);
+  scrollChatToBottom();
+  return wrapper;
+}
+
+function addTypingIndicator() {
+  ensureDateDivider();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg-wrapper bot';
+  wrapper.id = 'typing-indicator';
+  const avatarDiv = document.createElement('div');
+  avatarDiv.className = 'msg-avatar';
+  avatarDiv.textContent = '⚽';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = `<div class="typing-indicator"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  wrapper.appendChild(avatarDiv);
+  wrapper.appendChild(bubble);
+  chatEl.appendChild(wrapper);
+  scrollChatToBottom();
+  return wrapper;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function botReply(content, delay = 600, options = {}) {
+  return new Promise(resolve => {
+    const typing = addTypingIndicator();
+    setTimeout(() => {
+      removeTypingIndicator();
+      const msg = addMessage(content, 'bot', options);
+      resolve(msg);
+    }, delay);
+  });
+}
+
+/* ======================================================
+   PROFILE CARD HTML
+====================================================== */
+function buildProfileCardHTML(state) {
+  return `
+    <div class="profile-card">
+      <div class="profile-card-title">📊 Профиль менеджера</div>
+      <div class="profile-card-row"><span class="label">👤 Ник</span><span class="value">${escapeHtml(state.nickname)}</span></div>
+      <div class="profile-card-row"><span class="label">🏆 Уровень</span><span class="value">${state.level}</span></div>
+      <div class="profile-card-row"><span class="label">⭐ XP</span><span class="value">${state.xp}</span></div>
+      <div class="profile-card-row"><span class="label">💎 Рубины</span><span class="value">${state.rubins}</span></div>
+      <div class="profile-card-row"><span class="label">🔮 Оффсайд-токены</span><span class="value">${state.offsideTokens}</span></div>
+      <div class="profile-card-row"><span class="label">🎯 Очки тренировок</span><span class="value">${state.trainingPoints}</span></div>
+      <div class="profile-card-row"><span class="label">⚡ Очки OVR</span><span class="value">${state.ovrUpgradePoints}</span></div>
+      <div class="profile-card-row"><span class="label">🧩 Фрагменты</span><span class="value">${state.fragments}</span></div>
+      <div class="profile-card-row"><span class="label">🎟️ Драфт-токены</span><span class="value">${state.draftTokens}</span></div>
+      <div class="profile-card-row"><span class="label">⚽ Матчей сыграно</span><span class="value">${state.matchesPlayed}</span></div>
+      <div class="profile-card-row"><span class="label">🥅 Голов забито</span><span class="value">${state.goalsScored}</span></div>
+      <div class="profile-card-id">🆔 ID: ${escapeHtml(state.playerId)}</div>
+    </div>`;
+}
+
+/* ======================================================
+   REGISTRATION FLOW
+====================================================== */
+async function startRegistrationFlow() {
+  await botReply('Привет! Я — твой виртуальный тренер. 👋\n\nКак тебя зовут? Введи свой никнейм:', 800);
+  gameState.awaitingNickname = true;
+  saveState();
+}
+
+async function completeRegistration(nickname) {
+  const trimmed = nickname.trim();
+  if (!trimmed || trimmed.length < 2) {
+    await botReply('Никнейм должен содержать минимум 2 символа. Попробуй ещё раз! 😊', 500);
+    return;
+  }
+  if (trimmed.length > 20) {
+    await botReply('Никнейм слишком длинный (максимум 20 символов). Попробуй ещё раз! 😊', 500);
+    return;
+  }
+
+  const playerId = generatePlayerId();
+  gameState.nickname = trimmed;
+  gameState.playerId = playerId;
+  gameState.awaitingNickname = false;
+  gameState.registered = true;
+  saveState();
+  updateHeaderResources();
+
+  await botReply(`Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>\n\nТеперь ты — менеджер своей команды мечты. Собирай игроков, побеждай в дивизионах и веди свою команду к чемпионству! 🏆`, 700, { html: true });
+  await botReply(null, 900, { card: buildProfileCardHTML(gameState) });
+  await botReply('Используй кнопки внизу для навигации. Удачи на поле! ⚽', 600);
+}
+
+/* ======================================================
+   START SCREEN LOGIC
+====================================================== */
+const startOverlay = document.getElementById('start-overlay');
+const btnStart = document.getElementById('btn-start');
+
+function hideStartOverlay() {
+  startOverlay.classList.add('hidden');
+}
+
+btnStart.addEventListener('click', () => {
+  hideStartOverlay();
+  startRegistrationFlow();
+});
+
+/* ======================================================
+   SEND MESSAGE LOGIC
+====================================================== */
+const msgInput = document.getElementById('msg-input');
+const btnSend = document.getElementById('btn-send');
+
+function sendUserMessage() {
+  const text = msgInput.value.trim();
+  if (!text) return;
+  msgInput.value = '';
+  msgInput.style.height = '';
+  addMessage(text, 'user');
+  processUserMessage(text);
+}
+
+btnSend.addEventListener('click', sendUserMessage);
+msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendUserMessage();
+  }
+});
+
+/* ======================================================
+   PROCESS USER MESSAGE
+====================================================== */
+function processUserMessage(text) {
+  const lower = text.toLowerCase().trim();
+
+  if (gameState.awaitingNickname) {
+    completeRegistration(text);
+    return;
+  }
+  if (!gameState.registered) {
+    botReply('Нажми кнопку «НАЧАТЬ ИГРУ», чтобы начать! 😊', 500);
+    return;
+  }
+
+  if (lower === 'профиль' || lower === '/profile' || lower === '/профиль') { showProfile(); return; }
+  if (lower === 'помощь' || lower === '/help' || lower === '/помощь' || lower === 'помоги') { showHelp(); return; }
+  if (lower === 'состав' || lower === '/состав' || lower === '/squad') { handleNavSquad(); return; }
+  if (lower === 'магазин' || lower === '/магазин' || lower === '/shop') { handleNavShop(); return; }
+  if (lower === 'игроки' || lower === '/игроки' || lower === '/inventory') { handleNavInventory(); return; }
+  if (lower === 'события' || lower === '/события' || lower === '/events') { handleNavEvents(); return; }
+  if (lower === 'дивизион' || lower === '/дивизион' || lower === '/division') { handleNavDivision(); return; }
+  if (lower === 'квесты' || lower === '/квесты' || lower === '/quests') { handleNavQuests(); return; }
+
+  botReply(`Я не понял команду «${escapeHtml(text)}». 🤔\n\nНапиши «помощь» или воспользуйся кнопками навигации внизу.`, 600, { html: true });
+}
+
+/* ======================================================
+   SHOW PROFILE / HELP
+====================================================== */
+function showProfile() {
+  botReply(null, 500, { card: buildProfileCardHTML(gameState) });
+}
+
+function showHelp() {
+  const helpHtml = `<div class="msg-text"><b>📖 Доступные команды:</b><br><br><b>профиль</b> — показать профиль<br><b>состав</b> — управление составом<br><b>игроки</b> — инвентарь игроков<br><b>магазин</b> — магазин паков<br><b>события</b> — активные события<br><b>дивизион</b> — матчи дивизиона<br><b>квесты</b> — ежедневные квесты<br><b>помощь</b> — это сообщение<br><br><span style="color:#7d8e9e;">Или используй кнопки внизу экрана ↓</span></div>`;
+  botReply(helpHtml, 400, { html: true });
+}
+
+/* ======================================================
+   NAVIGATION HANDLERS (пока заглушки, будут заменены)
+====================================================== */
+function setActiveNav(btnId) {
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  const active = document.getElementById(btnId);
+  if (active) active.classList.add('active');
+}
+
+function handleNavSquad() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-squad'); botReply('👥 <b>Состав команды</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavInventory() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-inventory'); botReply('🎒 <b>Инвентарь игроков</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavShop() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-shop'); botReply('🏪 <b>Магазин</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavEvents() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-events'); botReply('📋 <b>События</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavDivision() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-division'); botReply('⚽ <b>Дивизион</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+function handleNavQuests() { if (!gameState.registered) { promptRegister(); return; } setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b>\n\n⚙️ Этот раздел находится в разработке.', 500, { html: true }); }
+
+function promptRegister() { botReply('Сначала зарегистрируйся! Нажми «НАЧАТЬ ИГРУ». 😊', 400); }
+
+document.getElementById('nav-squad').addEventListener('click', handleNavSquad);
+document.getElementById('nav-inventory').addEventListener('click', handleNavInventory);
+document.getElementById('nav-shop').addEventListener('click', handleNavShop);
+document.getElementById('nav-events').addEventListener('click', handleNavEvents);
+document.getElementById('nav-division').addEventListener('click', handleNavDivision);
+document.getElementById('nav-quests').addEventListener('click', handleNavQuests);
+
+// ============================================
 // === INSERT MODULE: gameState & data structures ===
-// (arrays: ALL_PLAYERS_TEMPLATE, STARTER_PLAYER_IDS, FRAGMENT_EXCHANGE_RATES, etc.)
 // ============================================
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: КАРТОЧКИ ИГРОКОВ (allPlayers) ===
-    // Player object structure (DO NOT add field "pool"):
-    // {
-    //   id: number (unique),
-    //   name: string,
-    //   club: string,
-    //   nation: string,
-    //   position: string (GK, LB, CB, RB, CDM, CM, CAM, LM, RM, LW, ST, RW, CF),
-    //   altPositions: [string] (can be empty),
-    //   ovr: number,
-    //   stats: { for field players: PAC, SHO, PAS, DRB, DEF, STR;
-    //            for goalkeepers:   REF, KIC, PAS, SPE, DIV, HAN },
-    //   program: string (event name, e.g. "TOTY" or "Base"),
-    //   image: string (URL or empty string for placeholder),
-    //   trainingLevel: number (0-10),
-    //   ovrUpgrade: number (0-5)
-    // }
+// === РЕДАКТИРУЙ ЗДЕСЬ: КАРТОЧКИ ИГРОКОВ (allPlayers) ===
+const ALL_PLAYERS_TEMPLATE = [
+  { id: 1, name: 'Алексей Громов', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 2, name: 'Андрей Соколов', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 3, name: 'Сергей Петров', club: 'Спартак', nation: 'Россия', position: 'LB', altPositions: ['LM'], ovr: 64, stats: { PAC:72, SHO:40, PAS:62, DRB:68, DEF:70, STR:66 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 4, name: 'Иван Кузнецов', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 66, stats: { PAC:55, SHO:35, PAS:50, DRB:45, DEF:74, STR:78 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 5, name: 'Дмитрий Новиков', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 65, stats: { PAC:58, SHO:38, PAS:52, DRB:48, DEF:72, STR:76 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 6, name: 'Михаил Смирнов', club: 'Спартак', nation: 'Россия', position: 'RB', altPositions: ['RM'], ovr: 63, stats: { PAC:74, SHO:42, PAS:60, DRB:70, DEF:68, STR:65 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 7, name: 'Павел Орлов', club: 'Зенит', nation: 'Россия', position: 'CB', altPositions: [], ovr: 68, stats: { PAC:52, SHO:36, PAS:48, DRB:44, DEF:76, STR:80 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 8, name: 'Артем Лебедев', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CAM'], ovr: 67, stats: { PAC:68, SHO:62, PAS:72, DRB:70, DEF:55, STR:62 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 9, name: 'Кирилл Морозов', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CDM'], ovr: 65, stats: { PAC:62, SHO:58, PAS:70, DRB:66, DEF:60, STR:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 10, name: 'Максим Волков', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: [], ovr: 64, stats: { PAC:65, SHO:60, PAS:68, DRB:64, DEF:52, STR:60 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 11, name: 'Роман Зайцев', club: 'Зенит', nation: 'Россия', position: 'CDM', altPositions: ['CM'], ovr: 66, stats: { PAC:58, SHO:48, PAS:65, DRB:56, DEF:72, STR:70 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 12, name: 'Виктор Соловьев', club: 'Спартак', nation: 'Россия', position: 'LW', altPositions: ['ST'], ovr: 68, stats: { PAC:82, SHO:66, PAS:60, DRB:74, DEF:30, STR:58 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 13, name: 'Егор Федоров', club: 'Спартак', nation: 'Россия', position: 'RW', altPositions: ['ST'], ovr: 67, stats: { PAC:80, SHO:64, PAS:58, DRB:72, DEF:28, STR:56 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 14, name: 'Никита Васильев', club: 'Спартак', nation: 'Россия', position: 'ST', altPositions: ['CF'], ovr: 70, stats: { PAC:76, SHO:74, PAS:55, DRB:68, DEF:22, STR:72 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 15, name: 'Олег Тимофеев', club: 'Зенит', nation: 'Россия', position: 'ST', altPositions: [], ovr: 69, stats: { PAC:72, SHO:72, PAS:52, DRB:66, DEF:24, STR:74 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
+  { id: 16, name: 'Марко Росси', club: 'Милан', nation: 'Италия', position: 'CM', altPositions: ['CAM','CDM'], ovr: 85, stats: { PAC:72, SHO:74, PAS:88, DRB:82, DEF:68, STR:70 }, program: 'TOTY', image: '', trainingLevel: 0, ovrUpgrade: 0 }
+];
 
-    const ALL_PLAYERS_TEMPLATE = [
-      // ── Goalkeepers ──────────────────────────────────────────────────────────
-      {
-        id: 1,
-        name: 'Алексей Громов',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'GK',
-        altPositions: [],
-        ovr: 62,
-        stats: { REF: 60, KIC: 55, PAS: 50, SPE: 58, DIV: 62, HAN: 64 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 2,
-        name: 'Андрей Соколов',
-        club: 'Зенит',
-        nation: 'Россия',
-        position: 'GK',
-        altPositions: [],
-        ovr: 65,
-        stats: { REF: 64, KIC: 58, PAS: 52, SPE: 60, DIV: 65, HAN: 67 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
+const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
 
-      // ── Defenders ────────────────────────────────────────────────────────────
-      {
-        id: 3,
-        name: 'Сергей Петров',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'LB',
-        altPositions: ['LM'],
-        ovr: 64,
-        stats: { PAC: 72, SHO: 40, PAS: 62, DRB: 68, DEF: 70, STR: 66 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 4,
-        name: 'Иван Кузнецов',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'CB',
-        altPositions: [],
-        ovr: 66,
-        stats: { PAC: 55, SHO: 35, PAS: 50, DRB: 45, DEF: 74, STR: 78 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 5,
-        name: 'Дмитрий Новиков',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'CB',
-        altPositions: [],
-        ovr: 65,
-        stats: { PAC: 58, SHO: 38, PAS: 52, DRB: 48, DEF: 72, STR: 76 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 6,
-        name: 'Михаил Смирнов',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'RB',
-        altPositions: ['RM'],
-        ovr: 63,
-        stats: { PAC: 74, SHO: 42, PAS: 60, DRB: 70, DEF: 68, STR: 65 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 7,
-        name: 'Павел Орлов',
-        club: 'Зенит',
-        nation: 'Россия',
-        position: 'CB',
-        altPositions: [],
-        ovr: 68,
-        stats: { PAC: 52, SHO: 36, PAS: 48, DRB: 44, DEF: 76, STR: 80 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
+const FRAGMENT_EXCHANGE_RATES = [
+  [0,   64,   50],
+  [65,  74,  100],
+  [75,  84,  200],
+  [85,  89,  400],
+  [90,  94,  700],
+  [95,  99, 1200],
+  [100, 120, 2500]
+];
 
-      // ── Midfielders ──────────────────────────────────────────────────────────
-      {
-        id: 8,
-        name: 'Артем Лебедев',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'CM',
-        altPositions: ['CAM'],
-        ovr: 67,
-        stats: { PAC: 68, SHO: 62, PAS: 72, DRB: 70, DEF: 55, STR: 62 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 9,
-        name: 'Кирилл Морозов',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'CM',
-        altPositions: ['CDM'],
-        ovr: 65,
-        stats: { PAC: 62, SHO: 58, PAS: 70, DRB: 66, DEF: 60, STR: 64 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 10,
-        name: 'Максим Волков',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'CM',
-        altPositions: [],
-        ovr: 64,
-        stats: { PAC: 65, SHO: 60, PAS: 68, DRB: 64, DEF: 52, STR: 60 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 11,
-        name: 'Роман Зайцев',
-        club: 'Зенит',
-        nation: 'Россия',
-        position: 'CDM',
-        altPositions: ['CM'],
-        ovr: 66,
-        stats: { PAC: 58, SHO: 48, PAS: 65, DRB: 56, DEF: 72, STR: 70 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
+const TRAINING_COST_PER_LEVEL = 100;
+const OVR_UPGRADE_COSTS = [120, 270, 450, 610, 750];
 
-      // ── Wingers ──────────────────────────────────────────────────────────────
-      {
-        id: 12,
-        name: 'Виктор Соловьев',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'LW',
-        altPositions: ['ST'],
-        ovr: 68,
-        stats: { PAC: 82, SHO: 66, PAS: 60, DRB: 74, DEF: 30, STR: 58 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 13,
-        name: 'Егор Федоров',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'RW',
-        altPositions: ['ST'],
-        ovr: 67,
-        stats: { PAC: 80, SHO: 64, PAS: 58, DRB: 72, DEF: 28, STR: 56 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
+Object.assign(DEFAULT_STATE, {
+  myPlayers: [],
+  squadSlots: {},
+  benchSlots: {},
+  captain: null,
+  cornerKicker: null,
+  freeKicker: null,
+  penaltyKicker: null,
+  squadFormation: '4-3-3',
+  reachedDivisions: [],
+  dailyQuests: [],
+  dailyQuestsDate: '',
+  allQuestsBonus: false,
+  dailyRewardLastDate: '',
+  passLevel: 0,
+  passClaimedLevels: [],
+  draftCounterB: 0,
+  draftCounterA: 0,
+  promoUsed: [],
+  goalsForQuest: 0,
+  matchesForQuest: 0,
+  packsOpened: 0,
+  levelsGained: 0
+});
 
-      // ── Strikers ─────────────────────────────────────────────────────────────
-      {
-        id: 14,
-        name: 'Никита Васильев',
-        club: 'Спартак',
-        nation: 'Россия',
-        position: 'ST',
-        altPositions: ['CF'],
-        ovr: 70,
-        stats: { PAC: 76, SHO: 74, PAS: 55, DRB: 68, DEF: 22, STR: 72 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
-      {
-        id: 15,
-        name: 'Олег Тимофеев',
-        club: 'Зенит',
-        nation: 'Россия',
-        position: 'ST',
-        altPositions: [],
-        ovr: 69,
-        stats: { PAC: 72, SHO: 72, PAS: 52, DRB: 66, DEF: 24, STR: 74 },
-        program: 'Base',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      },
+let allPlayers = [];
 
-      // ── Extra / TOTY (for testing) ────────────────────────────────────────────
-      {
-        id: 16,
-        name: 'Марко Росси',
-        club: 'Милан',
-        nation: 'Италия',
-        position: 'CM',
-        altPositions: ['CAM', 'CDM'],
-        ovr: 85,
-        stats: { PAC: 72, SHO: 74, PAS: 88, DRB: 82, DEF: 68, STR: 70 },
-        program: 'TOTY',
-        image: '',
-        trainingLevel: 0,
-        ovrUpgrade: 0
-      }
-    ];
+function getEffectiveOvr(player) {
+  if (!player) return 0;
+  return (player.ovr || 0) + (player.ovrUpgrade || 0);
+}
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: СТАРТОВЫЙ НАБОР ===
-    // IDs of players given to new players (must be from ALL_PLAYERS_TEMPLATE)
-    // For full 4-3-3: GK, LB, CB, CB, RB, CM, CM, CM, LW, ST, RW
-    const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
+function getEffectiveStats(player) {
+  if (!player || !player.stats) return {};
+  const stats = Object.assign({}, player.stats);
+  const bonus = player.trainingLevel || 0;
+  for (const key in stats) stats[key] = (stats[key] || 0) + bonus;
+  return stats;
+}
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: ОБМЕН НА ФРАГМЕНТЫ ===
-    // Each entry: [minOvr, maxOvr, fragmentsAwarded]
-    const FRAGMENT_EXCHANGE_RATES = [
-      [0,   64,   50],
-      [65,  74,  100],
-      [75,  84,  200],
-      [85,  89,  400],
-      [90,  94,  700],
-      [95,  99, 1200],
-      [100, 120, 2500]
-    ];
+function findPlayerById(id) {
+  if (!gameState || !Array.isArray(gameState.myPlayers)) return null;
+  return gameState.myPlayers.find(p => p.id === id) || null;
+}
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: СТОИМОСТЬ ТРЕНИРОВКИ ===
-    const TRAINING_COST_PER_LEVEL = 100; // training points spent per training level
-    const OVR_UPGRADE_COSTS = [120, 270, 450, 610, 750]; // ovrUpgradePoints for levels 1-5
+function getFragmentReward(ovr) {
+  for (const [min, max, frags] of FRAGMENT_EXCHANGE_RATES) {
+    if (ovr >= min && ovr <= max) return frags;
+  }
+  return 50;
+}
 
-    // ── Extend DEFAULT_STATE with new fields (merged at loadState time) ─────────
-    // (We patch the already-declared DEFAULT_STATE object in place so that
-    //  the existing loadState / saveState functions pick up the new keys.)
-    Object.assign(DEFAULT_STATE, {
-      myPlayers:          [],   // array of player objects the user owns
-      squadSlots:         {},   // { "0": playerId, ... }  11 slots
-      benchSlots:         {},   // { "0": playerId, ... }   7 slots
-      captain:            null, // playerId of captain
-      cornerKicker:       null,
-      freeKicker:         null,
-      penaltyKicker:      null,
-      squadFormation:     '4-3-3',
-      reachedDivisions:   [],   // division indices already rewarded
-      dailyQuests:        [],   // [{ id, progress, completed }, ...]
-      dailyQuestsDate:    '',   // date string of last quest refresh
-      allQuestsBonus:     false,
-      dailyRewardLastDate:'',
-      passLevel:          0,
-      passClaimedLevels:  [],   // [{ level, free, paid }, ...]
-      draftCounterB:      0,    // guaranteed pool-B pull every 10
-      draftCounterA:      0,    // guaranteed pool-A pull every 100
-      promoUsed:          [],   // promo codes already redeemed
-      goalsForQuest:      0,    // goals scored today
-      matchesForQuest:    0,    // matches played today
-      packsOpened:        0,    // packs opened today
-      levelsGained:       0     // levels gained today
-    });
+// === END MODULE: gameState & data structures ===
 
-    // ── Runtime player catalogue (deep-cloned from template on every page load) ─
-    let allPlayers = [];
-
-    // ── Helper functions ─────────────────────────────────────────────────────────
-
-    /**
-     * Returns the effective OVR of a player (base ovr + ovrUpgrade bonuses).
-     */
-    function getEffectiveOvr(player) {
-      if (!player) return 0;
-      return (player.ovr || 0) + (player.ovrUpgrade || 0);
-    }
-
-    /**
-     * Returns a copy of a player's stats with training bonus applied.
-     * Each training level adds +1 to every stat.
-     */
-    function getEffectiveStats(player) {
-      if (!player || !player.stats) return {};
-      const stats = Object.assign({}, player.stats);
-      const bonus = player.trainingLevel || 0;
-      for (const key in stats) {
-        stats[key] = (stats[key] || 0) + bonus;
-      }
-      return stats;
-    }
-
-    /**
-     * Finds a player in the user's own collection by numeric id.
-     * Returns null if not found.
-     */
-    function findPlayerById(id) {
-      if (!gameState || !Array.isArray(gameState.myPlayers)) return null;
-      return gameState.myPlayers.find(p => p.id === id) || null;
-    }
-
-    /**
-     * Returns the fragment reward for a given effective OVR value.
-     */
-    function getFragmentReward(ovr) {
-      for (const [min, max, frags] of FRAGMENT_EXCHANGE_RATES) {
-        if (ovr >= min && ovr <= max) return frags;
-      }
-      return 50; // fallback
-    }
-
-    // ── Patch init() to seed allPlayers and starter squad ────────────────────────
-    // We wrap the original init so the new logic runs after loadState().
-    (function patchInit() {
-      const _originalInit = typeof init === 'function' ? init : null;
-
-      init = function () {
-        // 1. Load allPlayers catalogue from the immutable template
-        allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
-
-        // 2. Run the original init (calls loadState → updateHeaderResources →
-        //    shows overlay or welcome-back message)
-        if (_originalInit) _originalInit();
-
-        // 3. After state is loaded, give starter players to brand-new accounts
-        if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
-          gameState.myPlayers = STARTER_PLAYER_IDS
-            .map(id => allPlayers.find(p => p.id === id))
-            .filter(p => p !== undefined)
-            .map(p => JSON.parse(JSON.stringify(p)));
-          saveState();
-        }
-      };
-    })();
-
-    // formations & tactics
-    // ============================================
+// ============================================
 // === INSERT MODULE: formations & tactics ===
 // ============================================
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: ФОРМАЦИИ ===
-    // Each formation: name, positions array (11 items), rows grouping for display.
-    // Positions: GK, LB, CB, RB, CDM, CM, CAM, LM, RM, LW, ST, RW, CF
-    const FORMATIONS = {
-      '4-3-3': {
-        name: '4-3-3',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CM', 'CM', 'LW', 'ST', 'RW'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
-      },
-      '4-3-3 Атака': {
-        name: '4-3-3 Атака',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CAM', 'CM', 'LW', 'ST', 'RW'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
-      },
-      '4-3-3 Оборона': {
-        name: '4-3-3 Оборона',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CDM', 'CM', 'LW', 'ST', 'RW'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
-      },
-      '4-5-1': {
-        name: '4-5-1',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CAM', 'CM', 'RM', 'ST'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7, 8, 9], [10]]
-      },
-      '3-4-3 Ромб': {
-        name: '3-4-3 Ромб',
-        positions: ['GK', 'CB', 'CB', 'CB', 'LM', 'CDM', 'CAM', 'RM', 'LW', 'ST', 'RW'],
-        rows: [[0], [1, 2, 3], [4, 5, 6, 7], [8, 9, 10]]
-      },
-      '4-4-2': {
-        name: '4-4-2',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'ST', 'ST'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7, 8], [9, 10]]
-      },
-      '3-5-2 Ложная девятка': {
-        name: '3-5-2 Ложная девятка',
-        positions: ['GK', 'CB', 'CB', 'CB', 'LM', 'CM', 'CAM', 'CM', 'RM', 'CF', 'ST'],
-        rows: [[0], [1, 2, 3], [4, 5, 6, 7, 8], [9, 10]]
-      },
-      '4-3-2-1': {
-        name: '4-3-2-1',
-        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CDM', 'CAM', 'CAM', 'ST'],
-        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9], [10]]
-      }
-    };
+const FORMATIONS = {
+  '4-3-3': { name: '4-3-3', positions: ['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '4-3-3 Атака': { name: '4-3-3 Атака', positions: ['GK','LB','CB','CB','RB','CM','CAM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '4-3-3 Оборона': { name: '4-3-3 Оборона', positions: ['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'], rows: [[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '4-5-1': { name: '4-5-1', positions: ['GK','LB','CB','CB','RB','LM','CM','CAM','CM','RM','ST'], rows: [[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '3-4-3 Ромб': { name: '3-4-3 Ромб', positions: ['GK','CB','CB','CB','LM','CDM','CAM','RM','LW','ST','RW'], rows: [[0],[1,2,3],[4,5,6,7],[8,9,10]] },
+  '4-4-2': { name: '4-4-2', positions: ['GK','LB','CB','CB','RB','LM','CM','CM','RM','ST','ST'], rows: [[0],[1,2,3,4],[5,6,7,8],[9,10]] },
+  '3-5-2 Ложная девятка': { name: '3-5-2 Ложная девятка', positions: ['GK','CB','CB','CB','LM','CM','CAM','CM','RM','CF','ST'], rows: [[0],[1,2,3],[4,5,6,7,8],[9,10]] },
+  '4-3-2-1': { name: '4-3-2-1', positions: ['GK','LB','CB','CB','RB','CDM','CM','CDM','CAM','CAM','ST'], rows: [[0],[1,2,3,4],[5,6,7],[8,9],[10]] }
+};
 
-    // Default formation key
-    const DEFAULT_FORMATION = '4-3-3';
+const DEFAULT_FORMATION = '4-3-3';
 
-    // === РЕДАКТИРУЙ ЗДЕСЬ: ТАКТИКИ ===
-    // attackMult:        multiplier applied to SHO, PAC, PAS, DRB during match calc
-    // defMult:           multiplier applied to DEF, STR during match calc
-    // fastAttackChance:  extra probability (0–1) of a rapid-break goal attempt
-    // counterChance:     extra probability (0–1) of conceding a counter-attack goal
-    const TACTICS = {
-      'Атака': {
-        attackMult:       1.2,
-        defMult:          0.8,
-        fastAttackChance: 0.05,
-        counterChance:    0.03
-      },
-      'Баланс': {
-        attackMult:       1.0,
-        defMult:          1.0,
-        fastAttackChance: 0.0,
-        counterChance:    0.0
-      },
-      'Защита': {
-        attackMult:       0.8,
-        defMult:          1.2,
-        fastAttackChance: 0.0,
-        counterChance:    -0.02
-      },
-      'Тики-така': {
-        attackMult:       0.9,
-        defMult:          1.2,
-        fastAttackChance: 0.02,
-        counterChance:    -0.01
-      },
-      'Длинные передачи': {
-        attackMult:       1.2,
-        defMult:          0.9,
-        fastAttackChance: 0.08,
-        counterChance:    0.06
-      }
-    };
+const TACTICS = {
+  'Атака': { attackMult: 1.2, defMult: 0.8, fastAttackChance: 0.05, counterChance: 0.03 },
+  'Баланс': { attackMult: 1.0, defMult: 1.0, fastAttackChance: 0.0, counterChance: 0.0 },
+  'Защита': { attackMult: 0.8, defMult: 1.2, fastAttackChance: 0.0, counterChance: -0.02 },
+  'Тики-така': { attackMult: 0.9, defMult: 1.2, fastAttackChance: 0.02, counterChance: -0.01 },
+  'Длинные передачи': { attackMult: 1.2, defMult: 0.9, fastAttackChance: 0.08, counterChance: 0.06 }
+};
 
-    const DEFAULT_TACTIC = 'Баланс';
+const DEFAULT_TACTIC = 'Баланс';
 
-    // === POSITION COLOR MAP (used by card rendering & squad display) ===
-    const POSITION_COLORS = {
-      GK:      '#e8a020',
-      LB:      '#2070c8',
-      RB:      '#2070c8',
-      CB:      '#1060b8',
-      CDM:     '#308050',
-      CM:      '#28a060',
-      CAM:     '#40b870',
-      LM:      '#38c080',
-      RM:      '#38c080',
-      LW:      '#c04040',
-      RW:      '#c04040',
-      ST:      '#d03030',
-      CF:      '#b82828',
-      DEFAULT: '#5060a0'
-    };
+const POSITION_COLORS = {
+  GK:'#e8a020', LB:'#2070c8', RB:'#2070c8', CB:'#1060b8', CDM:'#308050', CM:'#28a060', CAM:'#40b870',
+  LM:'#38c080', RM:'#38c080', LW:'#c04040', RW:'#c04040', ST:'#d03030', CF:'#b82828', DEFAULT:'#5060a0'
+};
 
-    /**
-     * Returns the display colour for a given position string.
-     * Falls back to DEFAULT if the position is unknown.
-     * @param {string} pos
-     * @returns {string} CSS hex colour
-     */
-    function getPositionColor(pos) {
-      return POSITION_COLORS[pos] || POSITION_COLORS.DEFAULT;
+function getPositionColor(pos) { return POSITION_COLORS[pos] || POSITION_COLORS.DEFAULT; }
+function getCurrentFormation() { const key = (gameState && gameState.squadFormation) || DEFAULT_FORMATION; return FORMATIONS[key] || FORMATIONS[DEFAULT_FORMATION]; }
+function getFormationKeys() { return Object.keys(FORMATIONS); }
+function getCurrentTactic() { const key = (gameState && gameState.squadTactic) || DEFAULT_TACTIC; return TACTICS[key] || TACTICS[DEFAULT_TACTIC]; }
+function getTacticKeys() { return Object.keys(TACTICS); }
+function isPositionCompatible(playerPosition, altPositions, slotPosition) {
+  if (playerPosition === slotPosition) return true;
+  if (Array.isArray(altPositions) && altPositions.includes(slotPosition)) return true;
+  return false;
+}
+function getSquadAverageOvr() {
+  if (!gameState || !gameState.squadSlots) return 0;
+  const slots = gameState.squadSlots;
+  let total = 0, count = 0;
+  for (let i = 0; i < 11; i++) {
+    const pid = slots[String(i)];
+    if (pid != null) {
+      const player = findPlayerById(pid);
+      if (player) { total += getEffectiveOvr(player); count++; }
     }
+  }
+  return count > 0 ? Math.round(total / count) : 0;
+}
 
-    /**
-     * Returns the formation object for the player's currently selected formation,
-     * falling back to the default if the key is not found.
-     * @returns {{ name: string, positions: string[], rows: number[][] }}
-     */
-    function getCurrentFormation() {
-      const key = (gameState && gameState.squadFormation) || DEFAULT_FORMATION;
-      return FORMATIONS[key] || FORMATIONS[DEFAULT_FORMATION];
-    }
+// === END MODULE: formations & tactics ===
 
-    /**
-     * Returns an ordered list of formation keys available for selection.
-     * @returns {string[]}
-     */
-    function getFormationKeys() {
-      return Object.keys(FORMATIONS);
-    }
-
-    /**
-     * Returns the tactic object for the player's currently selected tactic,
-     * falling back to DEFAULT_TACTIC if not set.
-     * @returns {{ attackMult: number, defMult: number, fastAttackChance: number, counterChance: number }}
-     */
-    function getCurrentTactic() {
-      const key = (gameState && gameState.squadTactic) || DEFAULT_TACTIC;
-      return TACTICS[key] || TACTICS[DEFAULT_TACTIC];
-    }
-
-    /**
-     * Returns an ordered list of tactic keys available for selection.
-     * @returns {string[]}
-     */
-    function getTacticKeys() {
-      return Object.keys(TACTICS);
-    }
-
-    /**
-     * Checks whether `playerPosition` is valid for slot `slotPosition`
-     * (exact match OR listed in altPositions).
-     * @param {string} playerPosition  – player's primary position
-     * @param {string[]} altPositions  – player's alternative positions
-     * @param {string} slotPosition    – position required by the slot
-     * @returns {boolean}
-     */
-    function isPositionCompatible(playerPosition, altPositions, slotPosition) {
-      if (playerPosition === slotPosition) return true;
-      if (Array.isArray(altPositions) && altPositions.includes(slotPosition)) return true;
-      return false;
-    }
-
-    /**
-     * Calculates the average effective OVR for the 11 players currently
-     * placed in squadSlots.  Returns 0 if no players are slotted.
-     * @returns {number}
-     */
-    function getSquadAverageOvr() {
-      if (!gameState || !gameState.squadSlots) return 0;
-      const slots = gameState.squadSlots;
-      let total = 0;
-      let count = 0;
-      for (let i = 0; i < 11; i++) {
-        const pid = slots[String(i)];
-        if (pid != null) {
-          const player = findPlayerById(pid);
-          if (player) {
-            total += getEffectiveOvr(player);
-            count++;
-          }
-        }
-      }
-      return count > 0 ? Math.round(total / count) : 0;
-    }
-
-    // bots & divisions
-
-    You are continuing to build a football manager chatbot game. I will give you a specific module to insert into an existing HTML file.
-
-Find this exact comment placeholder in the code:
+// ============================================
 // === INSERT MODULE: bots & divisions ===
+// ============================================
 
-Replace that comment AND everything until the next similar placeholder with the following module.
-
-MODULE: bots & divisions
-
-Add the following constants:
-
-// === РЕДАКТИРУЙ ЗДЕСЬ: БОТЫ-СОПЕРНИКИ ===
-// minDiv / maxDiv correspond to DIVISIONS array index (0 = Bronze III, 14 = Diamond I)
 const BOTS = [
   { name: 'FC Краснодар Б', ovr: 45, minDiv: 0, maxDiv: 2 },
   { name: 'Спартак-2', ovr: 50, minDiv: 0, maxDiv: 3 },
@@ -1918,29 +774,24 @@ const BOTS = [
   { name: 'FC Мечта', ovr: 90, minDiv: 13, maxDiv: 14 }
 ];
 
-// === РЕДАКТИРУЙ ЗДЕСЬ: ДИВИЗИОНЫ ===
-// index: numeric order (0-based)
-// minStars / maxStars: star range for this division
-// rewards: given ONCE when first reaching the division
 const DIVISIONS = [
-  { index: 0,  name: 'Bronze III',   minStars: 0,  maxStars: 3,  color: '#cd7f32', rewards: { rubins: 0,     passCredits: 0,   ovrPoints: 0,   draftTokens: 0  } },
-  { index: 1,  name: 'Bronze II',    minStars: 4,  maxStars: 6,  color: '#cd7f32', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
-  { index: 2,  name: 'Bronze I',     minStars: 7,  maxStars: 9,  color: '#cd7f32', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
-  { index: 3,  name: 'Silver III',   minStars: 10, maxStars: 12, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
-  { index: 4,  name: 'Silver II',    minStars: 13, maxStars: 15, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
-  { index: 5,  name: 'Silver I',     minStars: 16, maxStars: 18, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
-  { index: 6,  name: 'Gold III',     minStars: 19, maxStars: 23, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
-  { index: 7,  name: 'Gold II',      minStars: 24, maxStars: 28, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
-  { index: 8,  name: 'Gold I',       minStars: 29, maxStars: 33, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
-  { index: 9,  name: 'Platinum III', minStars: 34, maxStars: 38, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
-  { index: 10, name: 'Platinum II',  minStars: 39, maxStars: 43, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
-  { index: 11, name: 'Platinum I',   minStars: 44, maxStars: 48, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
-  { index: 12, name: 'Diamond III',  minStars: 49, maxStars: 58, color: '#b9f2ff', rewards: { rubins: 10000, passCredits: 200, ovrPoints: 200, draftTokens: 5  } },
-  { index: 13, name: 'Diamond II',   minStars: 59, maxStars: 69, color: '#b9f2ff', rewards: { rubins: 20000, passCredits: 300, ovrPoints: 400, draftTokens: 10 } },
-  { index: 14, name: 'Diamond I',    minStars: 70, maxStars: 9999,color: '#b9f2ff', rewards: { rubins: 50000, passCredits: 500, ovrPoints: 1000, draftTokens: 20 } }
+  { index:0,  name:'Bronze III',   minStars:0,  maxStars:3,  color:'#cd7f32', rewards:{ rubins:0,     passCredits:0,   ovrPoints:0,   draftTokens:0  } },
+  { index:1,  name:'Bronze II',    minStars:4,  maxStars:6,  color:'#cd7f32', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
+  { index:2,  name:'Bronze I',     minStars:7,  maxStars:9,  color:'#cd7f32', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
+  { index:3,  name:'Silver III',   minStars:10, maxStars:12, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
+  { index:4,  name:'Silver II',    minStars:13, maxStars:15, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
+  { index:5,  name:'Silver I',     minStars:16, maxStars:18, color:'#c0c0c0', rewards:{ rubins:1000,  passCredits:150, ovrPoints:100, draftTokens:0  } },
+  { index:6,  name:'Gold III',     minStars:19, maxStars:23, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
+  { index:7,  name:'Gold II',      minStars:24, maxStars:28, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
+  { index:8,  name:'Gold I',       minStars:29, maxStars:33, color:'#f0c040', rewards:{ rubins:2000,  passCredits:150, ovrPoints:150, draftTokens:1  } },
+  { index:9,  name:'Platinum III', minStars:34, maxStars:38, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
+  { index:10, name:'Platinum II',  minStars:39, maxStars:43, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
+  { index:11, name:'Platinum I',   minStars:44, maxStars:48, color:'#00d2ff', rewards:{ rubins:5000,  passCredits:150, ovrPoints:150, draftTokens:3  } },
+  { index:12, name:'Diamond III',  minStars:49, maxStars:58, color:'#b9f2ff', rewards:{ rubins:10000, passCredits:200, ovrPoints:200, draftTokens:5  } },
+  { index:13, name:'Diamond II',   minStars:59, maxStars:69, color:'#b9f2ff', rewards:{ rubins:20000, passCredits:300, ovrPoints:400, draftTokens:10 } },
+  { index:14, name:'Diamond I',    minStars:70, maxStars:9999,color:'#b9f2ff', rewards:{ rubins:50000, passCredits:500, ovrPoints:1000, draftTokens:20 } }
 ];
 
-// Helper: get current division object from stars
 function getCurrentDivision() {
   if (!gameState) return DIVISIONS[0];
   for (const div of DIVISIONS) {
@@ -1949,7 +800,6 @@ function getCurrentDivision() {
   return DIVISIONS[DIVISIONS.length - 1];
 }
 
-// Helper: get a random bot suitable for current division
 function getRandomBot() {
   const currentDivIndex = getCurrentDivision().index;
   const suitable = BOTS.filter(b => currentDivIndex >= b.minDiv && currentDivIndex <= b.maxDiv);
@@ -1957,94 +807,168 @@ function getRandomBot() {
   return suitable[Math.floor(Math.random() * suitable.length)];
 }
 
-// Match rewards (editable)
 const MATCH_REWARDS = {
   win:  { rubinsBase: 30, rubinsPerGoal: 6, rubinsPerConceded: -3, xp: 20 },
   draw: { rubinsBase: 13, xp: 10 },
   loss: { rubinsBase: 5,  xp: 5 }
 };
 
-// After the module, add:
 // === END MODULE: bots & divisions ===
 
-IMPORTANT: Output ONLY the replacement code for this module. Do NOT repeat the entire HTML file.
+// ============================================
+// === INSERT MODULE: daily quests & rewards ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: daily quests & rewards ===
-    // ============================================
+const DAILY_QUEST_POOL = [
+  { id:'q1', title:'Сыграть 2 матча',       type:'matches', target:2,  rewards:{ rubins:100, xp:20, passCredits:75 } },
+  { id:'q2', title:'Сыграть 5 матчей',      type:'matches', target:5,  rewards:{ rubins:150, xp:20, passCredits:75 } },
+  { id:'q3', title:'Забить 10 голов',        type:'goals',   target:10, rewards:{ rubins:150, xp:20, passCredits:75 } },
+  { id:'q4', title:'Забить 20 голов',        type:'goals',   target:20, rewards:{ rubins:200, xp:20, passCredits:75 } },
+  { id:'q5', title:'Открыть 1 пак',          type:'packs',   target:1,  rewards:{ rubins:0,   xp:20, passCredits:75, fragments:30 } },
+  { id:'q6', title:'Повысить уровень',       type:'levels',  target:1,  rewards:{ rubins:150, xp:20, passCredits:75 } },
+  { id:'q7', title:'Получить ежедневную награду', type:'daily', target:1, rewards:{ rubins:30,  xp:20, passCredits:75 } }
+];
 
-    // ============================================
-    // === INSERT MODULE: shop packs & draft pools ===
-    // ============================================
+const ALL_QUESTS_BONUS = { rubins:500, draftTokens:1, fragments:150, xp:50, passCredits:150 };
 
-    // ============================================
-    // === INSERT MODULE: SBC exchanges ===
-    // ============================================
+const DAILY_REWARD_TABLE = [
+  { label:'50 фрагментов',            weight:28, reward:{ fragments:50 } },
+  { label:'100 рубинов',              weight:26, reward:{ rubins:100 } },
+  { label:'50 очков тренировки',      weight:25, reward:{ trainingPoints:50 } },
+  { label:'30 очков повышения OVR',   weight:19, reward:{ ovrUpgradePoints:30 } },
+  { label:'1 жетон открытия',         weight:2,  reward:{ draftTokens:1 } }
+];
 
-    // ============================================
-    // === INSERT MODULE: battle pass (абонемент) ===
-    // ============================================
+function getDailyReward() {
+  const totalWeight = DAILY_REWARD_TABLE.reduce((sum, item) => sum + item.weight, 0);
+  let random = Math.random() * totalWeight;
+  for (const item of DAILY_REWARD_TABLE) {
+    random -= item.weight;
+    if (random <= 0) return item;
+  }
+  return DAILY_REWARD_TABLE[DAILY_REWARD_TABLE.length - 1];
+}
 
-    // ============================================
-    // === INSERT MODULE: events list ===
-    // ============================================
+function pickDailyQuests() {
+  const shuffled = [...DAILY_QUEST_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4).map(q => ({
+    id: q.id, title: q.title, type: q.type, target: q.target,
+    rewards: {...q.rewards}, progress: 0, completed: false
+  }));
+}
 
-    // ============================================
-    // === INSERT MODULE: player cards rendering ===
-    // ============================================
+function getMoscowDateString() {
+  const now = new Date();
+  const msk = new Date(now.getTime() + 3 * 3600 * 1000);
+  return msk.toISOString().split('T')[0];
+}
 
-    // ============================================
-    // === INSERT MODULE: inventory modal ===
-    // ============================================
+// === END MODULE: daily quests & rewards ===
 
-    // ============================================
-    // === INSERT MODULE: squad management ===
-    // ============================================
+/* ======================================================
+   INITIALIZATION (with starter players seeding)
+====================================================== */
+function init() {
+  loadState();
+  updateHeaderResources();
 
-    // ============================================
-    // === INSERT MODULE: match engine ===
-    // ============================================
+  // Load allPlayers catalogue
+  allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
 
-    // ============================================
-    // === INSERT MODULE: division matches ===
-    // ============================================
+  // Seed starter players if collection is empty
+  if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
+    gameState.myPlayers = STARTER_PLAYER_IDS
+      .map(id => allPlayers.find(p => p.id === id))
+      .filter(p => p !== undefined)
+      .map(p => JSON.parse(JSON.stringify(p)));
+    saveState();
+  }
 
-    // ============================================
-    // === INSERT MODULE: shop logic ===
-    // ============================================
+  if (gameState.registered) {
+    hideStartOverlay();
+    botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽\n\nГотов к игре? Используй кнопки внизу для навигации.`, 600, { html: true });
+  } else if (gameState.awaitingNickname) {
+    hideStartOverlay();
+    botReply('Введи свой никнейм, чтобы продолжить регистрацию:', 400);
+  } else {
+    startOverlay.classList.remove('hidden');
+  }
+}
 
-    // ============================================
-    // === INSERT MODULE: draft logic ===
-    // ============================================
+document.addEventListener('DOMContentLoaded', init);
+if (document.readyState !== 'loading') init();
 
-    // ============================================
-    // === INSERT MODULE: quests logic ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: shop packs & draft pools ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: daily reward logic ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: SBC exchanges ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: SBC logic ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: battle pass (абонемент) ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: battle pass logic ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: events list ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: promo codes ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: player cards rendering ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: admin panel ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: inventory modal ===
+// ============================================
 
-    // ============================================
-    // === INSERT MODULE: init & final wiring ===
-    // ============================================
+// ============================================
+// === INSERT MODULE: squad management ===
+// ============================================
 
-  </script>
+// ============================================
+// === INSERT MODULE: match engine ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: division matches ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: shop logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: draft logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: quests logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: daily reward logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: SBC logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: battle pass logic ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: promo codes ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: admin panel ===
+// ============================================
+
+// ============================================
+// === INSERT MODULE: init & final wiring ===
+// ============================================
+</script>
 </body>
 </html>
