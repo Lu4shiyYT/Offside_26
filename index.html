@@ -1782,14 +1782,53 @@ async function redeemPromoCode() {
 // ============================================
 // === INSERT MODULE: squad management ===
 // ============================================
-    // Переопределяем навигацию (без старой функции)
+
+    // Переопределяем навигацию
     handleNavSquad = function() {
       if (!gameState.registered) { promptRegister(); return; }
       setActiveNav('nav-squad');
       showSquadScreen();
     };
 
-    // === SQUAD SCREEN ===
+    // ── НОВАЯ ФУНКЦИЯ: ШТРАФ ОВР ЗА НЕСООТВЕТСТВИЕ ПОЗИЦИИ ──────────────────
+    function getPositionPenalty(player, slotPos) {
+      if (!player || !slotPos) return 0;
+      // Точное совпадение или альтернативная позиция – без штрафа
+      if (player.position === slotPos ||
+          (Array.isArray(player.altPositions) && player.altPositions.includes(slotPos))) {
+        return 0;
+      }
+
+      // Запрет: вратарь ↔ полевой
+      if ((player.position === 'GK') !== (slotPos === 'GK')) {
+        return 999; // флаг запрета
+      }
+
+      // Группы линий для расчёта штрафа -4
+      const LINE_GROUPS = {
+        GK: [],
+        LB: ['LB','CB','RB'],
+        CB: ['LB','CB','RB','CDM'],   // CB ↔ CDM исключение
+        RB: ['LB','CB','RB'],
+        CDM: ['LM','CM','CAM','RM','CDM','CB'], // CDM ↔ CB исключение + вся полузащита
+        CM: ['LM','CM','CAM','RM','CDM'],
+        CAM: ['LM','CM','CAM','RM','CDM'],
+        LM: ['LM','CM','CAM','RM','CDM'],
+        RM: ['LM','CM','CAM','RM','CDM'],
+        LW: ['LW','RW','ST','CF'],
+        RW: ['LW','RW','ST','CF'],
+        ST: ['LW','RW','ST','CF'],
+        CF: ['LW','RW','ST','CF']
+      };
+
+      const sameLine = LINE_GROUPS[player.position] || [];
+      if (sameLine.includes(slotPos)) {
+        return 4;   // -4 к OVR
+      }
+      return 15;    // -15 ко всем остальным позициям
+    }
+
+    // ── ПОЛНЫЙ ПОКАЗ СОСТАВА (с учётом штрафов) ─────────────────────────────
     async function showSquadScreen() {
       const formation = getCurrentFormation();
       const positions = formation.positions;
@@ -1814,9 +1853,24 @@ async function redeemPromoCode() {
           const pid      = gameState.squadSlots ? gameState.squadSlots[String(slotIndex)] : null;
           const player   = pid ? findPlayerById(pid) : null;
 
-          let mismatchBadge = '';
-          if (player && !isPositionCompatible(player.position, player.altPositions || [], pos)) {
-            mismatchBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;color:#f0a040;">⚠️ pos</div>`;
+          let displayOvr = '';
+          let penaltyBadge = '';
+          let penaltyInfo = '';
+
+          if (player) {
+            const penalty = getPositionPenalty(player, pos);
+            if (penalty >= 999) {
+              // Вратарь/полевой mismatch — показываем ошибку
+              displayOvr = '❌';
+              penaltyBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;color:#e05050;">GK↔Поле</div>`;
+            } else {
+              const effectiveOvr = getEffectiveOvr(player) - penalty;
+              displayOvr = effectiveOvr;
+              if (penalty > 0) {
+                penaltyBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;color:#f0a040;">-${penalty}</div>`;
+                penaltyInfo = ` (-${penalty})`;
+              }
+            }
           }
 
           const removeBtn = player
@@ -1824,7 +1878,7 @@ async function redeemPromoCode() {
             : '';
 
           const playerInfo = player
-            ? `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${player.name}</div><div style="font-size:11px;color:#f0c040;font-weight:700;">${getEffectiveOvr(player)}</div>`
+            ? `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${player.name}</div><div style="font-size:11px;color:#f0c040;font-weight:700;">${displayOvr}${penaltyInfo}</div>`
             : '';
 
           fieldHtml +=
@@ -1834,14 +1888,14 @@ async function redeemPromoCode() {
             + `<div style="font-size:9px;color:rgba(255,255,255,0.4);margin-bottom:2px;">${pos}</div>`
             + playerInfo
             + removeBtn
-            + mismatchBadge
+            + penaltyBadge
             + `</div>`;
         }
         fieldHtml += `</div>`;
       }
       fieldHtml += `</div>`;
 
-      // Team OVR
+      // Team OVR (средний с учётом штрафов)
       const teamOvr = getSquadAverageOvr();
       fieldHtml += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${teamOvr}</b></div>`;
 
@@ -1931,7 +1985,7 @@ async function redeemPromoCode() {
       await botReply(fullHtml, 500, { html: true });
     }
 
-    // === DRAG AND DROP ===
+    // ── DRAG AND DROP (без изменений) ────────────────────────────────────────
     let dragPlayerId = null;
 
     function handleDragStart(event) {
@@ -1984,7 +2038,7 @@ async function redeemPromoCode() {
       }
     }
 
-    // === SLOT / BENCH ASSIGNMENT ===
+    // ── НАЗНАЧЕНИЕ В СЛОТ (с проверками) ────────────────────────────────────
     function assignToSlot(playerId, slotIndex, slotPos) {
       if (!gameState.squadSlots) gameState.squadSlots = {};
       if (!gameState.benchSlots) gameState.benchSlots = {};
@@ -1992,15 +2046,24 @@ async function redeemPromoCode() {
       const player = findPlayerById(playerId);
       if (!player) return;
 
-      // Remove from current slot/bench
+      const penalty = getPositionPenalty(player, slotPos);
+
+      // Блокировка вратаря в поле и наоборот
+      if (penalty >= 999) {
+        botReply('❌ Вратаря нельзя поставить на позицию полевого игрока и наоборот.', 400);
+        return;
+      }
+
+      // Убираем игрока из предыдущих позиций
       for (const k in gameState.squadSlots) if (gameState.squadSlots[k] === playerId) delete gameState.squadSlots[k];
       for (const k in gameState.benchSlots) if (gameState.benchSlots[k] === playerId) delete gameState.benchSlots[k];
 
-      if (!isPositionCompatible(player.position, player.altPositions || [], slotPos)) {
-        botReply(`⚠️ ${player.name} не может играть на позиции ${slotPos}. OVR снижен на 2.`, 300);
+      // Предупреждение о штрафе
+      if (penalty > 0) {
+        botReply(`⚠️ ${player.name} на позиции ${slotPos}: OVR снижен на -${penalty}.`, 300);
       }
 
-      // Duplicate name guard
+      // Проверка на дубликат игрока (однофамилец не допускается)
       for (const k in gameState.squadSlots) {
         if (!gameState.squadSlots[k]) continue;
         const existing = findPlayerById(gameState.squadSlots[k]);
@@ -2051,6 +2114,27 @@ async function redeemPromoCode() {
     function assignRole(roleKey, value) {
       gameState[roleKey] = value ? parseInt(value) : null;
       saveState();
+    }
+
+    // ── ОБНОВЛЁННЫЙ ПОДСЧЁТ СРЕДНЕГО ОВР СОСТАВА (с учётом штрафов) ─────────
+    function getSquadAverageOvr() {
+      if (!gameState?.squadSlots) return 0;
+      const formation = getCurrentFormation();
+      const positions = formation.positions;
+      let total = 0, count = 0;
+      for (let i = 0; i < 11; i++) {
+        const pid = gameState.squadSlots[String(i)];
+        if (pid != null) {
+          const player = findPlayerById(pid);
+          if (player) {
+            const penalty = getPositionPenalty(player, positions[i]);
+            const effOvr = getEffectiveOvr(player) - (penalty < 999 ? penalty : 0);
+            total += effOvr;
+            count++;
+          }
+        }
+      }
+      return count > 0 ? Math.round(total / count) : 0;
     }
 
 // === END MODULE: squad management ===
