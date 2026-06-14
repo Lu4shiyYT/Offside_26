@@ -1296,9 +1296,386 @@
     }
 
     // ============================================
-    // === INSERT MODULE: gameState & data structures ===
-    // (arrays: ALL_PLAYERS_TEMPLATE, STARTER_PLAYER_IDS, FRAGMENT_EXCHANGE_RATES, etc.)
-    // ============================================
+// === INSERT MODULE: gameState & data structures ===
+// (arrays: ALL_PLAYERS_TEMPLATE, STARTER_PLAYER_IDS, FRAGMENT_EXCHANGE_RATES, etc.)
+// ============================================
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: КАРТОЧКИ ИГРОКОВ (allPlayers) ===
+    // Player object structure (DO NOT add field "pool"):
+    // {
+    //   id: number (unique),
+    //   name: string,
+    //   club: string,
+    //   nation: string,
+    //   position: string (GK, LB, CB, RB, CDM, CM, CAM, LM, RM, LW, ST, RW, CF),
+    //   altPositions: [string] (can be empty),
+    //   ovr: number,
+    //   stats: { for field players: PAC, SHO, PAS, DRB, DEF, STR;
+    //            for goalkeepers:   REF, KIC, PAS, SPE, DIV, HAN },
+    //   program: string (event name, e.g. "TOTY" or "Base"),
+    //   image: string (URL or empty string for placeholder),
+    //   trainingLevel: number (0-10),
+    //   ovrUpgrade: number (0-5)
+    // }
+
+    const ALL_PLAYERS_TEMPLATE = [
+      // ── Goalkeepers ──────────────────────────────────────────────────────────
+      {
+        id: 1,
+        name: 'Алексей Громов',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'GK',
+        altPositions: [],
+        ovr: 62,
+        stats: { REF: 60, KIC: 55, PAS: 50, SPE: 58, DIV: 62, HAN: 64 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 2,
+        name: 'Андрей Соколов',
+        club: 'Зенит',
+        nation: 'Россия',
+        position: 'GK',
+        altPositions: [],
+        ovr: 65,
+        stats: { REF: 64, KIC: 58, PAS: 52, SPE: 60, DIV: 65, HAN: 67 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+
+      // ── Defenders ────────────────────────────────────────────────────────────
+      {
+        id: 3,
+        name: 'Сергей Петров',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'LB',
+        altPositions: ['LM'],
+        ovr: 64,
+        stats: { PAC: 72, SHO: 40, PAS: 62, DRB: 68, DEF: 70, STR: 66 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 4,
+        name: 'Иван Кузнецов',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'CB',
+        altPositions: [],
+        ovr: 66,
+        stats: { PAC: 55, SHO: 35, PAS: 50, DRB: 45, DEF: 74, STR: 78 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 5,
+        name: 'Дмитрий Новиков',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'CB',
+        altPositions: [],
+        ovr: 65,
+        stats: { PAC: 58, SHO: 38, PAS: 52, DRB: 48, DEF: 72, STR: 76 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 6,
+        name: 'Михаил Смирнов',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'RB',
+        altPositions: ['RM'],
+        ovr: 63,
+        stats: { PAC: 74, SHO: 42, PAS: 60, DRB: 70, DEF: 68, STR: 65 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 7,
+        name: 'Павел Орлов',
+        club: 'Зенит',
+        nation: 'Россия',
+        position: 'CB',
+        altPositions: [],
+        ovr: 68,
+        stats: { PAC: 52, SHO: 36, PAS: 48, DRB: 44, DEF: 76, STR: 80 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+
+      // ── Midfielders ──────────────────────────────────────────────────────────
+      {
+        id: 8,
+        name: 'Артем Лебедев',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'CM',
+        altPositions: ['CAM'],
+        ovr: 67,
+        stats: { PAC: 68, SHO: 62, PAS: 72, DRB: 70, DEF: 55, STR: 62 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 9,
+        name: 'Кирилл Морозов',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'CM',
+        altPositions: ['CDM'],
+        ovr: 65,
+        stats: { PAC: 62, SHO: 58, PAS: 70, DRB: 66, DEF: 60, STR: 64 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 10,
+        name: 'Максим Волков',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'CM',
+        altPositions: [],
+        ovr: 64,
+        stats: { PAC: 65, SHO: 60, PAS: 68, DRB: 64, DEF: 52, STR: 60 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 11,
+        name: 'Роман Зайцев',
+        club: 'Зенит',
+        nation: 'Россия',
+        position: 'CDM',
+        altPositions: ['CM'],
+        ovr: 66,
+        stats: { PAC: 58, SHO: 48, PAS: 65, DRB: 56, DEF: 72, STR: 70 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+
+      // ── Wingers ──────────────────────────────────────────────────────────────
+      {
+        id: 12,
+        name: 'Виктор Соловьев',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'LW',
+        altPositions: ['ST'],
+        ovr: 68,
+        stats: { PAC: 82, SHO: 66, PAS: 60, DRB: 74, DEF: 30, STR: 58 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 13,
+        name: 'Егор Федоров',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'RW',
+        altPositions: ['ST'],
+        ovr: 67,
+        stats: { PAC: 80, SHO: 64, PAS: 58, DRB: 72, DEF: 28, STR: 56 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+
+      // ── Strikers ─────────────────────────────────────────────────────────────
+      {
+        id: 14,
+        name: 'Никита Васильев',
+        club: 'Спартак',
+        nation: 'Россия',
+        position: 'ST',
+        altPositions: ['CF'],
+        ovr: 70,
+        stats: { PAC: 76, SHO: 74, PAS: 55, DRB: 68, DEF: 22, STR: 72 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+      {
+        id: 15,
+        name: 'Олег Тимофеев',
+        club: 'Зенит',
+        nation: 'Россия',
+        position: 'ST',
+        altPositions: [],
+        ovr: 69,
+        stats: { PAC: 72, SHO: 72, PAS: 52, DRB: 66, DEF: 24, STR: 74 },
+        program: 'Base',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      },
+
+      // ── Extra / TOTY (for testing) ────────────────────────────────────────────
+      {
+        id: 16,
+        name: 'Марко Росси',
+        club: 'Милан',
+        nation: 'Италия',
+        position: 'CM',
+        altPositions: ['CAM', 'CDM'],
+        ovr: 85,
+        stats: { PAC: 72, SHO: 74, PAS: 88, DRB: 82, DEF: 68, STR: 70 },
+        program: 'TOTY',
+        image: '',
+        trainingLevel: 0,
+        ovrUpgrade: 0
+      }
+    ];
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: СТАРТОВЫЙ НАБОР ===
+    // IDs of players given to new players (must be from ALL_PLAYERS_TEMPLATE)
+    // For full 4-3-3: GK, LB, CB, CB, RB, CM, CM, CM, LW, ST, RW
+    const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ОБМЕН НА ФРАГМЕНТЫ ===
+    // Each entry: [minOvr, maxOvr, fragmentsAwarded]
+    const FRAGMENT_EXCHANGE_RATES = [
+      [0,   64,   50],
+      [65,  74,  100],
+      [75,  84,  200],
+      [85,  89,  400],
+      [90,  94,  700],
+      [95,  99, 1200],
+      [100, 120, 2500]
+    ];
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: СТОИМОСТЬ ТРЕНИРОВКИ ===
+    const TRAINING_COST_PER_LEVEL = 100; // training points spent per training level
+    const OVR_UPGRADE_COSTS = [120, 270, 450, 610, 750]; // ovrUpgradePoints for levels 1-5
+
+    // ── Extend DEFAULT_STATE with new fields (merged at loadState time) ─────────
+    // (We patch the already-declared DEFAULT_STATE object in place so that
+    //  the existing loadState / saveState functions pick up the new keys.)
+    Object.assign(DEFAULT_STATE, {
+      myPlayers:          [],   // array of player objects the user owns
+      squadSlots:         {},   // { "0": playerId, ... }  11 slots
+      benchSlots:         {},   // { "0": playerId, ... }   7 slots
+      captain:            null, // playerId of captain
+      cornerKicker:       null,
+      freeKicker:         null,
+      penaltyKicker:      null,
+      squadFormation:     '4-3-3',
+      reachedDivisions:   [],   // division indices already rewarded
+      dailyQuests:        [],   // [{ id, progress, completed }, ...]
+      dailyQuestsDate:    '',   // date string of last quest refresh
+      allQuestsBonus:     false,
+      dailyRewardLastDate:'',
+      passLevel:          0,
+      passClaimedLevels:  [],   // [{ level, free, paid }, ...]
+      draftCounterB:      0,    // guaranteed pool-B pull every 10
+      draftCounterA:      0,    // guaranteed pool-A pull every 100
+      promoUsed:          [],   // promo codes already redeemed
+      goalsForQuest:      0,    // goals scored today
+      matchesForQuest:    0,    // matches played today
+      packsOpened:        0,    // packs opened today
+      levelsGained:       0     // levels gained today
+    });
+
+    // ── Runtime player catalogue (deep-cloned from template on every page load) ─
+    let allPlayers = [];
+
+    // ── Helper functions ─────────────────────────────────────────────────────────
+
+    /**
+     * Returns the effective OVR of a player (base ovr + ovrUpgrade bonuses).
+     */
+    function getEffectiveOvr(player) {
+      if (!player) return 0;
+      return (player.ovr || 0) + (player.ovrUpgrade || 0);
+    }
+
+    /**
+     * Returns a copy of a player's stats with training bonus applied.
+     * Each training level adds +1 to every stat.
+     */
+    function getEffectiveStats(player) {
+      if (!player || !player.stats) return {};
+      const stats = Object.assign({}, player.stats);
+      const bonus = player.trainingLevel || 0;
+      for (const key in stats) {
+        stats[key] = (stats[key] || 0) + bonus;
+      }
+      return stats;
+    }
+
+    /**
+     * Finds a player in the user's own collection by numeric id.
+     * Returns null if not found.
+     */
+    function findPlayerById(id) {
+      if (!gameState || !Array.isArray(gameState.myPlayers)) return null;
+      return gameState.myPlayers.find(p => p.id === id) || null;
+    }
+
+    /**
+     * Returns the fragment reward for a given effective OVR value.
+     */
+    function getFragmentReward(ovr) {
+      for (const [min, max, frags] of FRAGMENT_EXCHANGE_RATES) {
+        if (ovr >= min && ovr <= max) return frags;
+      }
+      return 50; // fallback
+    }
+
+    // ── Patch init() to seed allPlayers and starter squad ────────────────────────
+    // We wrap the original init so the new logic runs after loadState().
+    (function patchInit() {
+      const _originalInit = typeof init === 'function' ? init : null;
+
+      init = function () {
+        // 1. Load allPlayers catalogue from the immutable template
+        allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+
+        // 2. Run the original init (calls loadState → updateHeaderResources →
+        //    shows overlay or welcome-back message)
+        if (_originalInit) _originalInit();
+
+        // 3. After state is loaded, give starter players to brand-new accounts
+        if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
+          gameState.myPlayers = STARTER_PLAYER_IDS
+            .map(id => allPlayers.find(p => p.id === id))
+            .filter(p => p !== undefined)
+            .map(p => JSON.parse(JSON.stringify(p)));
+          saveState();
+        }
+      };
+    })();
+
+// === END MODULE: gameState & data structures ===
 
     // ============================================
     // === INSERT MODULE: formations & tactics ===
