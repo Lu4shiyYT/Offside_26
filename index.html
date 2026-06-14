@@ -519,6 +519,13 @@ function getSquadAverageOvr() {
   for (let i=0;i<11;i++) { const pid=gameState.squadSlots[String(i)]; if(pid!=null){ const p=findPlayerById(pid); if(p){t+=getEffectiveOvr(p);c++;} } }
   return c>0?Math.round(t/c):0;
 }
+      function getFormationKeys() {
+      return Object.keys(FORMATIONS);
+    }
+
+    function getTacticKeys() {
+      return Object.keys(TACTICS);
+    }
 
 // ========== BOTS & DIVISIONS ==========
 const BOTS = [
