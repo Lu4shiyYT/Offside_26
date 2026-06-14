@@ -1268,6 +1268,10 @@
     function init() {
       loadState();
           // Даём стартовых игроков, если коллекция пуста
+        // Загрузка каталога игроков
+      allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+    
+      // Выдача стартовых игроков новому аккаунту
       if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
         gameState.myPlayers = STARTER_PLAYER_IDS
           .map(id => allPlayers.find(p => p.id === id))
