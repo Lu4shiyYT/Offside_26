@@ -1309,6 +1309,7 @@
 
       
 
+    // gameState & data structures
     // ============================================
 // === INSERT MODULE: gameState & data structures ===
 // (arrays: ALL_PLAYERS_TEMPLATE, STARTER_PLAYER_IDS, FRAGMENT_EXCHANGE_RATES, etc.)
@@ -1689,12 +1690,202 @@
       };
     })();
 
-// === END MODULE: gameState & data structures ===
-
+    // formations & tactics
     // ============================================
-    // === INSERT MODULE: formations & tactics ===
-    // ============================================
+// === INSERT MODULE: formations & tactics ===
+// ============================================
 
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ФОРМАЦИИ ===
+    // Each formation: name, positions array (11 items), rows grouping for display.
+    // Positions: GK, LB, CB, RB, CDM, CM, CAM, LM, RM, LW, ST, RW, CF
+    const FORMATIONS = {
+      '4-3-3': {
+        name: '4-3-3',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CM', 'CM', 'LW', 'ST', 'RW'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
+      },
+      '4-3-3 Атака': {
+        name: '4-3-3 Атака',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CAM', 'CM', 'LW', 'ST', 'RW'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
+      },
+      '4-3-3 Оборона': {
+        name: '4-3-3 Оборона',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CDM', 'CM', 'LW', 'ST', 'RW'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]]
+      },
+      '4-5-1': {
+        name: '4-5-1',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CAM', 'CM', 'RM', 'ST'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7, 8, 9], [10]]
+      },
+      '3-4-3 Ромб': {
+        name: '3-4-3 Ромб',
+        positions: ['GK', 'CB', 'CB', 'CB', 'LM', 'CDM', 'CAM', 'RM', 'LW', 'ST', 'RW'],
+        rows: [[0], [1, 2, 3], [4, 5, 6, 7], [8, 9, 10]]
+      },
+      '4-4-2': {
+        name: '4-4-2',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'ST', 'ST'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7, 8], [9, 10]]
+      },
+      '3-5-2 Ложная девятка': {
+        name: '3-5-2 Ложная девятка',
+        positions: ['GK', 'CB', 'CB', 'CB', 'LM', 'CM', 'CAM', 'CM', 'RM', 'CF', 'ST'],
+        rows: [[0], [1, 2, 3], [4, 5, 6, 7, 8], [9, 10]]
+      },
+      '4-3-2-1': {
+        name: '4-3-2-1',
+        positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CDM', 'CAM', 'CAM', 'ST'],
+        rows: [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9], [10]]
+      }
+    };
+
+    // Default formation key
+    const DEFAULT_FORMATION = '4-3-3';
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ТАКТИКИ ===
+    // attackMult:        multiplier applied to SHO, PAC, PAS, DRB during match calc
+    // defMult:           multiplier applied to DEF, STR during match calc
+    // fastAttackChance:  extra probability (0–1) of a rapid-break goal attempt
+    // counterChance:     extra probability (0–1) of conceding a counter-attack goal
+    const TACTICS = {
+      'Атака': {
+        attackMult:       1.2,
+        defMult:          0.8,
+        fastAttackChance: 0.05,
+        counterChance:    0.03
+      },
+      'Баланс': {
+        attackMult:       1.0,
+        defMult:          1.0,
+        fastAttackChance: 0.0,
+        counterChance:    0.0
+      },
+      'Защита': {
+        attackMult:       0.8,
+        defMult:          1.2,
+        fastAttackChance: 0.0,
+        counterChance:    -0.02
+      },
+      'Тики-така': {
+        attackMult:       0.9,
+        defMult:          1.2,
+        fastAttackChance: 0.02,
+        counterChance:    -0.01
+      },
+      'Длинные передачи': {
+        attackMult:       1.2,
+        defMult:          0.9,
+        fastAttackChance: 0.08,
+        counterChance:    0.06
+      }
+    };
+
+    const DEFAULT_TACTIC = 'Баланс';
+
+    // === POSITION COLOR MAP (used by card rendering & squad display) ===
+    const POSITION_COLORS = {
+      GK:      '#e8a020',
+      LB:      '#2070c8',
+      RB:      '#2070c8',
+      CB:      '#1060b8',
+      CDM:     '#308050',
+      CM:      '#28a060',
+      CAM:     '#40b870',
+      LM:      '#38c080',
+      RM:      '#38c080',
+      LW:      '#c04040',
+      RW:      '#c04040',
+      ST:      '#d03030',
+      CF:      '#b82828',
+      DEFAULT: '#5060a0'
+    };
+
+    /**
+     * Returns the display colour for a given position string.
+     * Falls back to DEFAULT if the position is unknown.
+     * @param {string} pos
+     * @returns {string} CSS hex colour
+     */
+    function getPositionColor(pos) {
+      return POSITION_COLORS[pos] || POSITION_COLORS.DEFAULT;
+    }
+
+    /**
+     * Returns the formation object for the player's currently selected formation,
+     * falling back to the default if the key is not found.
+     * @returns {{ name: string, positions: string[], rows: number[][] }}
+     */
+    function getCurrentFormation() {
+      const key = (gameState && gameState.squadFormation) || DEFAULT_FORMATION;
+      return FORMATIONS[key] || FORMATIONS[DEFAULT_FORMATION];
+    }
+
+    /**
+     * Returns an ordered list of formation keys available for selection.
+     * @returns {string[]}
+     */
+    function getFormationKeys() {
+      return Object.keys(FORMATIONS);
+    }
+
+    /**
+     * Returns the tactic object for the player's currently selected tactic,
+     * falling back to DEFAULT_TACTIC if not set.
+     * @returns {{ attackMult: number, defMult: number, fastAttackChance: number, counterChance: number }}
+     */
+    function getCurrentTactic() {
+      const key = (gameState && gameState.squadTactic) || DEFAULT_TACTIC;
+      return TACTICS[key] || TACTICS[DEFAULT_TACTIC];
+    }
+
+    /**
+     * Returns an ordered list of tactic keys available for selection.
+     * @returns {string[]}
+     */
+    function getTacticKeys() {
+      return Object.keys(TACTICS);
+    }
+
+    /**
+     * Checks whether `playerPosition` is valid for slot `slotPosition`
+     * (exact match OR listed in altPositions).
+     * @param {string} playerPosition  – player's primary position
+     * @param {string[]} altPositions  – player's alternative positions
+     * @param {string} slotPosition    – position required by the slot
+     * @returns {boolean}
+     */
+    function isPositionCompatible(playerPosition, altPositions, slotPosition) {
+      if (playerPosition === slotPosition) return true;
+      if (Array.isArray(altPositions) && altPositions.includes(slotPosition)) return true;
+      return false;
+    }
+
+    /**
+     * Calculates the average effective OVR for the 11 players currently
+     * placed in squadSlots.  Returns 0 if no players are slotted.
+     * @returns {number}
+     */
+    function getSquadAverageOvr() {
+      if (!gameState || !gameState.squadSlots) return 0;
+      const slots = gameState.squadSlots;
+      let total = 0;
+      let count = 0;
+      for (let i = 0; i < 11; i++) {
+        const pid = slots[String(i)];
+        if (pid != null) {
+          const player = findPlayerById(pid);
+          if (player) {
+            total += getEffectiveOvr(player);
+            count++;
+          }
+        }
+      }
+      return count > 0 ? Math.round(total / count) : 0;
+    }
+
+// === END MODULE: formations & tactics ===
     // ============================================
     // === INSERT MODULE: bots & divisions ===
     // ============================================
