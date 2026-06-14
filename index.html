@@ -1579,6 +1579,15 @@ async function redeemPromoCode() {
     // getEffectiveOvr and getEffectiveStats must be defined before this module.
     // getPositionColor must be defined in the formations & tactics module.
 
+    // ============================================
+// === INSERT MODULE: player cards rendering ===
+// ============================================
+
+    // === PLAYER CARD RENDERING ===
+    // buildPlayerCardHTML creates the full visual card for a player object.
+    // getEffectiveOvr and getEffectiveStats must be defined before this module.
+    // getPositionColor must be defined in the formations & tactics module.
+
     if (typeof buildPlayerCardHTML !== 'function') {
 
       function buildPlayerCardHTML(player) {
