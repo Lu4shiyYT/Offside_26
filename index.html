@@ -1885,10 +1885,89 @@
       return count > 0 ? Math.round(total / count) : 0;
     }
 
-// === END MODULE: formations & tactics ===
-    // ============================================
-    // === INSERT MODULE: bots & divisions ===
-    // ============================================
+    // bots & divisions
+
+    You are continuing to build a football manager chatbot game. I will give you a specific module to insert into an existing HTML file.
+
+Find this exact comment placeholder in the code:
+// === INSERT MODULE: bots & divisions ===
+
+Replace that comment AND everything until the next similar placeholder with the following module.
+
+MODULE: bots & divisions
+
+Add the following constants:
+
+// === РЕДАКТИРУЙ ЗДЕСЬ: БОТЫ-СОПЕРНИКИ ===
+// minDiv / maxDiv correspond to DIVISIONS array index (0 = Bronze III, 14 = Diamond I)
+const BOTS = [
+  { name: 'FC Краснодар Б', ovr: 45, minDiv: 0, maxDiv: 2 },
+  { name: 'Спартак-2', ovr: 50, minDiv: 0, maxDiv: 3 },
+  { name: 'Динамо Резерв', ovr: 52, minDiv: 1, maxDiv: 4 },
+  { name: 'Локо Молодёжь', ovr: 55, minDiv: 2, maxDiv: 5 },
+  { name: 'Зенит-2', ovr: 58, minDiv: 3, maxDiv: 6 },
+  { name: 'ЦСКА Резерв', ovr: 60, minDiv: 4, maxDiv: 7 },
+  { name: 'Ростов-на-Дону', ovr: 63, minDiv: 5, maxDiv: 8 },
+  { name: 'Рубин Казань', ovr: 66, minDiv: 6, maxDiv: 9 },
+  { name: 'Крылья Советов', ovr: 69, minDiv: 7, maxDiv: 10 },
+  { name: 'Урал FC', ovr: 72, minDiv: 8, maxDiv: 11 },
+  { name: 'Торпедо Москва', ovr: 75, minDiv: 9, maxDiv: 12 },
+  { name: 'Спартак Москва', ovr: 78, minDiv: 10, maxDiv: 13 },
+  { name: 'Зенит СПб', ovr: 81, minDiv: 11, maxDiv: 13 },
+  { name: 'Легион Элит', ovr: 85, minDiv: 12, maxDiv: 14 },
+  { name: 'FC Мечта', ovr: 90, minDiv: 13, maxDiv: 14 }
+];
+
+// === РЕДАКТИРУЙ ЗДЕСЬ: ДИВИЗИОНЫ ===
+// index: numeric order (0-based)
+// minStars / maxStars: star range for this division
+// rewards: given ONCE when first reaching the division
+const DIVISIONS = [
+  { index: 0,  name: 'Bronze III',   minStars: 0,  maxStars: 3,  color: '#cd7f32', rewards: { rubins: 0,     passCredits: 0,   ovrPoints: 0,   draftTokens: 0  } },
+  { index: 1,  name: 'Bronze II',    minStars: 4,  maxStars: 6,  color: '#cd7f32', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
+  { index: 2,  name: 'Bronze I',     minStars: 7,  maxStars: 9,  color: '#cd7f32', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
+  { index: 3,  name: 'Silver III',   minStars: 10, maxStars: 12, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
+  { index: 4,  name: 'Silver II',    minStars: 13, maxStars: 15, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
+  { index: 5,  name: 'Silver I',     minStars: 16, maxStars: 18, color: '#c0c0c0', rewards: { rubins: 1000,  passCredits: 150, ovrPoints: 100, draftTokens: 0  } },
+  { index: 6,  name: 'Gold III',     minStars: 19, maxStars: 23, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
+  { index: 7,  name: 'Gold II',      minStars: 24, maxStars: 28, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
+  { index: 8,  name: 'Gold I',       minStars: 29, maxStars: 33, color: '#f0c040', rewards: { rubins: 2000,  passCredits: 150, ovrPoints: 150, draftTokens: 1  } },
+  { index: 9,  name: 'Platinum III', minStars: 34, maxStars: 38, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
+  { index: 10, name: 'Platinum II',  minStars: 39, maxStars: 43, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
+  { index: 11, name: 'Platinum I',   minStars: 44, maxStars: 48, color: '#00d2ff', rewards: { rubins: 5000,  passCredits: 150, ovrPoints: 150, draftTokens: 3  } },
+  { index: 12, name: 'Diamond III',  minStars: 49, maxStars: 58, color: '#b9f2ff', rewards: { rubins: 10000, passCredits: 200, ovrPoints: 200, draftTokens: 5  } },
+  { index: 13, name: 'Diamond II',   minStars: 59, maxStars: 69, color: '#b9f2ff', rewards: { rubins: 20000, passCredits: 300, ovrPoints: 400, draftTokens: 10 } },
+  { index: 14, name: 'Diamond I',    minStars: 70, maxStars: 9999,color: '#b9f2ff', rewards: { rubins: 50000, passCredits: 500, ovrPoints: 1000, draftTokens: 20 } }
+];
+
+// Helper: get current division object from stars
+function getCurrentDivision() {
+  if (!gameState) return DIVISIONS[0];
+  for (const div of DIVISIONS) {
+    if (gameState.stars >= div.minStars && gameState.stars <= div.maxStars) return div;
+  }
+  return DIVISIONS[DIVISIONS.length - 1];
+}
+
+// Helper: get a random bot suitable for current division
+function getRandomBot() {
+  const currentDivIndex = getCurrentDivision().index;
+  const suitable = BOTS.filter(b => currentDivIndex >= b.minDiv && currentDivIndex <= b.maxDiv);
+  if (suitable.length === 0) return BOTS[BOTS.length - 1];
+  return suitable[Math.floor(Math.random() * suitable.length)];
+}
+
+// Match rewards (editable)
+const MATCH_REWARDS = {
+  win:  { rubinsBase: 30, rubinsPerGoal: 6, rubinsPerConceded: -3, xp: 20 },
+  draw: { rubinsBase: 13, xp: 10 },
+  loss: { rubinsBase: 5,  xp: 5 }
+};
+
+// After the module, add:
+// === END MODULE: bots & divisions ===
+
+IMPORTANT: Output ONLY the replacement code for this module. Do NOT repeat the entire HTML file.
 
     // ============================================
     // === INSERT MODULE: daily quests & rewards ===
