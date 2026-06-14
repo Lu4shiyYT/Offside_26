@@ -433,12 +433,12 @@ function handleNavShop() {
   botReply(html, 500, {html:true});
 }
 
-document.getElementById('nav-squad').addEventListener('click', handleNavSquad);
-document.getElementById('nav-inventory').addEventListener('click', handleNavInventory);
-document.getElementById('nav-shop').addEventListener('click', handleNavShop);
-document.getElementById('nav-events').addEventListener('click', handleNavEvents);
-document.getElementById('nav-division').addEventListener('click', handleNavDivision);
-document.getElementById('nav-quests').addEventListener('click', handleNavQuests);
+document.getElementById('nav-squad').addEventListener('click', function() { handleNavSquad(); });
+document.getElementById('nav-inventory').addEventListener('click', function() { handleNavInventory(); });
+document.getElementById('nav-shop').addEventListener('click', function() { handleNavShop(); });
+document.getElementById('nav-events').addEventListener('click', function() { handleNavEvents(); });
+document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
+document.getElementById('nav-quests').addEventListener('click', function() { handleNavQuests(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
 const ALL_PLAYERS_TEMPLATE = [
