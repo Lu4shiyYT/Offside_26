@@ -410,8 +410,6 @@ function setActiveNav(btnId) {
 function promptRegister() { botReply('Сначала зарегистрируйся!', 400); }
 
 function handleNavSquad() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-squad'); botReply('👥 <b>Состав</b> — в разработке.', 500, {html:true}); }
-function handleNavInventory() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-inventory'); botReply('🎒 <b>Игроки</b> — в разработке.', 500, {html:true}); }
-function handleNavEvents() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-events'); botReply('📋 <b>События</b> — в разработке.', 500, {html:true}); }
 function handleNavDivision() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-division'); botReply('⚽ <b>Дивизион</b> — в разработке.', 500, {html:true}); }
 function handleNavQuests() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
 
@@ -1782,6 +1780,22 @@ async function redeemPromoCode() {
       setActiveNav('nav-inventory');
       openInventoryModal();
     };
+    // ============================================
+// === FINAL WIRING: переопределяем навигацию ===
+// ============================================
+handleNavEvents = function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-events');
+  if (typeof showEvents === 'function') showEvents();
+  else botReply('📋 События загружаются...', 400);
+};
+
+handleNavInventory = function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-inventory');
+  if (typeof openInventoryModal === 'function') openInventoryModal();
+  else botReply('🎒 Инвентарь загружается...', 400);
+};
 // ========== INIT ==========
 function init() {
   loadState(); updateHeaderResources();
