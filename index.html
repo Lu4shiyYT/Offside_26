@@ -731,7 +731,544 @@ async function redeemPromoCode() {
   await botReply(msg, 600, {html:true});
   input.value = '';
 }
+// ========== DRAFTS ==========
+// ============================================
+// === INSERT MODULE: draft logic ===
+// ============================================
 
+    // === OPEN DRAFT (single pull) ===
+    async function openDraft(draftId) {
+      const config = getDraftConfig(draftId);
+      if (!config) {
+        await botReply('❌ Драфт не найден.', 300);
+        return;
+      }
+
+      if ((gameState.draftTokens || 0) < config.cost) {
+        await botReply('❌ Недостаточно жетонов открытия.', 400);
+        return;
+      }
+
+      gameState.draftTokens -= config.cost;
+
+      // Initialise counters if missing
+      if (!gameState.draftCounterB) gameState.draftCounterB = 0;
+      if (!gameState.draftCounterA) gameState.draftCounterA = 0;
+
+      gameState.draftCounterB++;
+      gameState.draftCounterA++;
+
+      let { tier, player } = resolveDraftPull(config);
+
+      // ── Pity B: every 10 pulls guaranteed pool B+ ─────────────────────────
+      if (gameState.draftCounterB >= 10 && tier === 'C') {
+        const result = forcePoolB(config);
+        if (result) { tier = result.tier; player = result.player; }
+      }
+
+      // ── Pity A: every 100 pulls guaranteed pool A ─────────────────────────
+      if (gameState.draftCounterA >= 100) {
+        const result = forcePoolA(config);
+        if (result) { tier = result.tier; player = result.player; }
+      }
+
+      // ── Reset counters on natural high-tier drops ─────────────────────────
+      if (tier === 'A') {
+        gameState.draftCounterA = 0;
+        gameState.draftCounterB = 0;
+      } else if (tier === 'B') {
+        gameState.draftCounterB = 0;
+      }
+
+      if (player) {
+        gameState.myPlayers.push(player);
+      }
+
+      saveState();
+      updateHeaderResources();
+
+      if (player) {
+        const card      = buildPlayerCardHTML(player);
+        const tierEmoji = tier === 'A' ? '👑' : tier === 'B' ? '⭐' : '';
+        await botReply(
+          `${tierEmoji} Драфт: <b>${config.name}</b>`,
+          400,
+          { html: true }
+        );
+        await botReply(null, 800, { card: card });
+      } else {
+        await botReply('⚠️ В этом драфте пока нет игроков.', 400);
+      }
+    }
+
+    // === OPEN DRAFT (bulk 10x) ===
+    async function openDraftBulk(draftId) {
+      const config = getDraftConfig(draftId);
+      if (!config) {
+        await botReply('❌ Драфт не найден.', 300);
+        return;
+      }
+
+      const bulkCost = config.costBulk || 10;
+      if ((gameState.draftTokens || 0) < bulkCost) {
+        await botReply('❌ Недостаточно жетонов открытия.', 400);
+        return;
+      }
+
+      gameState.draftTokens -= bulkCost;
+
+      const results      = [];
+      let hasBOrBetter   = false;
+      let bestPlayer     = null;
+      let bestTier       = 'C';
+
+      for (let i = 0; i < 10; i++) {
+        let { tier, player } = resolveDraftPull(config);
+
+        gameState.draftCounterB = (gameState.draftCounterB || 0) + 1;
+        gameState.draftCounterA = (gameState.draftCounterA || 0) + 1;
+
+        // Per-pull pity checks
+        if (gameState.draftCounterB >= 10 && tier === 'C') {
+          const forced = forcePoolB(config);
+          if (forced) { tier = forced.tier; player = forced.player; }
+        }
+        if (gameState.draftCounterA >= 100) {
+          const forced = forcePoolA(config);
+          if (forced) { tier = forced.tier; player = forced.player; }
+        }
+
+        if (tier === 'A') {
+          gameState.draftCounterA = 0;
+          gameState.draftCounterB = 0;
+        } else if (tier === 'B') {
+          gameState.draftCounterB = 0;
+        }
+
+        if (tier === 'A' || tier === 'B') hasBOrBetter = true;
+
+        if (player) {
+          gameState.myPlayers.push(player);
+
+          // Track the best result for the walkout reveal
+          const isBetter =
+            tier === 'A' ||
+            (tier === 'B' && bestTier !== 'A') ||
+            (tier === 'C' && bestTier === 'C' && (!bestPlayer || player.ovr > bestPlayer.ovr));
+
+          if (isBetter) {
+            bestPlayer = player;
+            bestTier   = tier;
+          }
+        }
+
+        results.push({ tier, player });
+      }
+
+      // ── Bulk guarantee: at least one B+ in the whole batch ────────────────
+      if (!hasBOrBetter) {
+        const forced = forcePoolB(config);
+        if (forced && forced.player) {
+          gameState.myPlayers.push(forced.player);
+          results.push({ tier: forced.tier, player: forced.player });
+          bestPlayer = forced.player;
+          bestTier   = forced.tier;
+          gameState.draftCounterB = 0;
+        }
+      }
+
+      saveState();
+      updateHeaderResources();
+
+      // ── Walkout reveal for the best card ──────────────────────────────────
+      if (bestPlayer) {
+        await botReply(
+          `🌟 Волкаут! <b>${config.name}</b>`,
+          400,
+          { html: true }
+        );
+        await botReply(null, 1000, { card: buildPlayerCardHTML(bestPlayer) });
+      }
+
+      // ── List remaining cards (sorted best → worst by OVR) ─────────────────
+      const others = results.filter(
+        r => r.player && r.player !== bestPlayer
+      );
+      others.sort(
+        (a, b) => (b.player ? b.player.ovr : 0) - (a.player ? a.player.ovr : 0)
+      );
+
+      if (others.length > 0) {
+        let listHtml = '<div class="msg-text"><b>Остальные игроки:</b></div>';
+        for (const r of others) {
+          if (r.player) {
+            listHtml += buildPlayerCardHTML(r.player);
+          }
+        }
+        await botReply(listHtml, 800, { html: true });
+      }
+
+      await botReply(
+        `🎟️ Осталось жетонов: <b>${gameState.draftTokens || 0}</b>`,
+        400,
+        { html: true }
+      );
+    }
+
+    // === FORCE POOL B (pity helper) ===
+    function forcePoolB(config) {
+      if (config.poolB && config.poolB.length > 0) {
+        const id       = config.poolB[Math.floor(Math.random() * config.poolB.length)];
+        const template = allPlayers.find(p => p.id === id);
+        if (template) {
+          const player = JSON.parse(JSON.stringify(template));
+          player.trainingLevel = 0;
+          player.ovrUpgrade    = 0;
+          return { tier: 'B', player };
+        }
+      }
+      return null;
+    }
+
+    // === FORCE POOL A (pity helper) ===
+    // Falls back to pool B if pool A is empty.
+    function forcePoolA(config) {
+      if (config.poolA && config.poolA.length > 0) {
+        const id       = config.poolA[Math.floor(Math.random() * config.poolA.length)];
+        const template = allPlayers.find(p => p.id === id);
+        if (template) {
+          const player = JSON.parse(JSON.stringify(template));
+          player.trainingLevel = 0;
+          player.ovrUpgrade    = 0;
+          return { tier: 'A', player };
+        }
+      }
+      // Pool A empty — fall back to pool B
+      return forcePoolB(config);
+    }
+
+    // === SHOW DRAFT MENU (called from events or shop) ===
+    async function showDraftMenu(draftId) {
+      const config = getDraftConfig(draftId);
+      if (!config) {
+        await botReply('❌ Драфт не найден.', 300);
+        return;
+      }
+
+      let html = '';
+      html += `<div class="msg-text"><b>${config.emoji || '🎟️'} ${config.name}</b></div>`;
+      html += `<div class="msg-text" style="font-size:12px;color:#7d8e9e;">`
+            + `🎟️ 1 открытие: ${config.cost} жетонов | `
+            + `10 открытий: ${config.costBulk || 10} жетонов`
+            + `</div>`;
+      html += `<div class="msg-text" style="font-size:11px;color:#7d8e9e;">`
+            + `Пулы: 👑A (1%), ⭐B (12%), C (87%) | `
+            + `Гарант B каждые 10, A каждые 100`
+            + `</div>`;
+      html += `<div class="inline-btn-row">`;
+      html += `<button class="inline-btn" onclick="openDraft('${draftId}')">`
+            + `🎟️ 1 открытие (${config.cost} жет.)`
+            + `</button>`;
+      html += `<button class="inline-btn" onclick="openDraftBulk('${draftId}')">`
+            + `🎟️ 10 открытий (${config.costBulk || 10} жет.)`
+            + `</button>`;
+      html += `</div>`;
+
+      await botReply(html, 500, { html: true });
+    }
+// ========== EXCHANGES DATA STRUCTURES ==========
+// ============================================
+// === INSERT MODULE: SBC exchanges ===
+// ============================================
+
+    // === РЕДАКТИРУЙ ЗДЕСЬ: ОБМЕНЫ ===
+    // requirements: array of condition objects. Supported types:
+    //
+    //   Currency costs:
+    //     { type: 'rubins',           amount: number }
+    //     { type: 'fragments',        amount: number }
+    //     { type: 'trainingPoints',   amount: number }
+    //     { type: 'ovrUpgradePoints', amount: number }
+    //     { type: 'draftTokens',      amount: number }
+    //     { type: 'offsideTokens',    amount: number }
+    //
+    //   Player costs (lowest-OVR eligible are consumed first):
+    //     { type: 'player_any',     count: number, minOvr: number }
+    //     { type: 'player_program', count: number, minOvr: number, program: string }
+    //
+    // reward — one of:
+    //   { type: 'player',           playerId: number }
+    //   { type: 'rubins',           amount: number }
+    //   { type: 'fragments',        amount: number }
+    //   { type: 'draftTokens',      amount: number }
+    //   { type: 'trainingPoints',   amount: number }
+    //   { type: 'ovrUpgradePoints', amount: number }
+    //
+    // completed: false  (set to true after first execution if the exchange is one-time)
+    //
+    // ── Example (commented out) ───────────────────────────────────────────────────
+    // {
+    //   id: 'exchange1',
+    //   title: 'Обмен: Звездный игрок',
+    //   description: 'Обменяй 3-х любых игроков с рейтингом 100+ на одного конкретного игрока',
+    //   requirements: [
+    //     { type: 'player_any', count: 3, minOvr: 100 }
+    //   ],
+    //   reward: { type: 'player', playerId: 50 },
+    //   completed: false
+    // }
+
+    const SBC_LIST = [
+      // ── Add your exchanges below ────────────────────────────────────────────
+      {
+        id: 'exchange_demo',
+        title: 'Обмен: Звездный игрок',
+        description: 'Обменяй 3-х любых игроков с рейтингом 100+ на одного конкретного игрока (Марко Росси)',
+        requirements: [
+          { type: 'player_any', count: 3, minOvr: 100 }
+        ],
+        reward: { type: 'player', playerId: 16 },
+        completed: false
+      }
+      // ── Add more exchanges here ─────────────────────────────────────────────
+      // {
+      //   id: 'frags_to_rubins',
+      //   title: 'Фрагменты → Рубины',
+      //   description: '200 фрагментов → 500 рубинов',
+      //   requirements: [{ type: 'fragments', amount: 200 }],
+      //   reward: { type: 'rubins', amount: 500 },
+      //   completed: false
+      // },
+    ];
+// ========== EXCHANGES LOGIC ==========
+// ============================================
+// === INSERT MODULE: SBC logic ===
+// ============================================
+
+    // === SHOW SBC LIST ===
+    async function showSbcList() {
+      if (!SBC_LIST || SBC_LIST.length === 0) {
+        await botReply('📋 Пока нет доступных обменов.', 400);
+        return;
+      }
+
+      let html = '<div class="msg-text"><b>📋 Обмены</b></div>';
+
+      for (const sbc of SBC_LIST) {
+        // ── Build requirement label string ──────────────────────────────────
+        const reqText = sbc.requirements.map(r => {
+          if (r.type === 'player_any')
+            return `👤 ${r.count} игроков (OVR ${r.minOvr}+)`;
+          if (r.type === 'player_program')
+            return `👤 ${r.count} игроков «${r.program}» (OVR ${r.minOvr}+)`;
+          if (r.type === 'rubins')          return `💎 ${r.amount} рубинов`;
+          if (r.type === 'fragments')       return `🧩 ${r.amount} фрагментов`;
+          if (r.type === 'draftTokens')     return `🎟️ ${r.amount} жетонов`;
+          if (r.type === 'trainingPoints')  return `🎯 ${r.amount} оч. тренировки`;
+          if (r.type === 'ovrUpgradePoints')return `⚡ ${r.amount} оч. OVR`;
+          if (r.type === 'offsideTokens')   return `🚩 ${r.amount} offside tokens`;
+          return `${r.type}: ${r.amount}`;
+        }).join(', ');
+
+        // ── Build reward label string ────────────────────────────────────────
+        let rewardText;
+        if (sbc.reward.type === 'player') {
+          const rp = allPlayers.find(p => p.id === sbc.reward.playerId);
+          rewardText = rp
+            ? `👤 ${rp.name} (OVR ${rp.ovr})`
+            : `👤 Игрок ID ${sbc.reward.playerId}`;
+        } else if (sbc.reward.type === 'rubins') {
+          rewardText = `💎 ${sbc.reward.amount} рубинов`;
+        } else if (sbc.reward.type === 'fragments') {
+          rewardText = `🧩 ${sbc.reward.amount} фрагментов`;
+        } else if (sbc.reward.type === 'draftTokens') {
+          rewardText = `🎟️ ${sbc.reward.amount} жетонов`;
+        } else if (sbc.reward.type === 'trainingPoints') {
+          rewardText = `🎯 ${sbc.reward.amount} оч. тренировки`;
+        } else if (sbc.reward.type === 'ovrUpgradePoints') {
+          rewardText = `⚡ ${sbc.reward.amount} оч. OVR`;
+        } else {
+          rewardText = `${sbc.reward.type}: ${sbc.reward.amount}`;
+        }
+
+        // ── Quick can-do check (informational badge only) ─────────────────
+        let canDo = true;
+        for (const r of sbc.requirements) {
+          if (r.type === 'player_any') {
+            const count = (gameState.myPlayers || [])
+              .filter(p => getEffectiveOvr(p) >= (r.minOvr || 0)).length;
+            if (count < r.count) { canDo = false; break; }
+          } else if (r.type === 'player_program') {
+            const count = (gameState.myPlayers || [])
+              .filter(p => p.program === r.program && getEffectiveOvr(p) >= (r.minOvr || 0)).length;
+            if (count < r.count) { canDo = false; break; }
+          } else if (r.type === 'rubins'           && (gameState.rubins           || 0) < r.amount) { canDo = false; break; }
+          else if (r.type === 'fragments'           && (gameState.fragments        || 0) < r.amount) { canDo = false; break; }
+          else if (r.type === 'draftTokens'         && (gameState.draftTokens      || 0) < r.amount) { canDo = false; break; }
+          else if (r.type === 'offsideTokens'       && (gameState.offsideTokens    || 0) < r.amount) { canDo = false; break; }
+          else if (r.type === 'trainingPoints'      && (gameState.trainingPoints   || 0) < r.amount) { canDo = false; break; }
+          else if (r.type === 'ovrUpgradePoints'    && (gameState.ovrUpgradePoints || 0) < r.amount) { canDo = false; break; }
+        }
+
+        const statusIcon    = canDo ? '✅' : '🔒';
+        const btnDisabled   = canDo ? '' : ' disabled style="opacity:0.5;cursor:not-allowed;"';
+
+        html +=
+          `<div style="background:rgba(255,255,255,0.05);border:1px solid #2a4060;`
+          + `border-radius:8px;padding:10px;margin:4px 0;">`
+          + `<div style="font-weight:700;font-size:13px;">${statusIcon} ${sbc.title}</div>`
+          + `<div style="font-size:11px;color:#7d8e9e;">${sbc.description}</div>`
+          + `<div style="font-size:11px;margin-top:4px;">📥 Требуется: ${reqText}</div>`
+          + `<div style="font-size:11px;color:#4dc05a;">🎁 Награда: ${rewardText}</div>`
+          + `<button class="inline-btn" onclick="executeSbc('${sbc.id}')`
+          + `" style="margin-top:4px;"${btnDisabled}>Обменять</button>`
+          + `</div>`;
+      }
+
+      await botReply(html, 500, { html: true });
+    }
+
+    // === EXECUTE SBC ===
+    async function executeSbc(sbcId) {
+      const sbc = SBC_LIST.find(s => s.id === sbcId);
+      if (!sbc) {
+        await botReply('❌ Обмен не найден.', 300);
+        return;
+      }
+
+      // ── Validate all requirements (read-only pass, no mutations yet) ────────
+      const playersToRemove = [];
+
+      for (const req of sbc.requirements) {
+
+        if (req.type === 'player_any') {
+          const eligible = (gameState.myPlayers || [])
+            .filter(p => getEffectiveOvr(p) >= (req.minOvr || 0));
+          if (eligible.length < req.count) {
+            await botReply(
+              `❌ Недостаточно игроков с OVR ${req.minOvr}+. `
+              + `Нужно: ${req.count}, доступно: ${eligible.length}`,
+              400
+            );
+            return;
+          }
+          eligible.sort((a, b) => getEffectiveOvr(a) - getEffectiveOvr(b));
+          for (let i = 0; i < req.count; i++) {
+            playersToRemove.push(eligible[i].id);
+          }
+
+        } else if (req.type === 'player_program') {
+          const eligible = (gameState.myPlayers || [])
+            .filter(p => p.program === req.program && getEffectiveOvr(p) >= (req.minOvr || 0));
+          if (eligible.length < req.count) {
+            await botReply(
+              `❌ Недостаточно игроков программы «${req.program}» с OVR ${req.minOvr}+. `
+              + `Нужно: ${req.count}, доступно: ${eligible.length}`,
+              400
+            );
+            return;
+          }
+          eligible.sort((a, b) => getEffectiveOvr(a) - getEffectiveOvr(b));
+          for (let i = 0; i < req.count; i++) {
+            playersToRemove.push(eligible[i].id);
+          }
+
+        } else if (req.type === 'rubins') {
+          if ((gameState.rubins || 0) < req.amount) {
+            await botReply(`❌ Недостаточно рубинов. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        } else if (req.type === 'fragments') {
+          if ((gameState.fragments || 0) < req.amount) {
+            await botReply(`❌ Недостаточно фрагментов. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        } else if (req.type === 'draftTokens') {
+          if ((gameState.draftTokens || 0) < req.amount) {
+            await botReply(`❌ Недостаточно жетонов открытия. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        } else if (req.type === 'offsideTokens') {
+          if ((gameState.offsideTokens || 0) < req.amount) {
+            await botReply(`❌ Недостаточно offside tokens. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        } else if (req.type === 'trainingPoints') {
+          if ((gameState.trainingPoints || 0) < req.amount) {
+            await botReply(`❌ Недостаточно очков тренировки. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        } else if (req.type === 'ovrUpgradePoints') {
+          if ((gameState.ovrUpgradePoints || 0) < req.amount) {
+            await botReply(`❌ Недостаточно очков повышения OVR. Нужно: ${req.amount}`, 400);
+            return;
+          }
+        }
+      }
+
+      // ── Deduct currency requirements ────────────────────────────────────────
+      for (const req of sbc.requirements) {
+        if (req.type === 'rubins')           gameState.rubins           = (gameState.rubins           || 0) - req.amount;
+        if (req.type === 'fragments')        gameState.fragments        = (gameState.fragments        || 0) - req.amount;
+        if (req.type === 'draftTokens')      gameState.draftTokens      = (gameState.draftTokens      || 0) - req.amount;
+        if (req.type === 'offsideTokens')    gameState.offsideTokens    = (gameState.offsideTokens    || 0) - req.amount;
+        if (req.type === 'trainingPoints')   gameState.trainingPoints   = (gameState.trainingPoints   || 0) - req.amount;
+        if (req.type === 'ovrUpgradePoints') gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) - req.amount;
+      }
+
+      // ── Remove consumed players ─────────────────────────────────────────────
+      for (const pid of playersToRemove) {
+        const idx = gameState.myPlayers.findIndex(p => p.id === pid);
+        if (idx !== -1) gameState.myPlayers.splice(idx, 1);
+      }
+
+      // ── Apply reward ────────────────────────────────────────────────────────
+      const reward = sbc.reward;
+      let rewardMsg = '';
+
+      if (reward.type === 'player') {
+        const template = allPlayers.find(p => p.id === reward.playerId);
+        if (template) {
+          const newPlayer = JSON.parse(JSON.stringify(template));
+          newPlayer.trainingLevel = 0;
+          newPlayer.ovrUpgrade    = 0;
+          gameState.myPlayers.push(newPlayer);
+          rewardMsg = `👤 ${newPlayer.name} (OVR ${newPlayer.ovr})`;
+        }
+      } else if (reward.type === 'rubins') {
+        gameState.rubins = (gameState.rubins || 0) + (reward.amount || 0);
+        rewardMsg = `💎 ${reward.amount} рубинов`;
+      } else if (reward.type === 'fragments') {
+        gameState.fragments = (gameState.fragments || 0) + (reward.amount || 0);
+        rewardMsg = `🧩 ${reward.amount} фрагментов`;
+      } else if (reward.type === 'draftTokens') {
+        gameState.draftTokens = (gameState.draftTokens || 0) + (reward.amount || 0);
+        rewardMsg = `🎟️ ${reward.amount} жетонов`;
+      } else if (reward.type === 'trainingPoints') {
+        gameState.trainingPoints = (gameState.trainingPoints || 0) + (reward.amount || 0);
+        rewardMsg = `🎯 ${reward.amount} оч. тренировки`;
+      } else if (reward.type === 'ovrUpgradePoints') {
+        gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + (reward.amount || 0);
+        rewardMsg = `⚡ ${reward.amount} оч. OVR`;
+      }
+
+      saveState();
+      updateHeaderResources();
+
+      await botReply(
+        `✅ Обмен «${sbc.title}» выполнен!`
+        + (rewardMsg ? `\n🎁 Получено: ${rewardMsg}` : ''),
+        500
+      );
+
+      // If the exchange is one-time, show a player card for the new player
+      if (reward.type === 'player') {
+        const acquired = gameState.myPlayers[gameState.myPlayers.length - 1];
+        if (acquired) {
+          await botReply(null, 600, { card: buildPlayerCardHTML(acquired) });
+        }
+      }
+    }
 // ========== INIT ==========
 function init() {
   loadState(); updateHeaderResources();
