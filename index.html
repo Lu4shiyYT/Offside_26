@@ -1,671 +1,1389 @@
-!DOCTYPE html
-html lang=ru
-head
-meta charset=UTF-8
-meta name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no
-titleТренер — Футбольный Менеджерtitle
-style
- === СТИЛИ Основная тема (Telegram Dark) === 
-root {
-  --bg-main #0e1621;
-  --bg-chat #17212b;
-  --bg-message-bot #182533;
-  --bg-message-user #2b5278;
-  --bg-input #17212b;
-  --bg-header #17212b;
-  --bg-nav #17212b;
-  --text-primary #e8eaed;
-  --text-secondary #6c8ea4;
-  --text-muted #4a6278;
-  --accent #5294e2;
-  --accent-green #4dc05a;
-  --accent-red #e05252;
-  --accent-gold #f0c040;
-  --accent-orange #e07830;
-  --border #2a3a4a;
-  --card-bg #1e2d3d;
-  --card-border #2e4060;
-  --shadow rgba(0,0,0,0.4);
-  --nav-height 60px;
-  --header-height 60px;
-  --bot-radius 4px 16px 16px 16px;
-  --user-radius 16px 4px 16px 16px;
-}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Тренер — Футбольный Менеджер</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
- { box-sizing border-box; margin 0; padding 0; -webkit-tap-highlight-color transparent; }
+    :root {
+      --bg-main: #0e1621;
+      --bg-header: #17212b;
+      --bg-input: #17212b;
+      --bg-bot-bubble: #182533;
+      --bg-user-bubble: #2b5278;
+      --bg-nav: #17212b;
+      --text-primary: #e8e8e8;
+      --text-secondary: #7d8e9e;
+      --text-time: #6b7d8d;
+      --accent: #5288c1;
+      --border: #1e2d3d;
+      --avatar-bg: #2b5278;
+      --start-overlay-bg: #0e1621;
+      --btn-primary: #5288c1;
+      --btn-primary-hover: #4a7ab0;
+      --nav-active: #5288c1;
+      --nav-inactive: #6b7d8d;
+      --shadow: rgba(0,0,0,0.4);
+    }
 
-body {
-  font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background var(--bg-main);
-  color var(--text-primary);
-  height 100vh;
-  overflow hidden;
-  display flex;
-  justify-content center;
-}
+    html, body {
+      height: 100%;
+      width: 100%;
+      background: #0a0f18;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      overflow: hidden;
+    }
 
-#app {
-  width 100%;
-  max-width 600px;
-  height 100vh;
-  display flex;
-  flex-direction column;
-  position relative;
-  background var(--bg-chat);
-}
+    /* ===== MAIN WRAPPER ===== */
+    #app {
+      max-width: 600px;
+      width: 100%;
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-main);
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
 
- === ШАПКА ЧАТА === 
-#chat-header {
-  height var(--header-height);
-  background var(--bg-header);
-  border-bottom 1px solid var(--border);
-  display flex;
-  align-items center;
-  padding 0 12px;
-  gap 10px;
-  flex-shrink 0;
-  z-index 10;
-}
+    /* ===== START OVERLAY ===== */
+    #start-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--start-overlay-bg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      gap: 16px;
+    }
 
-#bot-avatar {
-  width 42px; height 42px;
-  border-radius 50%;
-  background linear-gradient(135deg, #2b5278, #5294e2);
-  display flex; align-items center; justify-content center;
-  font-size 20px; flex-shrink 0;
-}
+    #start-overlay.hidden {
+      display: none;
+    }
 
-#header-info { flex 1; min-width 0; }
-#header-name { font-size 15px; font-weight 600; color var(--text-primary); }
-#header-status { font-size 12px; color var(--accent-green); }
+    .start-logo {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: var(--avatar-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 24px rgba(82, 136, 193, 0.4);
+    }
 
-#header-stats {
-  display flex; flex-direction column; align-items flex-end; gap 2px; flex-shrink 0;
-}
-.header-stat {
-  font-size 11px; color var(--text-secondary);
-  display flex; align-items center; gap 3px;
-}
-.header-stat span { color var(--accent-gold); font-weight 600; }
+    .start-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
 
- === ЛЕНТА ЧАТА === 
-#chat-messages {
-  flex 1;
-  overflow-y auto;
-  padding 10px 8px;
-  padding-bottom 8px;
-  scroll-behavior smooth;
-}
+    .start-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      max-width: 320px;
+    }
 
-#chat-messages-webkit-scrollbar { width 4px; }
-#chat-messages-webkit-scrollbar-track { background transparent; }
-#chat-messages-webkit-scrollbar-thumb { background var(--border); border-radius 2px; }
+    #btn-start {
+      margin-top: 12px;
+      padding: 14px 48px;
+      background: var(--btn-primary);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+    }
 
-.msg-wrapper {
-  display flex;
-  margin-bottom 6px;
-  animation fadeIn 0.2s ease;
-}
+    #btn-start:hover {
+      background: var(--btn-primary-hover);
+    }
 
-@keyframes fadeIn { from { opacity 0; transform translateY(6px); } to { opacity 1; transform translateY(0); } }
+    #btn-start:active {
+      transform: scale(0.97);
+    }
 
-.msg-wrapper.bot { align-items flex-start; }
-.msg-wrapper.user { justify-content flex-end; }
+    /* ===== HEADER ===== */
+    #header {
+      background: var(--bg-header);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      min-height: 56px;
+      z-index: 10;
+    }
 
-.msg-avatar {
-  width 28px; height 28px;
-  border-radius 50%;
-  background linear-gradient(135deg, #2b5278, #5294e2);
-  display flex; align-items center; justify-content center;
-  font-size 14px; flex-shrink 0; margin-right 6px; margin-top 2px;
-}
+    .header-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--avatar-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
 
-.msg-bubble {
-  max-width 82%;
-  padding 8px 12px;
-  font-size 14px;
-  line-height 1.4;
-  position relative;
-}
+    .header-info {
+      flex: 1;
+      min-width: 0;
+    }
 
-.msg-wrapper.bot .msg-bubble {
-  background var(--bg-message-bot);
-  border-radius var(--bot-radius);
-  color var(--text-primary);
-}
+    .header-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.msg-wrapper.user .msg-bubble {
-  background var(--bg-message-user);
-  border-radius var(--user-radius);
-  color var(--text-primary);
-}
+    .header-status {
+      font-size: 12px;
+      color: #4dcd6c;
+      margin-top: 1px;
+    }
 
-.msg-time {
-  font-size 10px; color var(--text-muted);
-  text-align right; margin-top 3px;
-}
+    .header-resources {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+      flex-shrink: 0;
+    }
 
- Кнопки внутри сообщений 
-.msg-buttons {
-  display flex; flex-wrap wrap; gap 6px; margin-top 8px;
-}
-.msg-btn {
-  background var(--accent); color #fff;
-  border none; border-radius 8px;
-  padding 6px 12px; font-size 13px;
-  cursor pointer; transition opacity 0.15s;
-  white-space nowrap;
-}
-.msg-btnhover { opacity 0.85; }
-.msg-btn.secondary { background var(--card-bg); color var(--text-primary); border 1px solid var(--border); }
-.msg-btn.danger { background var(--accent-red); }
-.msg-btn.success { background var(--accent-green); color #fff; }
-.msg-btn.gold { background var(--accent-gold); color #111; }
-.msg-btn.tactic { background #2a4060; border 1px solid var(--accent); font-size 12px; }
-.msg-btn.tactic.active { background var(--accent); }
+    .resources-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
 
- Карточка игрока в чате 
-.player-card {
-  background linear-gradient(135deg, #1a2d40, #243d55);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 10px 12px;
-  margin 4px 0;
-  cursor pointer;
-  transition transform 0.15s;
-  display flex; align-items center; gap 10px;
-  min-width 200px;
-}
-.player-cardhover { transform scale(1.01); }
+    .resource-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
 
-.player-card-avatar {
-  width 44px; height 44px;
-  border-radius 50%;
-  display flex; align-items center; justify-content center;
-  font-size 18px; font-weight 700; flex-shrink 0;
-  position relative; overflow hidden;
-}
-.player-card-avatar img { width 100%; height 100%; object-fit cover; border-radius 50%; }
-.player-card-avatar .pos-placeholder {
-  width 100%; height 100%;
-  display flex; align-items center; justify-content center;
-  font-size 12px; font-weight 700; color #fff;
-  border-radius 50%;
-}
+    .resource-item span.emoji {
+      font-size: 13px;
+    }
 
-.player-card-info { flex 1; min-width 0; }
-.player-card-name { font-size 13px; font-weight 600; white-space nowrap; overflow hidden; text-overflow ellipsis; }
-.player-card-sub { font-size 11px; color var(--text-secondary); margin-top 2px; }
-.player-card-ovr {
-  font-size 22px; font-weight 800;
-  min-width 40px; text-align center;
-}
+    .resource-item span.val {
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 20px;
+    }
 
- OVR цвета 
-.ovr-60 { color #cd7f32; }
-.ovr-70 { color #aaa; }
-.ovr-80 { color #f0c040; }
-.ovr-90 { color #5294e2; }
-.ovr-95 { color #e052a0; }
+    /* ===== CHAT AREA ===== */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 8px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scroll-behavior: smooth;
+    }
 
- Профиль  ресурсы 
-.resources-card {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 12px;
-  margin 4px 0;
-}
-.resources-grid {
-  display grid; grid-template-columns 1fr 1fr;
-  gap 8px; margin-top 8px;
-}
-.resource-item {
-  display flex; align-items center; gap 6px;
-  font-size 13px;
-}
-.resource-icon { font-size 16px; }
-.resource-value { font-weight 600; color var(--accent-gold); }
-.resource-label { color var(--text-secondary); font-size 11px; }
+    #chat::-webkit-scrollbar {
+      width: 4px;
+    }
 
- Дивизион 
-.division-card {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 14px;
-  text-align center;
-}
-.division-name { font-size 18px; font-weight 700; margin-bottom 6px; }
-.division-stars { font-size 20px; margin-bottom 8px; }
-.stars-display { display flex; justify-content center; gap 3px; flex-wrap wrap; }
-.star { color var(--accent-gold); font-size 16px; }
-.star.empty { color var(--text-muted); }
+    #chat::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
- Квесты 
-.quest-item {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 10px;
-  padding 10px 12px;
-  margin 4px 0;
-}
-.quest-title { font-size 13px; font-weight 600; margin-bottom 4px; }
-.quest-reward { font-size 11px; color var(--text-secondary); margin-bottom 6px; }
-.quest-progress { font-size 12px; color var(--accent); margin-bottom 6px; }
-.progress-bar {
-  height 4px; background var(--border); border-radius 2px; overflow hidden;
-}
-.progress-fill { height 100%; background var(--accent); border-radius 2px; transition width 0.3s; }
+    #chat::-webkit-scrollbar-thumb {
+      background: #2a3a4a;
+      border-radius: 2px;
+    }
 
- Матч 
-.match-event {
-  padding 4px 0;
-  font-size 13px;
-}
-.match-event .minute { color var(--accent); font-weight 700; min-width 32px; display inline-block; }
-.match-event.goal { color var(--accent-green); }
-.match-event.yellow { color var(--accent-gold); }
-.match-event.red { color var(--accent-red); }
-.match-score {
-  font-size 24px; font-weight 800;
-  text-align center; margin 8px 0;
-  color var(--text-primary);
-}
+    /* ===== DATE DIVIDER ===== */
+    .date-divider {
+      text-align: center;
+      margin: 8px 0;
+      font-size: 12px;
+      color: var(--text-time);
+      position: relative;
+    }
 
- Таб магазина 
-.shop-pack {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 12px;
-  margin 6px 0;
-  display flex; align-items center; gap 10px;
-}
-.shop-pack-icon { font-size 28px; }
-.shop-pack-info { flex 1; }
-.shop-pack-name { font-size 14px; font-weight 600; }
-.shop-pack-desc { font-size 11px; color var(--text-secondary); margin-top 2px; }
-.shop-pack-price { font-size 13px; font-weight 600; color var(--accent-gold); }
+    .date-divider span {
+      background: var(--bg-main);
+      padding: 0 10px;
+      position: relative;
+      z-index: 1;
+    }
 
- SBC 
-.sbc-item {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 12px;
-  margin 6px 0;
-}
-.sbc-title { font-size 14px; font-weight 600; margin-bottom 6px; }
-.sbc-req { font-size 12px; color var(--text-secondary); margin-bottom 2px; }
-.sbc-reward { font-size 12px; color var(--accent-green); margin-top 6px; }
+    .date-divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+    }
 
- Абонемент 
-.pass-level {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 10px;
-  padding 10px;
-  margin 3px 0;
-  display flex; align-items center; gap 10px;
-}
-.pass-level-num { font-size 13px; font-weight 700; min-width 28px; color var(--accent); }
-.pass-level-reward { font-size 12px; flex 1; }
-.pass-level-claimed { font-size 18px; }
+    /* ===== MESSAGE WRAPPER ===== */
+    .msg-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      max-width: 100%;
+      animation: fadeIn 0.25s ease forwards;
+    }
 
- === ПАНЕЛЬ ВВОДА === 
-#input-area {
-  background var(--bg-input);
-  border-top 1px solid var(--border);
-  padding 8px 10px;
-  display flex; align-items center; gap 8px;
-  flex-shrink 0;
-}
+    .msg-wrapper.bot {
+      align-self: flex-start;
+      flex-direction: row;
+      max-width: 88%;
+    }
 
-#message-input {
-  flex 1;
-  background #1e2d3d;
-  border 1px solid var(--border);
-  border-radius 20px;
-  padding 8px 14px;
-  color var(--text-primary);
-  font-size 14px;
-  outline none;
-  resize none;
-  max-height 80px;
-  overflow-y auto;
-}
-#message-inputplaceholder { color var(--text-muted); }
+    .msg-wrapper.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+      max-width: 80%;
+    }
 
-#send-btn {
-  width 38px; height 38px;
-  background var(--accent);
-  border none; border-radius 50%;
-  cursor pointer; display flex; align-items center; justify-content center;
-  font-size 16px; flex-shrink 0;
-  transition opacity 0.15s;
-}
-#send-btnhover { opacity 0.85; }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
- === НИЖНЯЯ НАВИГАЦИЯ === 
-#nav-bar {
-  height var(--nav-height);
-  background var(--bg-nav);
-  border-top 1px solid var(--border);
-  display flex;
-  flex-shrink 0;
-  z-index 10;
-}
+    /* ===== BOT AVATAR (small, in chat) ===== */
+    .msg-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--avatar-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
 
-.nav-btn {
-  flex 1;
-  display flex; flex-direction column;
-  align-items center; justify-content center;
-  gap 2px;
-  background none; border none;
-  color var(--text-muted);
-  cursor pointer;
-  transition color 0.15s;
-  font-size 10px;
-  padding 4px 2px;
-}
-.nav-btnhover, .nav-btn.active { color var(--accent); }
-.nav-btn .nav-icon { font-size 20px; line-height 1; }
-.nav-btn .nav-label { font-size 9px; white-space nowrap; }
+    .msg-avatar.hidden {
+      visibility: hidden;
+    }
 
- === СТАРТОВЫЙ ЭКРАН === 
-#start-screen {
-  position absolute; inset 0;
-  background var(--bg-main);
-  display flex; flex-direction column;
-  align-items center; justify-content center;
-  z-index 100; gap 20px; padding 30px;
-}
-.start-logo { font-size 60px; }
-.start-title { font-size 26px; font-weight 800; color var(--text-primary); text-align center; }
-.start-sub { font-size 14px; color var(--text-secondary); text-align center; }
-#start-btn {
-  background var(--accent); color #fff;
-  border none; border-radius 12px;
-  padding 14px 40px; font-size 18px; font-weight 700;
-  cursor pointer; transition opacity 0.15s; margin-top 10px;
-}
-#start-btnhover { opacity 0.85; }
+    /* ===== BUBBLES ===== */
+    .msg-bubble {
+      padding: 8px 10px 6px;
+      border-radius: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+      position: relative;
+      max-width: 100%;
+    }
 
- === МОДАЛЬНОЕ ОКНО === 
-#modal-overlay {
-  position absolute; inset 0;
-  background rgba(0,0,0,0.7);
-  z-index 200; display none;
-  align-items flex-end;
-  justify-content center;
-}
-#modal-overlay.open { display flex; }
+    .msg-wrapper.bot .msg-bubble {
+      background: var(--bg-bot-bubble);
+      border-bottom-left-radius: 4px;
+      color: var(--text-primary);
+    }
 
-#modal-box {
-  background var(--bg-header);
-  border-radius 16px 16px 0 0;
-  width 100%; max-height 85vh;
-  overflow-y auto;
-  padding 16px;
-  animation slideUp 0.25s ease;
-}
-@keyframes slideUp { from { transform translateY(40px); opacity 0; } to { transform translateY(0); opacity 1; } }
+    .msg-wrapper.user .msg-bubble {
+      background: var(--bg-user-bubble);
+      border-bottom-right-radius: 4px;
+      color: #fff;
+    }
 
-#modal-box-webkit-scrollbar { width 3px; }
-#modal-box-webkit-scrollbar-thumb { background var(--border); }
+    .msg-text {
+      font-size: 14px;
+      line-height: 1.5;
+    }
 
-.modal-header {
-  display flex; align-items center; justify-content space-between;
-  margin-bottom 14px;
-}
-.modal-title { font-size 16px; font-weight 700; }
-.modal-close {
-  width 30px; height 30px;
-  background var(--card-bg); border none;
-  border-radius 50%; color var(--text-primary);
-  cursor pointer; font-size 16px;
-  display flex; align-items center; justify-content center;
-}
+    .msg-time {
+      font-size: 11px;
+      color: var(--text-time);
+      text-align: right;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+    }
 
- === СОСТАВ (МОДАЛКА) === 
-.formation-select {
-  background var(--card-bg);
-  border 1px solid var(--border);
-  color var(--text-primary);
-  border-radius 8px;
-  padding 6px 10px;
-  font-size 13px; width 100%;
-  margin-bottom 10px;
-}
+    .msg-wrapper.user .msg-time {
+      color: rgba(255,255,255,0.55);
+    }
 
-.field-container {
-  background linear-gradient(180deg, #1a4a1a 0%, #1f5a1f 50%, #1a4a1a 100%);
-  border-radius 10px;
-  padding 10px;
-  position relative;
-  margin-bottom 10px;
-  min-height 320px;
-}
-.field-lines {
-  position absolute; inset 10px;
-  border 1px solid rgba(255,255,255,0.15);
-  border-radius 6px;
-}
-.field-center {
-  position absolute; top 50%; left 50%;
-  transform translate(-50%, -50%);
-  width 50px; height 50px;
-  border 1px solid rgba(255,255,255,0.15);
-  border-radius 50%;
-}
+    /* ===== PROFILE CARD BUBBLE ===== */
+    .profile-card {
+      background: linear-gradient(135deg, #1a2f45 0%, #182533 100%);
+      border: 1px solid #2a4060;
+      border-radius: 10px;
+      padding: 12px 14px;
+      min-width: 220px;
+      max-width: 280px;
+    }
 
-.formation-row {
-  display flex; justify-content center; gap 6px;
-  margin-bottom 6px;
-}
+    .profile-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
-.slot {
-  width 54px; height 62px;
-  background rgba(0,0,0,0.35);
-  border 1.5px dashed rgba(255,255,255,0.3);
-  border-radius 8px;
-  display flex; flex-direction column;
-  align-items center; justify-content center;
-  font-size 10px; color rgba(255,255,255,0.5);
-  cursor pointer; transition border-color 0.15s;
-  position relative;
-  flex-shrink 0;
-}
-.slot.filled { border 1.5px solid var(--accent); }
-.slot.drag-over { border-color var(--accent-green); background rgba(77,192,90,0.15); }
-.slot-pos { font-size 9px; color rgba(255,255,255,0.4); }
-.slot-name { font-size 10px; color #fff; font-weight 600; text-align center; line-height 1.2; max-width 52px; overflow hidden; text-overflow ellipsis; white-space nowrap; }
-.slot-ovr { font-size 11px; font-weight 700; }
+    .profile-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 13px;
+    }
 
-.bench-section { margin 6px 0; }
-.bench-title { font-size 12px; color var(--text-secondary); margin-bottom 6px; }
-.bench-slots { display flex; gap 6px; flex-wrap wrap; }
-.bench-slot {
-  width 54px; height 62px;
-  background rgba(0,0,0,0.25);
-  border 1.5px dashed rgba(255,255,255,0.2);
-  border-radius 8px;
-  display flex; flex-direction column;
-  align-items center; justify-content center;
-  font-size 10px; color rgba(255,255,255,0.4);
-  cursor pointer; transition border-color 0.15s;
-  flex-shrink 0;
-}
-.bench-slot.filled { border-color var(--text-secondary); }
+    .profile-card-row:last-child {
+      border-bottom: none;
+    }
 
-.available-players {
-  border-top 1px solid var(--border);
-  padding-top 10px;
-}
-.available-title { font-size 12px; color var(--text-secondary); margin-bottom 6px; }
-.players-scroll {
-  display flex; gap 8px; overflow-x auto;
-  padding-bottom 8px;
-}
-.players-scroll-webkit-scrollbar { height 3px; }
-.players-scroll-webkit-scrollbar-thumb { background var(--border); }
+    .profile-card-row .label {
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
-.mini-card {
-  width 54px; height 70px;
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 8px;
-  display flex; flex-direction column;
-  align-items center; justify-content center;
-  gap 2px; flex-shrink 0;
-  cursor grab; font-size 10px;
-  transition transform 0.1s;
-  padding 4px;
-}
-.mini-cardactive { cursor grabbing; transform scale(0.95); }
-.mini-card-pos {
-  width 26px; height 26px;
-  border-radius 50%;
-  display flex; align-items center; justify-content center;
-  font-size 9px; font-weight 700; color #fff;
-}
-.mini-card-name { font-size 9px; text-align center; white-space nowrap; overflow hidden; text-overflow ellipsis; max-width 52px; }
-.mini-card-ovr { font-size 11px; font-weight 700; }
+    .profile-card-row .value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
 
- === ИНВЕНТАРЬ === 
-.filters-bar {
-  display flex; gap 6px; flex-wrap wrap; margin-bottom 10px;
-}
-.filter-input {
-  background var(--card-bg);
-  border 1px solid var(--border);
-  color var(--text-primary);
-  border-radius 6px;
-  padding 5px 8px;
-  font-size 12px;
-  flex 1; min-width 80px;
-}
-.filter-select {
-  background var(--card-bg);
-  border 1px solid var(--border);
-  color var(--text-primary);
-  border-radius 6px;
-  padding 5px 8px;
-  font-size 12px;
-}
+    .profile-card-id {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 11px;
+      color: var(--text-time);
+      word-break: break-all;
+    }
 
- Детали карточки 
-.card-detail {
-  background linear-gradient(135deg, #1a2d40, #243d55);
-  border-radius 12px;
-  padding 14px;
-}
-.stats-grid {
-  display grid; grid-template-columns 1fr 1fr;
-  gap 6px; margin-top 10px;
-}
-.stat-item {
-  display flex; align-items center; gap 6px;
-}
-.stat-bar-wrap { flex 1; background var(--border); border-radius 2px; height 4px; overflow hidden; }
-.stat-bar { height 100%; border-radius 2px; }
-.stat-name { font-size 11px; color var(--text-secondary); min-width 30px; }
-.stat-val { font-size 12px; font-weight 700; min-width 24px; text-align right; }
+    /* ===== TYPING INDICATOR ===== */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+    }
 
- Анимация walkout 
-.walkout-anim {
-  text-align center; padding 20px;
-  animation walkout 0.6s ease;
-}
-@keyframes walkout {
-  0% { transform scale(0.5) rotate(-5deg); opacity 0; }
-  60% { transform scale(1.1) rotate(2deg); opacity 1; }
-  100% { transform scale(1) rotate(0deg); opacity 1; }
-}
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
 
- === АДАПТИВНОСТЬ === 
-@media (max-width 400px) {
-  .slot { width 46px; height 54px; }
-  .bench-slot { width 46px; height 54px; }
-  .mini-card { width 46px; height 62px; }
-  .slot-name { font-size 9px; max-width 44px; }
-}
+    .typing-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      animation: typingBounce 1.2s infinite;
+    }
 
-.typing-indicator {
-  display flex; gap 4px; padding 8px 12px;
-  background var(--bg-message-bot);
-  border-radius var(--bot-radius);
-  width fit-content;
-}
-.typing-dot {
-  width 6px; height 6px;
-  background var(--text-secondary);
-  border-radius 50%;
-  animation typing 1.2s infinite;
-}
-.typing-dotnth-child(2) { animation-delay 0.2s; }
-.typing-dotnth-child(3) { animation-delay 0.4s; }
-@keyframes typing { 0%,60%,100% { transform translateY(0); } 30% { transform translateY(-5px); } }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-.team-ovr-display {
-  text-align center;
-  padding 6px;
-  font-size 13px;
-  color var(--text-secondary);
-  border-top 1px solid var(--border);
-  margin-top 6px;
-}
-.special-roles {
-  display flex; flex-wrap wrap; gap 6px; margin 6px 0;
-}
-.role-badge {
-  background var(--card-bg); border 1px solid var(--border);
-  border-radius 6px; padding 4px 8px;
-  font-size 11px; cursor pointer;
-}
-.role-badge.set { border-color var(--accent-gold); color var(--accent-gold); }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
 
- Текстовый стиль в сообщениях 
-.msg-bubble strong { color var(--accent); }
-.msg-bubble .label { color var(--text-secondary); font-size 12px; }
-.msg-bubble h3 { margin-bottom 6px; font-size 15px; }
-.section-header {
-  font-size 14px; font-weight 700;
-  color var(--accent); margin 8px 0 4px;
-  padding-bottom 4px; border-bottom 1px solid var(--border);
-}
-.info-row { display flex; justify-content space-between; padding 3px 0; font-size 13px; }
-.info-row .key { color var(--text-secondary); }
-.info-row .val { color var(--text-primary); font-weight 600; }
+    /* ===== INPUT AREA ===== */
+    #input-area {
+      background: var(--bg-input);
+      border-top: 1px solid var(--border);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
 
-.event-card {
-  background linear-gradient(135deg, #2a1a40, #3d2555);
-  border 1px solid #5a30a0;
-  border-radius 12px;
-  padding 12px;
-  margin 4px 0;
-}
-.event-title { font-size 15px; font-weight 700; color #c080ff; margin-bottom 4px; }
-.event-desc { font-size 12px; color var(--text-secondary); }
+    #msg-input {
+      flex: 1;
+      background: #0e1621;
+      border: 1px solid #1e2d3d;
+      border-radius: 20px;
+      padding: 9px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+      resize: none;
+      line-height: 1.4;
+    }
 
-.daily-reward-display {
-  background linear-gradient(135deg, #1a2d40, #2a4060);
-  border 1px solid var(--accent);
-  border-radius 12px;
-  padding 14px;
-  text-align center;
-  margin 4px 0;
-}
-.reward-amount { font-size 28px; font-weight 800; color var(--accent-gold); margin 8px 0; }
-.reward-type { font-size 14px; color var(--text-secondary); }
+    #msg-input:focus {
+      border-color: var(--accent);
+    }
 
-.pass-progress {
-  background var(--card-bg);
-  border 1px solid var(--card-border);
-  border-radius 12px;
-  padding 12px;
-  margin 4px 0;
-}
-.pass-level-bar { display flex; gap 6px; margin-bottom 10px; align-items center; }
-style
+    #msg-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    #btn-send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--btn-primary);
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #btn-send:hover {
+      background: var(--btn-primary-hover);
+    }
+
+    #btn-send:active {
+      transform: scale(0.92);
+    }
+
+    /* ===== BOTTOM NAV ===== */
+    #bottom-nav {
+      background: var(--bg-nav);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 2px 8px;
+      gap: 3px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--nav-inactive);
+      font-size: 10px;
+      transition: color 0.2s;
+      min-width: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-btn .nav-emoji {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .nav-btn .nav-label {
+      font-size: 9.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      text-align: center;
+      font-family: inherit;
+    }
+
+    .nav-btn:hover,
+    .nav-btn.active {
+      color: var(--nav-active);
+    }
+
+    .nav-btn.active .nav-emoji {
+      filter: drop-shadow(0 0 4px rgba(82, 136, 193, 0.6));
+    }
+
+    /* ===== INLINE BUTTONS in messages ===== */
+    .inline-btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .inline-btn {
+      padding: 6px 12px;
+      background: rgba(82, 136, 193, 0.2);
+      border: 1px solid rgba(82, 136, 193, 0.4);
+      border-radius: 16px;
+      color: var(--accent);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: inherit;
+    }
+
+    .inline-btn:hover {
+      background: rgba(82, 136, 193, 0.35);
+    }
+
+    .inline-btn:active {
+      background: rgba(82, 136, 193, 0.5);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 400px) {
+      .nav-btn .nav-label {
+        font-size: 8.5px;
+      }
+      .nav-btn .nav-emoji {
+        font-size: 18px;
+      }
+      .header-resources {
+        gap: 2px;
+      }
+      .resource-item {
+        font-size: 11px;
+      }
+    }
+
+    /* ===== UTILITY ===== */
+    .hidden { display: none !important; }
+
+    .text-accent { color: var(--accent); }
+    .text-muted { color: var(--text-secondary); }
+    .text-bold { font-weight: 700; }
+
+    /* Scrollbar for webkit */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #2a3a4a transparent;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== START OVERLAY ===== -->
+    <div id="start-overlay">
+      <div class="start-logo">⚽</div>
+      <div class="start-title">Тренер<br>Футбольный Менеджер</div>
+      <div class="start-subtitle">
+        Собери команду мечты, побеждай в дивизионах<br>и стань лучшим менеджером!
+      </div>
+      <button id="btn-start">▶ НАЧАТЬ ИГРУ</button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <div id="header">
+      <div class="header-avatar">⚽</div>
+      <div class="header-info">
+        <div class="header-name">Тренер</div>
+        <div class="header-status">online</div>
+      </div>
+      <div class="header-resources">
+        <div class="resources-row">
+          <div class="resource-item">
+            <span class="emoji">💎</span>
+            <span class="val" id="hdr-rubins">0</span>
+          </div>
+          <div class="resource-item">
+            <span class="emoji">🔮</span>
+            <span class="val" id="hdr-offside">0</span>
+          </div>
+        </div>
+        <div class="resources-row">
+          <div class="resource-item">
+            <span class="emoji">⭐</span>
+            <span class="val" id="hdr-xp">0</span>
+          </div>
+          <div class="resource-item">
+            <span class="emoji">🏆</span>
+            <span class="val" id="hdr-level">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CHAT AREA ===== -->
+    <div id="chat"></div>
+
+    <!-- ===== INPUT AREA ===== -->
+    <div id="input-area">
+      <input
+        type="text"
+        id="msg-input"
+        placeholder="Написать сообщение..."
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        maxlength="200"
+      />
+      <button id="btn-send" title="Отправить">➤</button>
+    </div>
+
+    <!-- ===== BOTTOM NAV ===== -->
+    <nav id="bottom-nav">
+      <button class="nav-btn" id="nav-squad">
+        <span class="nav-emoji">👥</span>
+        <span class="nav-label">Состав</span>
+      </button>
+      <button class="nav-btn" id="nav-inventory">
+        <span class="nav-emoji">🎒</span>
+        <span class="nav-label">Игроки</span>
+      </button>
+      <button class="nav-btn" id="nav-shop">
+        <span class="nav-emoji">🏪</span>
+        <span class="nav-label">Магазин</span>
+      </button>
+      <button class="nav-btn" id="nav-events">
+        <span class="nav-emoji">📋</span>
+        <span class="nav-label">События</span>
+      </button>
+      <button class="nav-btn" id="nav-division">
+        <span class="nav-emoji">⚽</span>
+        <span class="nav-label">Дивизион</span>
+      </button>
+      <button class="nav-btn" id="nav-quests">
+        <span class="nav-emoji">🏅</span>
+        <span class="nav-label">Квесты</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+  <script>
+    /* ======================================================
+       CONSTANTS & CONFIG
+    ====================================================== */
+    const STORAGE_KEY = 'footballManager_gameState';
+
+    /* ======================================================
+       DEFAULT / INITIAL GAME STATE
+    ====================================================== */
+    const DEFAULT_STATE = {
+      rubins: 1500,
+      offsideTokens: 0,
+      trainingPoints: 1000,
+      ovrUpgradePoints: 500,
+      passCredits: 0,
+      fragments: 500,
+      draftTokens: 10,
+      xp: 0,
+      level: 0,
+      nickname: '',
+      playerId: '',
+      stars: 0,
+      matchesPlayed: 0,
+      goalsScored: 0,
+      registered: false,
+      awaitingNickname: false
+    };
+
+    /* ======================================================
+       GAME STATE
+    ====================================================== */
+    let gameState = {};
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          gameState = Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+        } else {
+          gameState = Object.assign({}, DEFAULT_STATE);
+        }
+      } catch (e) {
+        console.warn('loadState error:', e);
+        gameState = Object.assign({}, DEFAULT_STATE);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+      } catch (e) {
+        console.warn('saveState error:', e);
+      }
+    }
+
+    /* ======================================================
+       UTILITY HELPERS
+    ====================================================== */
+    function getTimestamp() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function generatePlayerId() {
+      // 15-digit unique ID
+      try {
+        const arr = new Uint32Array(2);
+        crypto.getRandomValues(arr);
+        const part1 = String(arr[0]).padStart(10, '0');
+        const part2 = String(arr[1]).padStart(10, '0');
+        const combined = (part1 + part2).replace(/\D/g, '');
+        return combined.slice(0, 15).padEnd(15, '0');
+      } catch (e) {
+        // fallback
+        const ts = String(Date.now());
+        const rnd = String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
+        return (ts + rnd).slice(0, 15);
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /* ======================================================
+       HEADER RESOURCES UPDATE
+    ====================================================== */
+    function updateHeaderResources() {
+      document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
+      document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
+      document.getElementById('hdr-xp').textContent = gameState.xp ?? 0;
+      document.getElementById('hdr-level').textContent = gameState.level ?? 0;
+    }
+
+    /* ======================================================
+       CHAT MESSAGE FUNCTIONS
+    ====================================================== */
+    const chatEl = document.getElementById('chat');
+    let lastDateLabel = '';
+    let lastBotSequence = false;
+
+    function getTodayLabel() {
+      const now = new Date();
+      const days = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+      const d = now.getDate();
+      const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+      return `${d} ${months[now.getMonth()]}`;
+    }
+
+    function ensureDateDivider() {
+      const label = getTodayLabel();
+      if (label !== lastDateLabel) {
+        lastDateLabel = label;
+        const div = document.createElement('div');
+        div.className = 'date-divider';
+        div.innerHTML = `<span>${label}</span>`;
+        chatEl.appendChild(div);
+      }
+    }
+
+    function scrollChatToBottom() {
+      setTimeout(() => {
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }, 50);
+    }
+
+    /**
+     * addMessage(text, type, options)
+     * type: 'bot' | 'user'
+     * options: { html: bool, noAvatar: bool, card: html-string }
+     */
+    function addMessage(content, type = 'bot', options = {}) {
+      ensureDateDivider();
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `msg-wrapper ${type}`;
+
+      const time = getTimestamp();
+
+      if (type === 'bot') {
+        // Avatar
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'msg-avatar' + (options.noAvatar ? ' hidden' : '');
+        avatarDiv.textContent = '⚽';
+        wrapper.appendChild(avatarDiv);
+
+        // Bubble
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+
+        if (options.card) {
+          bubble.innerHTML = options.card;
+        } else if (options.html) {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'msg-text';
+          textDiv.innerHTML = content;
+          bubble.appendChild(textDiv);
+        } else {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'msg-text';
+          textDiv.textContent = content;
+          bubble.appendChild(textDiv);
+        }
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'msg-time';
+        timeDiv.textContent = time;
+        bubble.appendChild(timeDiv);
+
+        wrapper.appendChild(bubble);
+        lastBotSequence = true;
+      } else {
+        // User message
+        const bubble = document.createElement('div');
+        bubble.className = 'msg-bubble';
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'msg-text';
+        if (options.html) {
+          textDiv.innerHTML = content;
+        } else {
+          textDiv.textContent = content;
+        }
+        bubble.appendChild(textDiv);
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'msg-time';
+        timeDiv.innerHTML = `${time} <span>✓✓</span>`;
+        bubble.appendChild(timeDiv);
+
+        wrapper.appendChild(bubble);
+        lastBotSequence = false;
+      }
+
+      chatEl.appendChild(wrapper);
+      scrollChatToBottom();
+      return wrapper;
+    }
+
+    function addTypingIndicator() {
+      ensureDateDivider();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'msg-wrapper bot';
+      wrapper.id = 'typing-indicator';
+
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'msg-avatar';
+      avatarDiv.textContent = '⚽';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.innerHTML = `
+        <div class="typing-indicator">
+          <div class="typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>`;
+
+      wrapper.appendChild(avatarDiv);
+      wrapper.appendChild(bubble);
+      chatEl.appendChild(wrapper);
+      scrollChatToBottom();
+      return wrapper;
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.remove();
+    }
+
+    function botReply(content, delay = 600, options = {}) {
+      return new Promise(resolve => {
+        const typing = addTypingIndicator();
+        setTimeout(() => {
+          removeTypingIndicator();
+          const msg = addMessage(content, 'bot', options);
+          resolve(msg);
+        }, delay);
+      });
+    }
+
+    /* ======================================================
+       PROFILE CARD HTML
+    ====================================================== */
+    function buildProfileCardHTML(state) {
+      return `
+        <div class="profile-card">
+          <div class="profile-card-title">📊 Профиль менеджера</div>
+          <div class="profile-card-row">
+            <span class="label">👤 Ник</span>
+            <span class="value">${escapeHtml(state.nickname)}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🏆 Уровень</span>
+            <span class="value">${state.level}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">⭐ XP</span>
+            <span class="value">${state.xp}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">💎 Рубины</span>
+            <span class="value">${state.rubins}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🔮 Оффсайд-токены</span>
+            <span class="value">${state.offsideTokens}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🎯 Очки тренировок</span>
+            <span class="value">${state.trainingPoints}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">⚡ Очки OVR</span>
+            <span class="value">${state.ovrUpgradePoints}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🧩 Фрагменты</span>
+            <span class="value">${state.fragments}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🎟️ Драфт-токены</span>
+            <span class="value">${state.draftTokens}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">⚽ Матчей сыграно</span>
+            <span class="value">${state.matchesPlayed}</span>
+          </div>
+          <div class="profile-card-row">
+            <span class="label">🥅 Голов забито</span>
+            <span class="value">${state.goalsScored}</span>
+          </div>
+          <div class="profile-card-id">🆔 ID: ${escapeHtml(state.playerId)}</div>
+        </div>
+      `;
+    }
+
+    /* ======================================================
+       REGISTRATION FLOW
+    ====================================================== */
+    async function startRegistrationFlow() {
+      await botReply(
+        'Привет! Я — твой виртуальный тренер. 👋\n\nКак тебя зовут? Введи свой никнейм:',
+        800
+      );
+      gameState.awaitingNickname = true;
+      saveState();
+    }
+
+    async function completeRegistration(nickname) {
+      const trimmed = nickname.trim();
+      if (!trimmed || trimmed.length < 2) {
+        await botReply('Никнейм должен содержать минимум 2 символа. Попробуй ещё раз! 😊', 500);
+        return;
+      }
+      if (trimmed.length > 20) {
+        await botReply('Никнейм слишком длинный (максимум 20 символов). Попробуй ещё раз! 😊', 500);
+        return;
+      }
+
+      const playerId = generatePlayerId();
+      gameState.nickname = trimmed;
+      gameState.playerId = playerId;
+      gameState.awaitingNickname = false;
+      gameState.registered = true;
+      saveState();
+      updateHeaderResources();
+
+      await botReply(
+        `Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>\n\nТеперь ты — менеджер своей команды мечты. Собирай игроков, побеждай в дивизионах и веди свою команду к чемпионству! 🏆`,
+        700,
+        { html: true }
+      );
+
+      await botReply(
+        null,
+        900,
+        { card: buildProfileCardHTML(gameState) }
+      );
+
+      await botReply(
+        'Используй кнопки внизу для навигации. Удачи на поле! ⚽',
+        600
+      );
+    }
+
+    /* ======================================================
+       START SCREEN LOGIC
+    ====================================================== */
+    const startOverlay = document.getElementById('start-overlay');
+    const btnStart = document.getElementById('btn-start');
+
+    function hideStartOverlay() {
+      startOverlay.classList.add('hidden');
+    }
+
+    btnStart.addEventListener('click', () => {
+      hideStartOverlay();
+      startRegistrationFlow();
+    });
+
+    /* ======================================================
+       SEND MESSAGE LOGIC
+    ====================================================== */
+    const msgInput = document.getElementById('msg-input');
+    const btnSend = document.getElementById('btn-send');
+
+    function sendUserMessage() {
+      const text = msgInput.value.trim();
+      if (!text) return;
+
+      msgInput.value = '';
+      msgInput.style.height = '';
+
+      addMessage(text, 'user');
+      processUserMessage(text);
+    }
+
+    btnSend.addEventListener('click', sendUserMessage);
+
+    msgInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendUserMessage();
+      }
+    });
+
+    /* ======================================================
+       PROCESS USER MESSAGE
+    ====================================================== */
+    function processUserMessage(text) {
+      const lower = text.toLowerCase().trim();
+
+      // --- Registration: awaiting nickname ---
+      if (gameState.awaitingNickname) {
+        completeRegistration(text);
+        return;
+      }
+
+      // --- Not registered yet ---
+      if (!gameState.registered) {
+        botReply('Нажми кнопку «НАЧАТЬ ИГРУ», чтобы начать! 😊', 500);
+        return;
+      }
+
+      // --- Basic command routing ---
+      if (lower === 'профиль' || lower === '/profile' || lower === '/профиль') {
+        showProfile();
+        return;
+      }
+
+      if (lower === 'помощь' || lower === '/help' || lower === '/помощь' || lower === 'помоги') {
+        showHelp();
+        return;
+      }
+
+      if (lower === 'состав' || lower === '/состав' || lower === '/squad') {
+        handleNavSquad();
+        return;
+      }
+
+      if (lower === 'магазин' || lower === '/магазин' || lower === '/shop') {
+        handleNavShop();
+        return;
+      }
+
+      if (lower === 'игроки' || lower === '/игроки' || lower === '/inventory') {
+        handleNavInventory();
+        return;
+      }
+
+      if (lower === 'события' || lower === '/события' || lower === '/events') {
+        handleNavEvents();
+        return;
+      }
+
+      if (lower === 'дивизион' || lower === '/дивизион' || lower === '/division') {
+        handleNavDivision();
+        return;
+      }
+
+      if (lower === 'квесты' || lower === '/квесты' || lower === '/quests') {
+        handleNavQuests();
+        return;
+      }
+
+      // --- Default fallback ---
+      botReply(
+        `Я не понял команду «${escapeHtml(text)}». 🤔\n\nНапиши «помощь» или воспользуйся кнопками навигации внизу.`,
+        600,
+        { html: true }
+      );
+    }
+
+    /* ======================================================
+       SHOW PROFILE
+    ====================================================== */
+    function showProfile() {
+      botReply(null, 500, { card: buildProfileCardHTML(gameState) });
+    }
+
+    /* ======================================================
+       SHOW HELP
+    ====================================================== */
+    function showHelp() {
+      const helpHtml = `
+        <div class="msg-text">
+          <b>📖 Доступные команды:</b><br><br>
+          <b>профиль</b> — показать профиль<br>
+          <b>состав</b> — управление составом<br>
+          <b>игроки</b> — инвентарь игроков<br>
+          <b>магазин</b> — магазин паков<br>
+          <b>события</b> — активные события<br>
+          <b>дивизион</b> — матчи дивизиона<br>
+          <b>квесты</b> — ежедневные квесты<br>
+          <b>помощь</b> — это сообщение<br><br>
+          <span style="color:#7d8e9e;">Или используй кнопки внизу экрана ↓</span>
+        </div>`;
+      botReply(helpHtml, 400, { html: true });
+    }
+
+    /* ======================================================
+       NAVIGATION HANDLERS
+    ====================================================== */
+
+    function setActiveNav(btnId) {
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      const active = document.getElementById(btnId);
+      if (active) active.classList.add('active');
+    }
+
+    // --- Squad ---
+    function handleNavSquad() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-squad');
+      botReply(
+        '👥 <b>Состав команды</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет расставлять игроков по позициям и выбирать тактику!',
+        500,
+        { html: true }
+      );
+    }
+
+    // --- Inventory ---
+    function handleNavInventory() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-inventory');
+      botReply(
+        '🎒 <b>Инвентарь игроков</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут отображаться все твои игроки с характеристиками!',
+        500,
+        { html: true }
+      );
+    }
+
+    // --- Shop ---
+    function handleNavShop() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-shop');
+      botReply(
+        '🏪 <b>Магазин</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет покупать паки с игроками за 💎 рубины!',
+        500,
+        { html: true }
+      );
+    }
+
+    // --- Events ---
+    function handleNavEvents() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-events');
+      botReply(
+        '📋 <b>События</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут появляться специальные события и турниры!',
+        500,
+        { html: true }
+      );
+    }
+
+    // --- Division ---
+    function handleNavDivision() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-division');
+      botReply(
+        '⚽ <b>Дивизион</b>\n\n⚙️ Этот раздел находится в разработке.\nСкоро здесь можно будет играть матчи против других команд и подниматься по дивизионам!',
+        500,
+        { html: true }
+      );
+    }
+
+    // --- Quests ---
+    function handleNavQuests() {
+      if (!gameState.registered) { promptRegister(); return; }
+      setActiveNav('nav-quests');
+      botReply(
+        '🏅 <b>Квесты</b>\n\n⚙️ Этот раздел находится в разработке.\nЗдесь будут ежедневные квесты и награды за их выполнение!',
+        500,
+        { html: true }
+      );
+    }
+
+    function promptRegister() {
+      botReply('Сначала зарегистрируйся! Нажми «НАЧАТЬ ИГРУ». 😊', 400);
+    }
+
+    /* ======================================================
+       NAV BUTTON EVENT LISTENERS
+    ====================================================== */
+    document.getElementById('nav-squad').addEventListener('click', handleNavSquad);
+    document.getElementById('nav-inventory').addEventListener('click', handleNavInventory);
+    document.getElementById('nav-shop').addEventListener('click', handleNavShop);
+    document.getElementById('nav-events').addEventListener('click', handleNavEvents);
+    document.getElementById('nav-division').addEventListener('click', handleNavDivision);
+    document.getElementById('nav-quests').addEventListener('click', handleNavQuests);
+
+    /* ======================================================
+       INITIALIZATION
+    ====================================================== */
+    function init() {
+      loadState();
+      updateHeaderResources();
+
+      if (gameState.registered) {
+        // Already registered — hide overlay and show welcome back
+        hideStartOverlay();
+
+        botReply(
+          `С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽\n\nГотов к игре? Используй кнопки внизу для навигации.`,
+          600,
+          { html: true }
+        );
+      } else if (gameState.awaitingNickname) {
+        // Was in the middle of registration
+        hideStartOverlay();
+        botReply('Введи свой никнейм, чтобы продолжить регистрацию:', 400);
+      } else {
+        // Fresh start — show overlay
+        startOverlay.classList.remove('hidden');
+      }
+    }
+
+    // Run init on DOM ready
+    document.addEventListener('DOMContentLoaded', init);
+    // Also run immediately in case DOMContentLoaded already fired
+    if (document.readyState !== 'loading') {
+      init();
+    }
+
+    // ============================================
+    // === INSERT MODULE: gameState & data structures ===
+    // (arrays: ALL_PLAYERS_TEMPLATE, STARTER_PLAYER_IDS, FRAGMENT_EXCHANGE_RATES, etc.)
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: formations & tactics ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: bots & divisions ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: daily quests & rewards ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: shop packs & draft pools ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: SBC exchanges ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: battle pass (абонемент) ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: events list ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: player cards rendering ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: inventory modal ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: squad management ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: match engine ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: division matches ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: shop logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: draft logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: quests logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: daily reward logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: SBC logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: battle pass logic ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: promo codes ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: admin panel ===
+    // ============================================
+
+    // ============================================
+    // === INSERT MODULE: init & final wiring ===
+    // ============================================
+
+  </script>
+</body>
+</html>
