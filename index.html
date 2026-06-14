@@ -1780,22 +1780,7 @@ async function redeemPromoCode() {
       setActiveNav('nav-inventory');
       openInventoryModal();
     };
-    // ============================================
-// === FINAL WIRING: переопределяем навигацию ===
-// ============================================
-handleNavEvents = function() {
-  if (!gameState.registered) { promptRegister(); return; }
-  setActiveNav('nav-events');
-  if (typeof showEvents === 'function') showEvents();
-  else botReply('📋 События загружаются...', 400);
-};
-
-handleNavInventory = function() {
-  if (!gameState.registered) { promptRegister(); return; }
-  setActiveNav('nav-inventory');
-  if (typeof openInventoryModal === 'function') openInventoryModal();
-  else botReply('🎒 Инвентарь загружается...', 400);
-};
+    
 // ========== INIT ==========
 function init() {
   loadState(); updateHeaderResources();
