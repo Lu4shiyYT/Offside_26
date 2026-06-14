@@ -1267,6 +1267,14 @@
     ====================================================== */
     function init() {
       loadState();
+          // Даём стартовых игроков, если коллекция пуста
+      if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
+        gameState.myPlayers = STARTER_PLAYER_IDS
+          .map(id => allPlayers.find(p => p.id === id))
+          .filter(p => p !== undefined)
+          .map(p => JSON.parse(JSON.stringify(p)));
+        saveState();
+      }
       updateHeaderResources();
 
       if (gameState.registered) {
@@ -1294,6 +1302,8 @@
     if (document.readyState !== 'loading') {
       init();
     }
+
+      
 
     // ============================================
 // === INSERT MODULE: gameState & data structures ===
