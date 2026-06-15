@@ -741,13 +741,14 @@ function buildPlayerCardHTML(player) {
     ? ['REF', 'KIC', 'PAS', 'SPE', 'DIV', 'HAN']
     : ['PAC', 'SHO', 'PAS', 'DRB', 'DEF', 'STR'];
 
+  // Стандартный блок статов
   let statsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
   for (const k of keys) {
     statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:5px;padding:2px 6px;text-align:center;min-width:38px;"><div style="font-size:9px;color:#7d8e9e;">${k}</div><div style="font-size:12px;font-weight:700;">${stats[k] || 0}</div></div>`;
   }
   statsHtml += '</div>';
 
-  // Дополнительные параметры: выносливость, ноги
+  // Доп. параметры (выносливость, ноги)
   const stamina = (player.stamina != null) ? player.stamina : 3.0;
   const prefFoot = player.preferredFoot || 'right';
   const weakFoot = player.weakFoot || 1;
@@ -757,33 +758,46 @@ function buildPlayerCardHTML(player) {
       <span>👟 Ноги: ${prefFoot === 'right' ? 'П' : 'Л'}/${weakFoot}</span>
     </div>`;
 
+  // Бейджи тренировки и OVR
   const trainingBadge = (player.trainingLevel > 0)
-    ? `<span style="font-size:9px;background:#4dc05a;color:#fff;padding:1px 5px;border-radius:8px;">+${player.trainingLevel} тр.</span>`
-    : '';
+    ? `<span style="font-size:9px;background:#4dc05a;color:#fff;padding:1px 5px;border-radius:8px;">+${player.trainingLevel} тр.</span>` : '';
   const ovrUpBadge = (player.ovrUpgrade > 0)
-    ? `<span style="font-size:9px;background:#f0c040;color:#000;padding:1px 5px;border-radius:8px;">+${player.ovrUpgrade} OVR</span>`
-    : '';
+    ? `<span style="font-size:9px;background:#f0c040;color:#000;padding:1px 5px;border-radius:8px;">+${player.ovrUpgrade} OVR</span>` : '';
   const programBadge = player.program
-    ? `<span style="font-size:10px;color:#5288c1;">${player.program}</span>`
-    : '';
+    ? `<span style="font-size:10px;color:#5288c1;">${player.program}</span>` : '';
+
+  // === НОВОЕ: определяем фон карточки ===
+  let cardStyle = '';
+  if (player.image && player.image.trim() !== '') {
+    // Используем загруженное изображение как фон
+    cardStyle = `background-image: url(${player.image}); background-size: cover; background-position: center;`;
+  } else {
+    // Старый градиентный фон
+    cardStyle = `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+  }
+
+  // Внутренняя обёртка с полупрозрачным фоном для читаемости текста
+  const overlayStyle = player.image ? 'background: rgba(0,0,0,0.55); border-radius: 10px; padding: 6px;' : '';
 
   return `
-    <div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:1px solid ${color};border-radius:10px;padding:10px 12px;cursor:pointer;margin:2px 0;" onclick="showPlayerDetail(${player.id})">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${player.name}</div>
-          <div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}${player.league ? ' • ' + player.league : ''}</div>
-          <div style="display:flex;gap:4px;margin-top:2px;">
-            ${programBadge}
-            ${trainingBadge}
-            ${ovrUpBadge}
+    <div style="${cardStyle} border:1px solid ${color}; border-radius:10px; padding:10px 12px; cursor:pointer; margin:2px 0;" onclick="showPlayerDetail(${player.id})">
+      <div style="${overlayStyle}">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${player.name}</div>
+            <div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}${player.league ? ' • ' + player.league : ''}</div>
+            <div style="display:flex;gap:4px;margin-top:2px;">
+              ${programBadge}
+              ${trainingBadge}
+              ${ovrUpBadge}
+            </div>
           </div>
+          <div style="font-size:24px;font-weight:900;color:#f0c040;min-width:40px;text-align:center;">${effOvr}</div>
         </div>
-        <div style="font-size:24px;font-weight:900;color:#f0c040;min-width:40px;text-align:center;">${effOvr}</div>
+        ${statsHtml}
+        ${extraParamsHtml}
       </div>
-      ${statsHtml}
-      ${extraParamsHtml}
     </div>`;
 }
 function showPlayerDetail(pid) {
