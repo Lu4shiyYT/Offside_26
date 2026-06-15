@@ -486,23 +486,23 @@ document.getElementById('nav-quests').addEventListener('click', function() { han
 
 // ========== MODULE: GAMESTATE & DATA ==========
 const ALL_PLAYERS_TEMPLATE = [
-  { id: 1, name: 'Алексей Громов', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 2, name: 'Андрей Соколов', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 3, name: 'Сергей Петров', club: 'Спартак', nation: 'Россия', position: 'LB', altPositions: ['LM'], ovr: 64, stats: { PAC:72, SHO:40, PAS:62, DRB:68, DEF:70, STR:66 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 4, name: 'Иван Кузнецов', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 66, stats: { PAC:55, SHO:35, PAS:50, DRB:45, DEF:74, STR:78 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 5, name: 'Дмитрий Новиков', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 65, stats: { PAC:58, SHO:38, PAS:52, DRB:48, DEF:72, STR:76 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 6, name: 'Михаил Смирнов', club: 'Спартак', nation: 'Россия', position: 'RB', altPositions: ['RM'], ovr: 63, stats: { PAC:74, SHO:42, PAS:60, DRB:70, DEF:68, STR:65 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 7, name: 'Павел Орлов', club: 'Зенит', nation: 'Россия', position: 'CB', altPositions: [], ovr: 68, stats: { PAC:52, SHO:36, PAS:48, DRB:44, DEF:76, STR:80 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 8, name: 'Артем Лебедев', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CAM'], ovr: 67, stats: { PAC:68, SHO:62, PAS:72, DRB:70, DEF:55, STR:62 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 9, name: 'Кирилл Морозов', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CDM'], ovr: 65, stats: { PAC:62, SHO:58, PAS:70, DRB:66, DEF:60, STR:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 10, name: 'Максим Волков', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: [], ovr: 64, stats: { PAC:65, SHO:60, PAS:68, DRB:64, DEF:52, STR:60 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 11, name: 'Роман Зайцев', club: 'Зенит', nation: 'Россия', position: 'CDM', altPositions: ['CM'], ovr: 66, stats: { PAC:58, SHO:48, PAS:65, DRB:56, DEF:72, STR:70 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 12, name: 'Виктор Соловьев', club: 'Спартак', nation: 'Россия', position: 'LW', altPositions: ['ST'], ovr: 68, stats: { PAC:82, SHO:66, PAS:60, DRB:74, DEF:30, STR:58 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 13, name: 'Егор Федоров', club: 'Спартак', nation: 'Россия', position: 'RW', altPositions: ['ST'], ovr: 67, stats: { PAC:80, SHO:64, PAS:58, DRB:72, DEF:28, STR:56 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 14, name: 'Никита Васильев', club: 'Спартак', nation: 'Россия', position: 'ST', altPositions: ['CF'], ovr: 70, stats: { PAC:76, SHO:74, PAS:55, DRB:68, DEF:22, STR:72 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 15, name: 'Олег Тимофеев', club: 'Зенит', nation: 'Россия', position: 'ST', altPositions: [], ovr: 69, stats: { PAC:72, SHO:72, PAS:52, DRB:66, DEF:24, STR:74 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 16, name: 'Марко Росси', club: 'Милан', nation: 'Италия', position: 'CM', altPositions: ['CAM','CDM'], ovr: 85, stats: { PAC:72, SHO:74, PAS:88, DRB:82, DEF:68, STR:70 }, program: 'TOTY', image: '', trainingLevel: 0, ovrUpgrade: 0 },
-  { id: 17, name: 'Cristiano Ronaldo', club: 'Al-Nassr', nation: 'Portugal', position: 'ST', altPositions: ['LW'], ovr: 100, stats: { PAC:104, SHO:109, PAS:106, DRB:108, DEF:75, STR:102 }, program: 'Elite', image: '', trainingLevel: 0, ovrUpgrade: 0 }
+  { id: 1, name: 'Алексей Громов', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 2, name: 'Андрей Соколов', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 3, name: 'Сергей Петров', club: 'Спартак', nation: 'Россия', position: 'LB', altPositions: ['LM'], ovr: 64, stats: { PAC:72, SHO:40, PAS:62, DRB:68, DEF:70, STR:66 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 4, name: 'Иван Кузнецов', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 66, stats: { PAC:55, SHO:35, PAS:50, DRB:45, DEF:74, STR:78 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 5, name: 'Дмитрий Новиков', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 65, stats: { PAC:58, SHO:38, PAS:52, DRB:48, DEF:72, STR:76 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 6, name: 'Михаил Смирнов', club: 'Спартак', nation: 'Россия', position: 'RB', altPositions: ['RM'], ovr: 63, stats: { PAC:74, SHO:42, PAS:60, DRB:70, DEF:68, STR:65 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 7, name: 'Павел Орлов', club: 'Зенит', nation: 'Россия', position: 'CB', altPositions: [], ovr: 68, stats: { PAC:52, SHO:36, PAS:48, DRB:44, DEF:76, STR:80 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 8, name: 'Артем Лебедев', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CAM'], ovr: 67, stats: { PAC:68, SHO:62, PAS:72, DRB:70, DEF:55, STR:62 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 9, name: 'Кирилл Морозов', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CDM'], ovr: 65, stats: { PAC:62, SHO:58, PAS:70, DRB:66, DEF:60, STR:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 10, name: 'Максим Волков', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: [], ovr: 64, stats: { PAC:65, SHO:60, PAS:68, DRB:64, DEF:52, STR:60 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 11, name: 'Роман Зайцев', club: 'Зенит', nation: 'Россия', position: 'CDM', altPositions: ['CM'], ovr: 66, stats: { PAC:58, SHO:48, PAS:65, DRB:56, DEF:72, STR:70 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 12, name: 'Виктор Соловьев', club: 'Спартак', nation: 'Россия', position: 'LW', altPositions: ['ST'], ovr: 68, stats: { PAC:82, SHO:66, PAS:60, DRB:74, DEF:30, STR:58 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 13, name: 'Егор Федоров', club: 'Спартак', nation: 'Россия', position: 'RW', altPositions: ['ST'], ovr: 67, stats: { PAC:80, SHO:64, PAS:58, DRB:72, DEF:28, STR:56 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 14, name: 'Никита Васильев', club: 'Спартак', nation: 'Россия', position: 'ST', altPositions: ['CF'], ovr: 70, stats: { PAC:76, SHO:74, PAS:55, DRB:68, DEF:22, STR:72 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 15, name: 'Олег Тимофеев', club: 'Зенит', nation: 'Россия', position: 'ST', altPositions: [], ovr: 69, stats: { PAC:72, SHO:72, PAS:52, DRB:66, DEF:24, STR:74 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 16, name: 'Марко Росси', club: 'Милан', nation: 'Италия', position: 'CM', altPositions: ['CAM','CDM'], ovr: 85, stats: { PAC:72, SHO:74, PAS:88, DRB:82, DEF:68, STR:70 }, program: 'TOTY', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 17, name: 'Cristiano Ronaldo', club: 'Al-Nassr', nation: 'Portugal', position: 'ST', altPositions: ['LW'], ovr: 100, stats: { PAC:104, SHO:109, PAS:106, DRB:108, DEF:75, STR:102 }, program: 'Elite', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 }
 ];
 
 const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
@@ -703,16 +703,54 @@ function buildPlayerCardHTML(player) {
   const effOvr = getEffectiveOvr(player);
   const color = getPositionColor(player.position);
   const stats = getEffectiveStats(player);
-  const keys = player.position==='GK' ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
+  const keys = player.position === 'GK'
+    ? ['REF', 'KIC', 'PAS', 'SPE', 'DIV', 'HAN']
+    : ['PAC', 'SHO', 'PAS', 'DRB', 'DEF', 'STR'];
+
   let statsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
-  for (const k of keys) statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:5px;padding:2px 6px;text-align:center;min-width:38px;"><div style="font-size:9px;color:#7d8e9e;">${k}</div><div style="font-size:12px;font-weight:700;">${stats[k]||0}</div></div>`;
+  for (const k of keys) {
+    statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:5px;padding:2px 6px;text-align:center;min-width:38px;"><div style="font-size:9px;color:#7d8e9e;">${k}</div><div style="font-size:12px;font-weight:700;">${stats[k] || 0}</div></div>`;
+  }
   statsHtml += '</div>';
-  return `<div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:1px solid ${color};border-radius:10px;padding:10px 12px;cursor:pointer;" onclick="showPlayerDetail(${player.id})">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
-      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">${player.name}</div><div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}</div>${player.program?`<div style="font-size:10px;color:#5288c1;margin-top:2px;">${player.program}</div>`:''}</div>
-      <div style="font-size:24px;font-weight:900;color:#f0c040;min-width:40px;text-align:center;">${effOvr}</div>
-    </div>${statsHtml}</div>`;
+
+  // Дополнительные параметры: выносливость, ноги
+  const stamina = (player.stamina != null) ? player.stamina : 3.0;
+  const prefFoot = player.preferredFoot || 'right';
+  const weakFoot = player.weakFoot || 1;
+  const extraParamsHtml = `
+    <div style="margin-top:4px;font-size:9px;color:#7d8e9e;display:flex;gap:8px;">
+      <span>⚡ Вын: ${stamina}</span>
+      <span>👟 Ноги: ${prefFoot === 'right' ? 'П' : 'Л'}/${weakFoot}</span>
+    </div>`;
+
+  const trainingBadge = (player.trainingLevel > 0)
+    ? `<span style="font-size:9px;background:#4dc05a;color:#fff;padding:1px 5px;border-radius:8px;">+${player.trainingLevel} тр.</span>`
+    : '';
+  const ovrUpBadge = (player.ovrUpgrade > 0)
+    ? `<span style="font-size:9px;background:#f0c040;color:#000;padding:1px 5px;border-radius:8px;">+${player.ovrUpgrade} OVR</span>`
+    : '';
+  const programBadge = player.program
+    ? `<span style="font-size:10px;color:#5288c1;">${player.program}</span>`
+    : '';
+
+  return `
+    <div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:1px solid ${color};border-radius:10px;padding:10px 12px;cursor:pointer;margin:2px 0;" onclick="showPlayerDetail(${player.id})">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${player.name}</div>
+          <div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}</div>
+          <div style="display:flex;gap:4px;margin-top:2px;">
+            ${programBadge}
+            ${trainingBadge}
+            ${ovrUpBadge}
+          </div>
+        </div>
+        <div style="font-size:24px;font-weight:900;color:#f0c040;min-width:40px;text-align:center;">${effOvr}</div>
+      </div>
+      ${statsHtml}
+      ${extraParamsHtml}
+    </div>`;
 }
 function showPlayerDetail(pid) {
   const player = findPlayerById(pid);
@@ -2188,7 +2226,110 @@ async function redeemPromoCode() {
 // === INSERT MODULE: match engine ===
 // ============================================
 
-    // === MATCH ENGINE v5 – subs don't alter permanent lineup ===
+    // === РЕДАКТИРУЙ ЗДЕСЬ: СОСТАВЫ БОТОВ ===
+    const BOT_SQUADS = {
+      'FC Краснодар Б': {
+        starting: [
+          { name: 'Иван Петров',   position: 'GK', ovr: 44, stamina: 3.0 },
+          { name: 'Сергей Лыков',  position: 'LB', ovr: 42, stamina: 3.5 },
+          { name: 'Андрей Уткин',  position: 'CB', ovr: 45, stamina: 3.0 },
+          { name: 'Денис Гусев',   position: 'CB', ovr: 44, stamina: 2.5 },
+          { name: 'Максим Громов', position: 'RB', ovr: 43, stamina: 4.0 },
+          { name: 'Кирилл Рыбин',  position: 'CM', ovr: 43, stamina: 3.5 },
+          { name: 'Роман Жук',     position: 'CM', ovr: 44, stamina: 3.0 },
+          { name: 'Тимофей Носов', position: 'CM', ovr: 42, stamina: 3.5 },
+          { name: 'Виктор Шапкин', position: 'LW', ovr: 43, stamina: 3.0 },
+          { name: 'Олег Дёмин',    position: 'ST', ovr: 46, stamina: 3.5 },
+          { name: 'Антон Киреев',  position: 'RW', ovr: 42, stamina: 3.0 }
+        ],
+        bench: [
+          { name: 'Георгий Хохлов', position: 'GK', ovr: 40, stamina: 2.5 },
+          { name: 'Семён Котов',    position: 'CB', ovr: 40, stamina: 3.0 },
+          { name: 'Илья Жаров',     position: 'CM', ovr: 40, stamina: 3.0 },
+          { name: 'Пётр Лапин',     position: 'ST', ovr: 41, stamina: 2.5 }
+        ]
+      },
+      'Спартак-2': {
+        starting: [
+          { name: 'Алексей Ворон',  position: 'GK', ovr: 48, stamina: 3.0 },
+          { name: 'Марат Исаев',    position: 'LB', ovr: 46, stamina: 3.5 },
+          { name: 'Юрий Белов',     position: 'CB', ovr: 47, stamina: 3.0 },
+          { name: 'Николай Седов',  position: 'CB', ovr: 46, stamina: 2.5 },
+          { name: 'Владимир Гущин', position: 'RB', ovr: 47, stamina: 3.5 },
+          { name: 'Глеб Кулик',     position: 'CM', ovr: 46, stamina: 3.0 },
+          { name: 'Фёдор Зимин',    position: 'CM', ovr: 47, stamina: 3.5 },
+          { name: 'Степан Ершов',   position: 'CAM',ovr: 46, stamina: 3.0 },
+          { name: 'Вадим Рогов',    position: 'LW', ovr: 45, stamina: 3.0 },
+          { name: 'Тарас Шевцов',   position: 'ST', ovr: 49, stamina: 3.5 },
+          { name: 'Артём Князев',   position: 'RW', ovr: 45, stamina: 3.0 }
+        ],
+        bench: [
+          { name: 'Мирон Усов',      position: 'GK', ovr: 44, stamina: 2.5 },
+          { name: 'Леонид Барсуков', position: 'CB', ovr: 44, stamina: 3.0 },
+          { name: 'Матвей Савин',    position: 'CM', ovr: 45, stamina: 3.0 },
+          { name: 'Эдуард Литвинов', position: 'ST', ovr: 44, stamina: 2.5 }
+        ]
+      }
+    };
+
+    function getBotSquad(botName) {
+      if (BOT_SQUADS[botName]) {
+        const squad = BOT_SQUADS[botName];
+        return {
+          starting: squad.starting.map(p => ({ ...p })),
+          bench: squad.bench.map(p => ({ ...p }))
+        };
+      }
+      // fallback – случайный состав
+      const posList = ['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'];
+      const starting = posList.map(pos => ({
+        name: 'Игрок ' + pos,
+        position: pos,
+        ovr: Math.floor(Math.random()*10)+40,
+        stamina: 2.5 + Math.random() * 1.5   // 2.5 – 4.0
+      }));
+      return { starting, bench: [] };
+    }
+
+    // === БАЗОВЫЕ НАБОРЫ ФРАЗ ДЛЯ РАЗНООБРАЗИЯ ===
+    const SHOOT_MISS_COMMENTS = [
+      'Мимо ворот!',
+      'Выше перекладины!',
+      'Рядом со штангой!',
+      'Вратарь спокойно смотрит, как мяч уходит за пределы.',
+      'Удар заблокирован защитником!',
+      'Мяч летит на трибуны!',
+      'Неточно! Мяч срезался с ноги.'
+    ];
+    const CORNER_COMMENTS = [
+      'Угловой подал {name}.',
+      'Подача с угла поля от {name}.',
+      '{name} навешивает в штрафную с углового.'
+    ];
+    const FOUL_COMMENTS = [
+      'Фол {name}.',
+      'Нарушение правил — {name}.',
+      'Судья фиксирует фол со стороны {name}.'
+    ];
+    const YELLOW_COMMENTS = [
+      'Жёлтая карточка {name}.',
+      'Предупреждение для {name}.',
+      'Грубая игра — {name} получает жёлтую.'
+    ];
+    const NEUTRAL_COMMENTS = [
+      'пас в центре поля',
+      'борьба за мяч',
+      'мяч у защитников',
+      'атака развивается',
+      'неточная передача',
+      'вратарь забирает мяч',
+      'офсайд — атака остановлена',
+      'фол в середине поля',
+      'штрафной',
+      'вброс из-за боковой'
+    ];
+
+    // === MATCH ENGINE ===
     let matchState    = null;
     let matchInterval = null;
     let matchControls = null;
@@ -2217,7 +2358,7 @@ async function redeemPromoCode() {
         const active = key === currentTacticName ? ' active' : '';
         html += `<button class="tactic-btn${active}" onclick="changeMatchTactic('${key}')">${key}</button>`;
       }
-      html += `<button class="sub-btn" onclick="showSubMenu()">🔄 Замены (${matchState.maxSubs - matchState.subCount})</button>`;
+      html += `<button class="sub-btn" onclick="showActiveSquad()">🔄 Активный состав (${matchState.maxSubs - matchState.subCount})</button>`;
       matchControls.innerHTML = html;
     }
 
@@ -2237,7 +2378,9 @@ async function redeemPromoCode() {
         if (!pid) { await botReply('❌ Не все 11 слотов заполнены.', 400); return; }
         const player = findPlayerById(pid);
         if (!player) { await botReply('❌ Один из игроков состава не найден.', 400); return; }
-        homePlayers.push({ ...player, slotPosition: positions[i], redCarded: false });
+        homePlayers.push({ ...player, slotPosition: positions[i], redCarded: false,
+          stamina: player.stamina || 3.0,
+          matchStats: { goals: 0, assists: 0, shots: 0, shotsOnTarget: 0, fouls: 0, yellow: 0, red: 0, rating: 6.0 } });
       }
 
       const benchPlayers = [];
@@ -2246,14 +2389,22 @@ async function redeemPromoCode() {
           const pid = gameState.benchSlots[k];
           if (pid) {
             const p = findPlayerById(pid);
-            if (p) benchPlayers.push(p);
+            if (p) benchPlayers.push({...p, stamina: p.stamina || 3.0, matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 }});
           }
         }
       }
 
-      const bot      = getRandomBot();
+      const bot = getRandomBot();
       const awayOvr  = bot.ovr;
       const awayName = bot.name;
+      const botSquad = getBotSquad(awayName);
+      const awayPlayers = botSquad.starting.map(p => ({ ...p, redCarded: false,
+        stamina: p.stamina || (2.5 + Math.random() * 1.5),
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
+      const awayBench = (botSquad.bench || []).map(p => ({ ...p,
+        stamina: p.stamina || (2.5 + Math.random() * 1.5),
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
+
       const tactic     = getCurrentTactic();
       const tacticName = Object.keys(TACTICS).find(k => TACTICS[k] === tactic) || 'Баланс';
 
@@ -2262,16 +2413,24 @@ async function redeemPromoCode() {
         awayName, awayOvr,
         homeScore: 0, awayScore: 0, minute: 0,
         homePlayers, benchPlayers,
+        awayPlayers, awayBench,
         homeTactic: tactic,
         subCount: 0, maxSubs: 5,
-        events: [], homeCards: {}, homeRedCards: 0, finished: false,
+        awaySubCount: 0, awayMaxSubs: 3,
+        events: [],
+        homeCards: {}, awayCards: {},
+        homeRedCards: 0, awayRedCards: 0,
+        finished: false,
         possession: 50,
         homeShots: 0, awayShots: 0,
         homeShotsOnTarget: 0, awayShotsOnTarget: 0,
-        homePasses: 0, homePassSuccess: 0,
+        homePasses: 0, awayPasses: 0,
+        homePassSuccess: 0, awayPassSuccess: 0,
         homeFouls: 0, awayFouls: 0,
         homeCorners: 0, awayCorners: 0,
-        subbedOutIds: []            // игроки, которых уже заменили (не могут вернуться)
+        homeXG: 0, awayXG: 0,
+        subbedOutIds: [],
+        awaySubbedOutIds: []
       };
 
       gameState.inMatch = true;
@@ -2297,6 +2456,18 @@ async function redeemPromoCode() {
       matchState.homeTactic = TACTICS[tacticKey];
       botReply(`🔄 Тактика изменена на <b>${tacticKey}</b>`, 200, { html: true });
       renderMatchControls();
+    }
+
+    // --- расход выносливости каждую минуту ---
+    function drainStamina() {
+      const rate = 0.02;  // за игровую минуту
+      for (const p of matchState.homePlayers) {
+        if (p.stamina > 0) p.stamina = Math.max(0, p.stamina - rate);
+      }
+      for (const p of matchState.awayPlayers) {
+        if (p.stamina > 0) p.stamina = Math.max(0, p.stamina - rate);
+      }
+      // боты на скамейке не играют, их выносливость не тратится
     }
 
     function simulateMinute() {
@@ -2329,8 +2500,26 @@ async function redeemPromoCode() {
         return;
       }
 
+      // авто-замены бота с 69-й минуты
+      if (min >= 69 && matchState.awaySubCount < matchState.awayMaxSubs && matchState.awayBench.length > 0 && Math.random() < 0.25) {
+        performBotSub();
+      }
+
+      drainStamina();                // <-- расход выносливости
       generateMatchEvent(min);
       renderMatchControls();
+    }
+
+    function performBotSub() {
+      if (matchState.awaySubCount >= matchState.awayMaxSubs || matchState.awayBench.length === 0) return;
+      const outIdx = Math.floor(Math.random() * matchState.awayPlayers.length);
+      const outPlayer = matchState.awayPlayers[outIdx];
+      if (outPlayer.redCarded) return;
+      const inPlayer = matchState.awayBench.shift();
+      matchState.awayBench.push(outPlayer);
+      matchState.awayPlayers[outIdx] = inPlayer;
+      matchState.awaySubCount++;
+      matchState.awaySubbedOutIds.push(outPlayer.name);
     }
 
     function generateMatchEvent(minute) {
@@ -2339,7 +2528,6 @@ async function redeemPromoCode() {
 
       let homeGoalChance = 0.022;
       let awayGoalChance = 0.018;
-
       const ovrDiff = homeOvr - awayOvr;
       homeGoalChance += ovrDiff * 0.0006;
       awayGoalChance -= ovrDiff * 0.0006;
@@ -2349,74 +2537,179 @@ async function redeemPromoCode() {
       homeGoalChance += (matchState.homeTactic.fastAttackChance || 0) * 0.4;
       awayGoalChance += (matchState.homeTactic.counterChance || 0) * 0.4;
 
+      // Влияние красных карточек
       homeGoalChance -= matchState.homeRedCards * 0.005;
       awayGoalChance += matchState.homeRedCards * 0.005;
+
+      // ---- ВЛИЯНИЕ ВЫНОСЛИВОСТИ НА ШАНС ГОЛА (средняя усталость атакующей линии) ----
+      const homeAttackers = matchState.homePlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
+      const awayAttackers = matchState.awayPlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
+      const avgHomeStamina = homeAttackers.length > 0
+        ? homeAttackers.reduce((s,p) => s + p.stamina, 0) / homeAttackers.length
+        : 3.0;
+      const avgAwayStamina = awayAttackers.length > 0
+        ? awayAttackers.reduce((s,p) => s + p.stamina, 0) / awayAttackers.length
+        : 3.0;
+      homeGoalChance *= (0.7 + 0.3 * (avgHomeStamina / 5));
+      awayGoalChance *= (0.7 + 0.3 * (avgAwayStamina / 5));
 
       homeGoalChance = Math.max(0.004, Math.min(0.15, homeGoalChance));
       awayGoalChance = Math.max(0.004, Math.min(0.12, awayGoalChance));
 
+      matchState.homeXG += homeGoalChance;
+      matchState.awayXG += awayGoalChance;
+
       matchState.homePasses      += Math.floor(Math.random() * 5) + 2;
       matchState.homePassSuccess += Math.floor(Math.random() * 4) + 1;
-      if (Math.random() < 0.03) matchState.homeFouls++;
-      if (Math.random() < 0.03) matchState.awayFouls++;
+      matchState.awayPasses      += Math.floor(Math.random() * 5) + 2;
+      matchState.awayPassSuccess += Math.floor(Math.random() * 4) + 1;
 
       const roll = Math.random();
 
+      // ---- ГОЛ ДОМА ----
       if (roll < homeGoalChance) {
-        const scorer = pickRandomAttacker();
+        const scorer = pickRandomAttacker('home');
+        const assist = pickRandomAssister('home', scorer);
         matchState.homeScore++;
         matchState.homeShots++;
         matchState.homeShotsOnTarget++;
         gameState.goalsScored   = (gameState.goalsScored   || 0) + 1;
         gameState.goalsForQuest = (gameState.goalsForQuest || 0) + 1;
-        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b>! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
-        matchState.events.push({ minute, type: 'goal', team: 'home', player: scorer.name });
+        scorer.matchStats.goals++;
+        scorer.matchStats.shots++;
+        scorer.matchStats.shotsOnTarget++;
+        if (assist) assist.matchStats.assists++;
+        const assistText = assist ? ` (асс. ${assist.name})` : '';
+        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b>${assistText}! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+        matchState.events.push({ minute, type: 'goal', team: 'home', player: scorer.name, assist: assist?.name || '' });
         saveState();
         return;
       }
 
+      // ---- ГОЛ ГОСТЕЙ ----
       if (roll < homeGoalChance + awayGoalChance) {
+        const scorer = pickRandomAttacker('away');
+        const assist = pickRandomAssister('away', scorer);
         matchState.awayScore++;
         matchState.awayShots++;
         matchState.awayShotsOnTarget++;
-        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${matchState.awayName}</b>! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
-        matchState.events.push({ minute, type: 'goal', team: 'away' });
+        scorer.matchStats.goals++;
+        scorer.matchStats.shots++;
+        scorer.matchStats.shotsOnTarget++;
+        if (assist) assist.matchStats.assists++;
+        const assistText = assist ? ` (асс. ${assist.name})` : '';
+        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b>${assistText} (${matchState.awayName})! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+        matchState.events.push({ minute, type: 'goal', team: 'away', player: scorer.name, assist: assist?.name || '' });
         return;
       }
 
-      if (Math.random() < 0.05) { matchState.homeShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! Мимо ворот.</div>`, 150, { html: true }); return; }
-      if (Math.random() < 0.04) { matchState.awayShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от ${matchState.awayName}. Неточно.</div>`, 150, { html: true }); return; }
+      // ---- УДАРЫ (неточные) ----
+      if (Math.random() < 0.05) {
+        const shooter = pickRandomAttacker('home');
+        matchState.homeShots++;
+        shooter.matchStats.shots++;
+        const msg = SHOOT_MISS_COMMENTS[Math.floor(Math.random() * SHOOT_MISS_COMMENTS.length)];
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! <b>${shooter.name}</b> — ${msg}</div>`, 150, { html: true });
+        return;
+      }
+      if (Math.random() < 0.04) {
+        const shooter = pickRandomAttacker('away');
+        matchState.awayShots++;
+        shooter.matchStats.shots++;
+        const msg = SHOOT_MISS_COMMENTS[Math.floor(Math.random() * SHOOT_MISS_COMMENTS.length)];
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от <b>${shooter.name}</b> (${matchState.awayName}). ${msg}</div>`, 150, { html: true });
+        return;
+      }
 
+      // ---- ЖЁЛТЫЕ / КРАСНЫЕ (дом) ----
       if (Math.random() < 0.018) {
-        const activePlayers = matchState.homePlayers.filter(p => !p.redCarded);
-        if (activePlayers.length === 0) return;
-        const player = activePlayers[Math.floor(Math.random() * activePlayers.length)];
-        matchState.homeCards[player.id] = (matchState.homeCards[player.id] || 0) + 1;
-        if (matchState.homeCards[player.id] >= 2) {
-          player.redCarded = true;
-          matchState.homeRedCards++;
-          botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 ${player.name} удалён (2ЖК)!</div>`, 200, { html: true });
-          if (matchState.homeRedCards >= 5) {
-            matchState.finished = true; matchState.homeScore = 0; matchState.awayScore = 3;
-            endMatch(); return;
+        const active = matchState.homePlayers.filter(p => !p.redCarded);
+        if (active.length > 0) {
+          const player = active[Math.floor(Math.random() * active.length)];
+          matchState.homeCards[player.id] = (matchState.homeCards[player.id] || 0) + 1;
+          if (matchState.homeCards[player.id] >= 2) {
+            player.redCarded = true;
+            matchState.homeRedCards++;
+            player.matchStats.red = 1;
+            botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 <b>${player.name}</b> удалён (2ЖК)!</div>`, 200, { html: true });
+            if (matchState.homeRedCards >= 5) {
+              matchState.finished = true; matchState.homeScore = 0; matchState.awayScore = 3;
+              endMatch(); return;
+            }
+          } else {
+            player.matchStats.yellow = 1;
+            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', player.name);
+            botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${ycMsg}</div>`, 200, { html: true });
           }
-        } else {
-          botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${player.name}</div>`, 200, { html: true });
         }
         return;
       }
 
-      if (Math.random() < 0.012) { botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 Игрок ${matchState.awayName}</div>`, 200, { html: true }); return; }
-      if (Math.random() < 0.05) { matchState.homeCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой.</div>`, 150, { html: true }); return; }
-      if (Math.random() < 0.04) { matchState.awayCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой у наших ворот.</div>`, 150, { html: true }); return; }
+      // ---- ЖЁЛТЫЕ (гости) ----
+      if (Math.random() < 0.012) {
+        const active = matchState.awayPlayers.filter(p => !p.redCarded);
+        if (active.length > 0) {
+          const player = active[Math.floor(Math.random() * active.length)];
+          matchState.awayCards[player.name] = (matchState.awayCards[player.name] || 0) + 1;
+          if (matchState.awayCards[player.name] >= 2) {
+            player.redCarded = true;
+            matchState.awayRedCards++;
+            player.matchStats.red = 1;
+            botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 <b>${player.name}</b> (${matchState.awayName}) удалён!</div>`, 200, { html: true });
+          } else {
+            player.matchStats.yellow = 1;
+            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', player.name);
+            botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${ycMsg} (${matchState.awayName})</div>`, 200, { html: true });
+          }
+        }
+        return;
+      }
 
-      const COMMENTS = ['пас в центре','борьба за мяч','мяч у защиты','атака развивается','неточный пас','вратарь забирает мяч','офсайд','фол в середине','штрафной','вброс'];
-      botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${COMMENTS[Math.floor(Math.random()*COMMENTS.length)]}.</div>`, 150, { html: true });
+      // ---- УГЛОВЫЕ ----
+      if (Math.random() < 0.05) {
+        matchState.homeCorners++;
+        const taker = matchState.homePlayers.find(p => !p.redCarded);
+        const name = taker ? taker.name : 'игрок';
+        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
+        return;
+      }
+      if (Math.random() < 0.04) {
+        matchState.awayCorners++;
+        const taker = matchState.awayPlayers.find(p => !p.redCarded);
+        const name = taker ? taker.name : 'игрок';
+        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> У ворот ${matchState.homeName}: ${msg}</div>`, 150, { html: true });
+        return;
+      }
+
+      // ---- ФОЛЫ ----
+      if (Math.random() < 0.03) {
+        matchState.homeFouls++;
+        const fouler = matchState.homePlayers[Math.floor(Math.random() * matchState.homePlayers.length)];
+        fouler.matchStats.fouls++;
+        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', fouler.name);
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
+        return;
+      }
+      if (Math.random() < 0.03) {
+        matchState.awayFouls++;
+        const fouler = matchState.awayPlayers[Math.floor(Math.random() * matchState.awayPlayers.length)];
+        fouler.matchStats.fouls++;
+        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', fouler.name);
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg} (${matchState.awayName})</div>`, 150, { html: true });
+        return;
+      }
+
+      // ---- НЕЙТРАЛЬНЫЙ КОММЕНТАРИЙ ----
+      const comment = NEUTRAL_COMMENTS[Math.floor(Math.random() * NEUTRAL_COMMENTS.length)];
+      botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${comment}.</div>`, 150, { html: true });
     }
 
-    function pickRandomAttacker() {
-      const active = matchState.homePlayers.filter(p => !p.redCarded);
-      if (active.length === 0) return matchState.homePlayers[0];
+    function pickRandomAttacker(team) {
+      const players = team === 'home' ? matchState.homePlayers : matchState.awayPlayers;
+      const active = players.filter(p => !p.redCarded);
+      if (active.length === 0) return players[0];
       const strikers = active.filter(p => ['ST','CF'].includes(p.position));
       const wingers  = active.filter(p => ['LW','RW','CAM'].includes(p.position));
       const mids     = active.filter(p => ['CM','CDM','LM','RM'].includes(p.position));
@@ -2427,89 +2720,174 @@ async function redeemPromoCode() {
       return active[Math.floor(Math.random()*active.length)];
     }
 
-    // ---------- ЗАМЕНЫ (без изменения постоянного состава) ----------
-    async function showSubMenu() {
-      if (!matchState || matchState.finished) return;
-      if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
-
-      const availableOut = matchState.homePlayers.filter(p => !p.redCarded);
-      if (availableOut.length === 0) { botReply('ℹ️ Нет доступных игроков для замены.', 300); return; }
-
-      const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
-      if (!eligibleBench.length) { botReply('ℹ️ Все игроки скамейки уже выходили на поле.', 300); return; }
-
-      let html = '<div class="msg-text"><b>Выбери игрока со скамейки:</b></div><div class="inline-btn-row">';
-      for (const p of eligibleBench) {
-        html += `<button class="inline-btn" onclick="selectSubOut('${p.id}')">${p.name} (${getEffectiveOvr(p)})</button>`;
-      }
-      html += '</div>';
-      await botReply(html, 300, { html: true });
+    function pickRandomAssister(team, scorer) {
+      const players = team === 'home' ? matchState.homePlayers : matchState.awayPlayers;
+      const candidates = players.filter(p => !p.redCarded && p.name !== scorer.name);
+      if (candidates.length === 0) return null;
+      return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    async function selectSubOut(benchId) {
-      const benchPlayer = findPlayerById(parseInt(benchId));
-      if (!benchPlayer || !matchState.benchPlayers.some(p => p.id == benchId)) {
-        botReply('❌ Игрок не найден на скамейке.', 300); return;
-      }
-      if (matchState.subbedOutIds.includes(benchPlayer.id)) {
-        botReply('❌ Этого игрока уже заменяли – он не может снова выйти на поле.', 300); return;
-      }
-      matchState._pendingSubIn = benchPlayer;
+    // ---------- ЗАМЕНЫ (пока старая система) ----------
+        // ----- НОВАЯ СИСТЕМА ЗАМЕН: АКТИВНЫЙ СОСТАВ -----
+    function staminaColor(pct) {
+      if (pct >= 0.9) return '#4fc3f7';
+      if (pct >= 0.78) return '#81c784';
+      if (pct >= 0.65) return '#ffb74d';
+      if (pct >= 0.5) return '#ff8a65';
+      if (pct >= 0.25) return '#e57373';
+      return '#880e4f';
+    }
 
-      const availableOut = matchState.homePlayers.filter(p => !p.redCarded);
-      let html = `<div class="msg-text"><b>Кого заменить? (выходит ${benchPlayer.name})</b></div><div class="inline-btn-row">`;
+    function renderStaminaBar(player) {
+      if (typeof player.stamina !== 'number' || player.stamina <= 0) return '';
+      const pct = Math.min(1, player.stamina / 5);
+      const color = staminaColor(pct);
+      return `<div style="height:4px;background:#2a3a4a;border-radius:2px;margin-top:2px;width:100%;"><div style="height:100%;width:${pct*100}%;background:${color};border-radius:2px;"></div></div>`;
+    }
+
+    async function showActiveSquad() {
+      if (!matchState || matchState.finished) return;
       const formation = getCurrentFormation();
+      let html = '<div style="padding:10px;font-size:12px;color:#7d8e9e;">🔄 Активный состав (перетащи игрока скамейки на поле для замены)</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px 0;">';
+
       for (let i = 0; i < 11; i++) {
-        // берём ID из постоянного состава, но игрок должен быть в matchState.homePlayers
         const pid = gameState.squadSlots[String(i)];
-        const current = pid ? findPlayerById(pid) : null;
-        if (current && !current.redCarded && matchState.homePlayers.some(p => p.id === current.id && !p.redCarded)) {
-          const pos = formation.positions[i];
-          html += `<button class="inline-btn" onclick="executeSub('${i}')">${current.name} (${pos})</button>`;
+        const player = pid ? findPlayerById(pid) : null;
+        const pos = formation.positions[i];
+        if (player && matchState.homePlayers.find(p => p.id === player.id)) {
+          const p = matchState.homePlayers.find(p => p.id === player.id);
+          const effOvr = getEffectiveOvr(p);
+          const staminaBar = renderStaminaBar(p);
+          html += `<div class="slot filled" data-slot="${i}" data-pos="${pos}"
+            ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
+            style="width:70px;min-height:80px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:2px;cursor:pointer;">
+            <div style="font-size:9px;color:#fff;">${p.name}</div>
+            <div style="font-size:11px;color:#f0c040;">${effOvr} (${pos})</div>
+            ${staminaBar}
+            <button onclick="subPlayerOut('${i}')" style="position:absolute;bottom:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>
+          </div>`;
+        } else {
+          html += `<div class="slot" data-slot="${i}" data-pos="${pos}"
+            ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
+            style="width:70px;min-height:80px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:9px;margin:2px;">${pos}</div>`;
         }
       }
       html += '</div>';
-      await botReply(html, 300, { html: true });
+
+      // скамейка
+      html += '<div style="margin-top:10px;font-size:12px;color:#7d8e9e;">Скамейка (перетащи на слот):</div><div style="display:flex;gap:6px;overflow-x:auto;padding:6px;">';
+      const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
+      for (const bp of eligibleBench) {
+        const posColor = getPositionColor(bp.position);
+        html += `<div class="mini-card" draggable="true" data-player-id="${bp.id}" ondragstart="handleDragStart(event)"
+          style="width:54px;min-height:70px;background:#1e2d3d;border:1px solid #2a4060;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:grab;font-size:10px;padding:4px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:${posColor};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;">${bp.position}</div>
+          <div style="font-size:9px;">${bp.name}</div>
+          <div style="font-size:11px;font-weight:700;color:#f0c040;">${getEffectiveOvr(bp)}</div>
+          ${renderStaminaBar(bp)}
+        </div>`;
+      }
+      if (eligibleBench.length === 0) html += '<div style="font-size:10px;color:#7d8e9e;">Нет доступных замен</div>';
+      html += '</div>';
+
+      await botReply(html, 400, { html: true });
     }
 
-    async function executeSub(slotIndex) {
+    // Обработчик кнопки "⇄"
+    function subPlayerOut(slotIndex) {
       if (!matchState || matchState.finished) return;
       if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
-      const benchPlayer = matchState._pendingSubIn;
-      if (!benchPlayer) return;
-      const slotPos = getCurrentFormation().positions[parseInt(slotIndex)];
+      const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
+      if (!eligibleBench.length) { botReply('ℹ️ Все игроки скамейки уже выходили на поле.', 300); return; }
 
+      matchState._pendingSlotIndex = parseInt(slotIndex);
+      let html = '<div class="msg-text"><b>Выбери игрока со скамейки:</b></div><div class="inline-btn-row">';
+      for (const p of eligibleBench) {
+        html += `<button class="inline-btn" onclick="confirmSub('${p.id}')">${p.name} (OVR ${getEffectiveOvr(p)}, ${p.position})</button>`;
+      }
+      html += '</div>';
+      botReply(html, 300, { html: true });
+    }
+
+    // Подтверждение замены (через кнопку)
+    async function confirmSub(benchId) {
+      const slotIndex = matchState._pendingSlotIndex;
+      if (slotIndex === undefined) return;
+      const benchPlayer = findPlayerById(parseInt(benchId));
+      if (!benchPlayer) return;
+      const slotPos = getCurrentFormation().positions[slotIndex];
       if ((benchPlayer.position === 'GK') !== (slotPos === 'GK')) {
         botReply('❌ Нельзя поставить вратаря в поле или полевого в ворота.', 300);
         return;
       }
-
-      // Получаем игрока, который стоит в этом слоте (из постоянного состава)
       const fieldPlayerId = gameState.squadSlots[String(slotIndex)];
       const fieldPlayer = findPlayerById(fieldPlayerId);
       if (!fieldPlayer) { botReply('❌ Слот пуст.', 300); return; }
-      if (fieldPlayer.redCarded) { botReply('❌ Нельзя заменить удалённого игрока.', 300); return; }
 
-      // Замена только внутри матча – меняем игроков в homePlayers и benchPlayers
       const idxHome = matchState.homePlayers.findIndex(p => p.id === fieldPlayer.id);
       if (idxHome !== -1) {
-        matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false };
+        matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
+          stamina: benchPlayer.stamina || 3.0,
+          matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
       }
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
-
-      // Этот полевой игрок больше не может вернуться на поле
       matchState.subbedOutIds.push(fieldPlayer.id);
-
       matchState.subCount++;
-      matchState._pendingSubIn = null;
-
-      // НЕ МЕНЯЕМ gameState.squadSlots и НЕ СОХРАНЯЕМ состояние
+      matchState._pendingSlotIndex = undefined;
+      saveState();
       renderMatchControls();
       botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300, { html: true });
     }
 
-    // ---------- КОНЕЦ МАТЧА ----------
+    // Drag-and-drop на слот в активном составе
+    async function handleActiveSquadDrop(event, slotIndex) {
+      event.preventDefault();
+      const target = event.target.closest('.slot');
+      if (!target) return;
+      const playerId = dragPlayerId || parseInt(event.dataTransfer.getData('text/plain'));
+      dragPlayerId = null;
+      if (!playerId || isNaN(playerId)) return;
+
+      const benchPlayer = findPlayerById(playerId);
+      if (!benchPlayer) return;
+      if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
+      const slotPos = getCurrentFormation().positions[slotIndex];
+      if ((benchPlayer.position === 'GK') !== (slotPos === 'GK')) {
+        botReply('❌ Нельзя поставить вратаря в поле или полевого в ворота.', 300);
+        return;
+      }
+      const fieldPlayerId = gameState.squadSlots[String(slotIndex)];
+      const fieldPlayer = findPlayerById(fieldPlayerId);
+      if (!fieldPlayer) { botReply('❌ Слот пуст.', 300); return; }
+      if (matchState.subbedOutIds.includes(fieldPlayer.id)) { botReply('❌ Этот игрок уже был заменён.', 300); return; }
+
+      const idxHome = matchState.homePlayers.findIndex(p => p.id === fieldPlayer.id);
+      if (idxHome !== -1) {
+        matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
+          stamina: benchPlayer.stamina || 3.0,
+          matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
+      }
+      matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
+      matchState.benchPlayers.push(fieldPlayer);
+      matchState.subbedOutIds.push(fieldPlayer.id);
+      matchState.subCount++;
+      saveState();
+      renderMatchControls();
+      botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300, { html: true });
+    }
+
+    function calculateRating(stats, minutes) {
+      let rating = 6.0;
+      if (stats.goals > 0) rating += stats.goals * 1.5;
+      if (stats.assists > 0) rating += stats.assists * 1.0;
+      if (stats.shotsOnTarget > 0) rating += stats.shotsOnTarget * 0.2;
+      if (stats.yellow > 0) rating -= 0.5;
+      if (stats.red > 0) rating -= 2.0;
+      return Math.min(10, Math.max(4.0, rating));
+    }
+
     function endMatch() {
       clearInterval(matchInterval);
       matchInterval = null;
@@ -2552,15 +2930,44 @@ async function redeemPromoCode() {
       botReply(`${emoji} <b>${text}</b> ${matchState.homeScore}:${matchState.awayScore}`, 500, { html: true });
       botReply(`💎 +${rubinsEarned} | ⭐ +${xpEarned} | Звёзды: ${gameState.stars}`, 400);
 
-      const passAcc = matchState.homePasses ? Math.round(matchState.homePassSuccess/matchState.homePasses*100) : 0;
+      const homePassAcc = matchState.homePasses ? Math.round(matchState.homePassSuccess/matchState.homePasses*100) : 0;
+      const awayPassAcc = matchState.awayPasses ? Math.round(matchState.awayPassSuccess/matchState.awayPasses*100) : 0;
+      const homeYellows = matchState.events.filter(e=>e.type==='yellow'&&e.team==='home').length;
+      const awayYellows = matchState.events.filter(e=>e.type==='yellow'&&e.team==='away').length;
+
       botReply(
-        `<div class="msg-text" style="font-size:12px;color:#7d8e9e;">📊 Статистика<br>⚽ Голы: ${matchState.homeScore} – ${matchState.awayScore}<br>🎯 Удары: ${matchState.homeShots} (в створ ${matchState.homeShotsOnTarget}) – ${matchState.awayShots} (${matchState.awayShotsOnTarget})<br>🏃 Владение: ${Math.round(matchState.possession)}% – ${100-Math.round(matchState.possession)}%<br>🔁 Пасы: ${matchState.homePasses} (точность ${passAcc}%)<br>🚩 Угловые: ${matchState.homeCorners} – ${matchState.awayCorners}<br>⚠️ Фолы: ${matchState.homeFouls} – ${matchState.awayFouls}<br>🟨 ЖК: ${matchState.events.filter(e=>e.type==='yellow'&&e.team==='home').length} | 🟥 КК: ${matchState.homeRedCards}<br>🔄 Замен: ${matchState.subCount}</div>`,
+        `<div class="msg-text" style="font-size:12px;color:#7d8e9e;">📊 Статистика<br>`
+        + `⚽ Голы: ${matchState.homeScore} – ${matchState.awayScore}<br>`
+        + `🎯 Удары: ${matchState.homeShots} (в створ ${matchState.homeShotsOnTarget}) – ${matchState.awayShots} (в створ ${matchState.awayShotsOnTarget})<br>`
+        + `🏃 Владение: ${Math.round(matchState.possession)}% – ${100-Math.round(matchState.possession)}%<br>`
+        + `🔁 Пасы: ${matchState.homePasses} (точность ${homePassAcc}%) – ${matchState.awayPasses} (точность ${awayPassAcc}%)<br>`
+        + `🚩 Угловые: ${matchState.homeCorners} – ${matchState.awayCorners}<br>`
+        + `⚠️ Фолы: ${matchState.homeFouls} – ${matchState.awayFouls}<br>`
+        + `🟨 ЖК: ${homeYellows} – ${awayYellows}<br>`
+        + `🟥 КК: ${matchState.homeRedCards} – ${matchState.awayRedCards}<br>`
+        + `🔄 Замен: ${matchState.subCount} – ${matchState.awaySubCount}<br>`
+        + `📈 xG: ${matchState.homeXG.toFixed(2)} – ${matchState.awayXG.toFixed(2)}`
+        + `</div>`,
         500,
         { html: true }
       );
 
-      const mvp = matchState.events.filter(e=>e.type==='goal'&&e.team==='home').pop();
-      if (mvp) botReply(`🏆 MVP: <b>${mvp.player}</b>`, 400, { html: true });
+      // MVP
+      let mvp = null;
+      const homeScorers = matchState.homePlayers.filter(p => p.matchStats.goals > 0);
+      if (homeScorers.length > 0) {
+        mvp = homeScorers.reduce((best, p) => p.matchStats.goals > best.matchStats.goals ? p : best);
+      } else {
+        mvp = matchState.homePlayers.reduce((best, p) => (p.matchStats.rating || 6) > (best.matchStats.rating || 6) ? p : best, matchState.homePlayers[0]);
+      }
+      if (mvp) {
+        calculateRating(mvp.matchStats, 90);
+        botReply(
+          `🏆 MVP: <b>${mvp.name}</b><br>⚽ Голы: ${mvp.matchStats.goals} | 🅰️ Ассисты: ${mvp.matchStats.assists}<br>🎯 Удары: ${mvp.matchStats.shots} (в створ: ${mvp.matchStats.shotsOnTarget}) | ⭐ Оценка: ${mvp.matchStats.rating.toFixed(1)}`,
+          500,
+          { html: true }
+        );
+      }
 
       botReply(
         `<div class="inline-btn-row"><button class="inline-btn" onclick="startMatch()">🔁 Сыграть снова</button><button class="inline-btn" onclick="handleNavSquad()">📋 Состав</button></div>`,
