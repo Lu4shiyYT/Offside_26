@@ -1856,14 +1856,21 @@ async function redeemPromoCode() {
       for (const player of filtered) {
         html += buildPlayerCardHTML(player);
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
-        // Кнопка тренировки
-        html += `<button class="inline-btn" onclick="trainPlayer(${player.id})" style="font-size:10px;padding:3px 8px;"
-          ${(player.trainingLevel >= 10) ? 'disabled' : ''}>🎯 Тренировать (${TRAINING_COST_PER_LEVEL} очк)</button>`;
-        // Кнопка повышения OVR
-        const nextOvrCost = (player.ovrUpgrade < 5) ? OVR_UPGRADE_COSTS[player.ovrUpgrade] : null;
-        html += `<button class="inline-btn" onclick="upgradePlayerOvr(${player.id})" style="font-size:10px;padding:3px 8px;"
-          ${(player.ovrUpgrade >= 5) ? 'disabled' : ''}>⚡ Повысить OVR (${nextOvrCost || '-'} очк)</button>`;
-        // Обменять на фрагменты
+
+        // Кнопка тренировки – показываем только если не достигнут лимит
+        if (player.trainingLevel < MAX_TRAINING_LEVEL) {
+          html += `<button class="inline-btn" onclick="trainPlayer(${player.id})" style="font-size:10px;padding:3px 8px;">
+            🎯 Тренировать (${TRAINING_COST_PER_LEVEL} очк)</button>`;
+        }
+
+        // Кнопка повышения OVR – показываем только если не достигнут лимит
+        if (player.ovrUpgrade < 5) {
+          const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
+          html += `<button class="inline-btn" onclick="upgradePlayerOvr(${player.id})" style="font-size:10px;padding:3px 8px;">
+            ⚡ Повысить OVR (${cost} очк)</button>`;
+        }
+
+        // Обменять на фрагменты (всегда доступно)
         html += `<button class="inline-btn" onclick="exchangePlayerForFragments(${player.id})" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
         html += '</div>';
       }
@@ -1874,7 +1881,10 @@ async function redeemPromoCode() {
     function trainPlayer(playerId) {
       const player = findPlayerById(playerId);
       if (!player) { botReply('❌ Игрок не найден.', 300); return; }
-      if (player.trainingLevel >= 10) { botReply('❌ Достигнут максимальный уровень тренировки (10).', 300); return; }
+      if (player.trainingLevel >= MAX_TRAINING_LEVEL) {
+        botReply(`❌ Достигнут максимальный уровень тренировки (${MAX_TRAINING_LEVEL}).`, 300);
+        return;
+      }
       if ((gameState.trainingPoints || 0) < TRAINING_COST_PER_LEVEL) {
         botReply(`❌ Недостаточно очков тренировки (нужно ${TRAINING_COST_PER_LEVEL}).`, 300);
         return;
@@ -1890,7 +1900,10 @@ async function redeemPromoCode() {
     function upgradePlayerOvr(playerId) {
       const player = findPlayerById(playerId);
       if (!player) { botReply('❌ Игрок не найден.', 300); return; }
-      if (player.ovrUpgrade >= 5) { botReply('❌ Достигнут максимальный ранг OVR (5).', 300); return; }
+      if (player.ovrUpgrade >= 5) {
+        botReply('❌ Достигнут максимальный ранг OVR (5).', 300);
+        return;
+      }
       const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
       if ((gameState.ovrUpgradePoints || 0) < cost) {
         botReply(`❌ Недостаточно очков повышения OVR (нужно ${cost}).`, 300);
