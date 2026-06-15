@@ -707,19 +707,50 @@ function pickWeightedRange(ranges) {
 function getPlayersInOvrRange(min,max) { return allPlayers.filter(p=>p.ovr>=min&&p.ovr<=max); }
 function drawPackCards(pack) {
   const drawn = [];
-  for (let i=0;i<(pack.count||1);i++) {
-    let player = null;
-    for (let a=0;a<10;a++) {
-      const range = pickWeightedRange(pack.ovrRanges); if (!range) break;
-      const candidates = getPlayersInOvrRange(range.minOvr,range.maxOvr);
-      if (candidates.length) {
-        player = JSON.parse(JSON.stringify(candidates[Math.floor(Math.random()*candidates.length)]));
-        player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        player.trainingLevel = 0; player.ovrUpgrade = 0; break;
+
+  // 1. Собираем только те диапазоны, в которых есть хотя бы один игрок
+  const availableRanges = [];
+  for (const range of pack.ovrRanges) {
+    const candidates = getPlayersInOvrRange(range.minOvr, range.maxOvr);
+    if (candidates.length > 0) {
+      availableRanges.push({
+        minOvr: range.minOvr,
+        maxOvr: range.maxOvr,
+        chance: range.chance,
+        candidates: candidates
+      });
+    }
+  }
+
+  // 2. Если вообще нет доступных игроков – возвращаем пустой массив
+  if (availableRanges.length === 0) return drawn;
+
+  // 3. Суммируем веса оставшихся диапазонов
+  const totalWeight = availableRanges.reduce((sum, r) => sum + r.chance, 0);
+
+  // 4. Генерируем ровно pack.count карт
+  for (let i = 0; i < (pack.count || 1); i++) {
+    let rand = Math.random() * totalWeight;
+    let selectedRange = null;
+    for (const r of availableRanges) {
+      rand -= r.chance;
+      if (rand <= 0) {
+        selectedRange = r;
+        break;
       }
     }
-    if (player) drawn.push(player);
+    // fallback (на случай погрешности)
+    if (!selectedRange) selectedRange = availableRanges[availableRanges.length - 1];
+
+    const player = JSON.parse(JSON.stringify(
+      selectedRange.candidates[Math.floor(Math.random() * selectedRange.candidates.length)]
+    ));
+    player.trainingLevel = 0;
+    player.ovrUpgrade    = 0;
+    player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    drawn.push(player);
   }
+
   return drawn;
 }
 function getPackById(id) { return SHOP_PACKS.find(p=>p.id===id)||null; }
