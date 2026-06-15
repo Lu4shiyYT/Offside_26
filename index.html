@@ -2380,16 +2380,21 @@ async function redeemPromoCode() {
         if (!player) { await botReply('❌ Один из игроков состава не найден.', 400); return; }
         homePlayers.push({ ...player, slotPosition: positions[i], redCarded: false,
           stamina: player.stamina || 3.0,
+          staminaPct: 100,                
           matchStats: { goals: 0, assists: 0, shots: 0, shotsOnTarget: 0, fouls: 0, yellow: 0, red: 0, rating: 6.0 } });
       }
 
       const benchPlayers = [];
-      if (gameState.benchSlots) {
+            if (gameState.benchSlots) {
         for (const k in gameState.benchSlots) {
           const pid = gameState.benchSlots[k];
           if (pid) {
             const p = findPlayerById(pid);
-            if (p) benchPlayers.push({...p, stamina: p.stamina || 3.0, matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 }});
+            if (p) benchPlayers.push({...p,
+              stamina: p.stamina || 3.0,
+              staminaPct: 100,   // ← ДОБАВЛЕНО
+              matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 }
+            });
           }
         }
       }
@@ -2400,9 +2405,11 @@ async function redeemPromoCode() {
       const botSquad = getBotSquad(awayName);
       const awayPlayers = botSquad.starting.map(p => ({ ...p, redCarded: false,
         stamina: p.stamina || (2.5 + Math.random() * 1.5),
+        staminaPct: 100,                                               
         matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
       const awayBench = (botSquad.bench || []).map(p => ({ ...p,
         stamina: p.stamina || (2.5 + Math.random() * 1.5),
+        staminaPct: 100,                                                  
         matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
 
       const tactic     = getCurrentTactic();
@@ -2459,15 +2466,17 @@ async function redeemPromoCode() {
     }
 
     // --- расход выносливости каждую минуту ---
-    function drainStamina() {
-      const rate = 0.02;  // за игровую минуту
-      for (const p of matchState.homePlayers) {
-        if (p.stamina > 0) p.stamina = Math.max(0, p.stamina - rate);
-      }
-      for (const p of matchState.awayPlayers) {
-        if (p.stamina > 0) p.stamina = Math.max(0, p.stamina - rate);
-      }
-      // боты на скамейке не играют, их выносливость не тратится
+        function drainStamina() {
+      const BASE_RATE = 0.8;   // можно регулировать (чем больше, тем быстрее устают все)
+      const update = (list) => {
+        for (const p of list) {
+          if (!p.staminaPct || p.staminaPct <= 0) continue;
+          const rate = BASE_RATE / (p.stamina || 3.0); // stamina из карточки – чем выше, тем медленнее падает
+          p.staminaPct = Math.max(0, p.staminaPct - rate);
+        }
+      };
+      update(matchState.homePlayers);
+      update(matchState.awayPlayers);
     }
 
     function simulateMinute() {
@@ -2544,14 +2553,14 @@ async function redeemPromoCode() {
       // ---- ВЛИЯНИЕ ВЫНОСЛИВОСТИ НА ШАНС ГОЛА (средняя усталость атакующей линии) ----
       const homeAttackers = matchState.homePlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
       const awayAttackers = matchState.awayPlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
-      const avgHomeStamina = homeAttackers.length > 0
-        ? homeAttackers.reduce((s,p) => s + p.stamina, 0) / homeAttackers.length
-        : 3.0;
-      const avgAwayStamina = awayAttackers.length > 0
-        ? awayAttackers.reduce((s,p) => s + p.stamina, 0) / awayAttackers.length
-        : 3.0;
-      homeGoalChance *= (0.7 + 0.3 * (avgHomeStamina / 5));
-      awayGoalChance *= (0.7 + 0.3 * (avgAwayStamina / 5));
+            const avgHomeStaminaPct = homeAttackers.length > 0
+        ? homeAttackers.reduce((s,p) => s + (p.staminaPct || 100), 0) / homeAttackers.length
+        : 100;
+      const avgAwayStaminaPct = awayAttackers.length > 0
+        ? awayAttackers.reduce((s,p) => s + (p.staminaPct || 100), 0) / awayAttackers.length
+        : 100;
+      homeGoalChance *= (0.7 + 0.3 * (avgHomeStaminaPct / 100));
+      awayGoalChance *= (0.7 + 0.3 * (avgAwayStaminaPct / 100));
 
       homeGoalChance = Math.max(0.004, Math.min(0.15, homeGoalChance));
       awayGoalChance = Math.max(0.004, Math.min(0.12, awayGoalChance));
@@ -2738,35 +2747,37 @@ async function redeemPromoCode() {
       return '#880e4f';
     }
 
-    function renderStaminaBar(player) {
-      if (typeof player.stamina !== 'number' || player.stamina <= 0) return '';
-      const pct = Math.min(1, player.stamina / 5);
-      const color = staminaColor(pct);
-      return `<div style="height:4px;background:#2a3a4a;border-radius:2px;margin-top:2px;width:100%;"><div style="height:100%;width:${pct*100}%;background:${color};border-radius:2px;"></div></div>`;
+        function renderStaminaBar(player) {
+      const pct = (player.staminaPct != null) ? player.staminaPct : 100;
+      const val = Math.min(100, pct) / 100;
+      const color = staminaColor(val);
+      return `<div style="height:4px;background:#2a3a4a;border-radius:2px;margin-top:2px;width:100%;">
+        <div style="height:100%;width:${val*100}%;background:${color};border-radius:2px;"></div>
+      </div>`;
     }
 
-    async function showActiveSquad() {
+        async function showActiveSquad() {
       if (!matchState || matchState.finished) return;
       const formation = getCurrentFormation();
       let html = '<div style="padding:10px;font-size:12px;color:#7d8e9e;">🔄 Активный состав (перетащи игрока скамейки на поле для замены)</div>';
       html += '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px 0;">';
 
       for (let i = 0; i < 11; i++) {
-        const pid = gameState.squadSlots[String(i)];
-        const player = pid ? findPlayerById(pid) : null;
+        const player = matchState.homePlayers[i];   // берём напрямую из матча
         const pos = formation.positions[i];
-        if (player && matchState.homePlayers.find(p => p.id === player.id)) {
-          const p = matchState.homePlayers.find(p => p.id === player.id);
-          const effOvr = getEffectiveOvr(p);
-          const staminaBar = renderStaminaBar(p);
+        if (player && !player.redCarded) {
+          const effOvr = getEffectiveOvr(player);
+          const staminaBar = renderStaminaBar(player);
           html += `<div class="slot filled" data-slot="${i}" data-pos="${pos}"
             ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
             style="width:70px;min-height:80px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:2px;cursor:pointer;">
-            <div style="font-size:9px;color:#fff;">${p.name}</div>
+            <div style="font-size:9px;color:#fff;">${player.name}</div>
             <div style="font-size:11px;color:#f0c040;">${effOvr} (${pos})</div>
             ${staminaBar}
             <button onclick="subPlayerOut('${i}')" style="position:absolute;bottom:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>
           </div>`;
+        } else if (player && player.redCarded) {
+          html += `<div class="slot" style="width:70px;min-height:80px;background:rgba(200,0,0,0.3);border:2px dashed rgba(255,0,0,0.4);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);font-size:9px;margin:2px;">${player.name}<br>🟥</div>`;
         } else {
           html += `<div class="slot" data-slot="${i}" data-pos="${pos}"
             ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
@@ -2775,7 +2786,7 @@ async function redeemPromoCode() {
       }
       html += '</div>';
 
-      // скамейка
+      // скамейка – без изменений
       html += '<div style="margin-top:10px;font-size:12px;color:#7d8e9e;">Скамейка (перетащи на слот):</div><div style="display:flex;gap:6px;overflow-x:auto;padding:6px;">';
       const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
       for (const bp of eligibleBench) {
@@ -2795,7 +2806,7 @@ async function redeemPromoCode() {
     }
 
     // Обработчик кнопки "⇄"
-    function subPlayerOut(slotIndex) {
+        function subPlayerOut(slotIndex) {
       if (!matchState || matchState.finished) return;
       if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
       const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
@@ -2811,7 +2822,7 @@ async function redeemPromoCode() {
     }
 
     // Подтверждение замены (через кнопку)
-    async function confirmSub(benchId) {
+        async function confirmSub(benchId) {
       const slotIndex = matchState._pendingSlotIndex;
       if (slotIndex === undefined) return;
       const benchPlayer = findPlayerById(parseInt(benchId));
@@ -2821,16 +2832,14 @@ async function redeemPromoCode() {
         botReply('❌ Нельзя поставить вратаря в поле или полевого в ворота.', 300);
         return;
       }
-      const fieldPlayerId = gameState.squadSlots[String(slotIndex)];
-      const fieldPlayer = findPlayerById(fieldPlayerId);
+      const fieldPlayer = matchState.homePlayers[slotIndex];
       if (!fieldPlayer) { botReply('❌ Слот пуст.', 300); return; }
 
-      const idxHome = matchState.homePlayers.findIndex(p => p.id === fieldPlayer.id);
-      if (idxHome !== -1) {
-        matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
-          stamina: benchPlayer.stamina || 3.0,
-          matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
-      }
+      // Замена в matchState
+      matchState.homePlayers[slotIndex] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
+        stamina: benchPlayer.stamina || 3.0,
+        staminaPct: benchPlayer.staminaPct != null ? benchPlayer.staminaPct : 100,
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
       matchState.subbedOutIds.push(fieldPlayer.id);
@@ -2842,7 +2851,7 @@ async function redeemPromoCode() {
     }
 
     // Drag-and-drop на слот в активном составе
-    async function handleActiveSquadDrop(event, slotIndex) {
+        async function handleActiveSquadDrop(event, slotIndex) {
       event.preventDefault();
       const target = event.target.closest('.slot');
       if (!target) return;
@@ -2858,17 +2867,14 @@ async function redeemPromoCode() {
         botReply('❌ Нельзя поставить вратаря в поле или полевого в ворота.', 300);
         return;
       }
-      const fieldPlayerId = gameState.squadSlots[String(slotIndex)];
-      const fieldPlayer = findPlayerById(fieldPlayerId);
+      const fieldPlayer = matchState.homePlayers[slotIndex];
       if (!fieldPlayer) { botReply('❌ Слот пуст.', 300); return; }
       if (matchState.subbedOutIds.includes(fieldPlayer.id)) { botReply('❌ Этот игрок уже был заменён.', 300); return; }
 
-      const idxHome = matchState.homePlayers.findIndex(p => p.id === fieldPlayer.id);
-      if (idxHome !== -1) {
-        matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
-          stamina: benchPlayer.stamina || 3.0,
-          matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
-      }
+      matchState.homePlayers[slotIndex] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
+        stamina: benchPlayer.stamina || 3.0,
+        staminaPct: benchPlayer.staminaPct != null ? benchPlayer.staminaPct : 100,
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
       matchState.subbedOutIds.push(fieldPlayer.id);
