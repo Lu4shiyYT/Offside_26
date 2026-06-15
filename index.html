@@ -2188,7 +2188,7 @@ async function redeemPromoCode() {
 // === INSERT MODULE: match engine ===
 // ============================================
 
-    // === MATCH ENGINE v4 — balanced goals, proper sub logic ===
+    // === MATCH ENGINE v5 – subs don't alter permanent lineup ===
     let matchState    = null;
     let matchInterval = null;
     let matchControls = null;
@@ -2337,7 +2337,6 @@ async function redeemPromoCode() {
       const homeOvr = getSquadAverageOvr();
       const awayOvr = matchState.awayOvr;
 
-      // ── balanced probabilities → ~3-4 гола за игру ──────────────────────
       let homeGoalChance = 0.022;
       let awayGoalChance = 0.018;
 
@@ -2345,20 +2344,17 @@ async function redeemPromoCode() {
       homeGoalChance += ovrDiff * 0.0006;
       awayGoalChance -= ovrDiff * 0.0006;
 
-      // тактики дают небольшой сдвиг
       if (matchState.homeTactic.attackMult > 1) homeGoalChance += 0.003;
       if (matchState.homeTactic.defMult > 1)    awayGoalChance -= 0.002;
       homeGoalChance += (matchState.homeTactic.fastAttackChance || 0) * 0.4;
       awayGoalChance += (matchState.homeTactic.counterChance || 0) * 0.4;
 
-      // красные карточки
       homeGoalChance -= matchState.homeRedCards * 0.005;
       awayGoalChance += matchState.homeRedCards * 0.005;
 
       homeGoalChance = Math.max(0.004, Math.min(0.15, homeGoalChance));
       awayGoalChance = Math.max(0.004, Math.min(0.12, awayGoalChance));
 
-      // статистика
       matchState.homePasses      += Math.floor(Math.random() * 5) + 2;
       matchState.homePassSuccess += Math.floor(Math.random() * 4) + 1;
       if (Math.random() < 0.03) matchState.homeFouls++;
@@ -2366,7 +2362,6 @@ async function redeemPromoCode() {
 
       const roll = Math.random();
 
-      // ГОЛ ДОМА
       if (roll < homeGoalChance) {
         const scorer = pickRandomAttacker();
         matchState.homeScore++;
@@ -2380,7 +2375,6 @@ async function redeemPromoCode() {
         return;
       }
 
-      // ГОЛ ГОСТЕЙ
       if (roll < homeGoalChance + awayGoalChance) {
         matchState.awayScore++;
         matchState.awayShots++;
@@ -2390,11 +2384,9 @@ async function redeemPromoCode() {
         return;
       }
 
-      // нейтральные события
       if (Math.random() < 0.05) { matchState.homeShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! Мимо ворот.</div>`, 150, { html: true }); return; }
       if (Math.random() < 0.04) { matchState.awayShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от ${matchState.awayName}. Неточно.</div>`, 150, { html: true }); return; }
 
-      // жёлтые/красные
       if (Math.random() < 0.018) {
         const activePlayers = matchState.homePlayers.filter(p => !p.redCarded);
         if (activePlayers.length === 0) return;
@@ -2435,7 +2427,7 @@ async function redeemPromoCode() {
       return active[Math.floor(Math.random()*active.length)];
     }
 
-    // ---------- ЗАМЕНЫ (нельзя вернуть уже заменённого) ----------
+    // ---------- ЗАМЕНЫ (без изменения постоянного состава) ----------
     async function showSubMenu() {
       if (!matchState || matchState.finished) return;
       if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
@@ -2443,7 +2435,6 @@ async function redeemPromoCode() {
       const availableOut = matchState.homePlayers.filter(p => !p.redCarded);
       if (availableOut.length === 0) { botReply('ℹ️ Нет доступных игроков для замены.', 300); return; }
 
-      // игроки на скамейке, которые ещё не выходили на поле (т.е. не в subbedOutIds)
       const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
       if (!eligibleBench.length) { botReply('ℹ️ Все игроки скамейки уже выходили на поле.', 300); return; }
 
@@ -2469,6 +2460,7 @@ async function redeemPromoCode() {
       let html = `<div class="msg-text"><b>Кого заменить? (выходит ${benchPlayer.name})</b></div><div class="inline-btn-row">`;
       const formation = getCurrentFormation();
       for (let i = 0; i < 11; i++) {
+        // берём ID из постоянного состава, но игрок должен быть в matchState.homePlayers
         const pid = gameState.squadSlots[String(i)];
         const current = pid ? findPlayerById(pid) : null;
         if (current && !current.redCarded && matchState.homePlayers.some(p => p.id === current.id && !p.redCarded)) {
@@ -2492,14 +2484,13 @@ async function redeemPromoCode() {
         return;
       }
 
-      const fieldPlayer = findPlayerById(gameState.squadSlots[String(slotIndex)]);
+      // Получаем игрока, который стоит в этом слоте (из постоянного состава)
+      const fieldPlayerId = gameState.squadSlots[String(slotIndex)];
+      const fieldPlayer = findPlayerById(fieldPlayerId);
       if (!fieldPlayer) { botReply('❌ Слот пуст.', 300); return; }
       if (fieldPlayer.redCarded) { botReply('❌ Нельзя заменить удалённого игрока.', 300); return; }
 
-      // обновляем состав на поле в gameState
-      gameState.squadSlots[String(slotIndex)] = benchPlayer.id;
-
-      // обновляем matchState
+      // Замена только внутри матча – меняем игроков в homePlayers и benchPlayers
       const idxHome = matchState.homePlayers.findIndex(p => p.id === fieldPlayer.id);
       if (idxHome !== -1) {
         matchState.homePlayers[idxHome] = { ...benchPlayer, slotPosition: slotPos, redCarded: false };
@@ -2507,12 +2498,13 @@ async function redeemPromoCode() {
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
 
-      // этот игрок больше не может вернуться на поле
+      // Этот полевой игрок больше не может вернуться на поле
       matchState.subbedOutIds.push(fieldPlayer.id);
 
       matchState.subCount++;
       matchState._pendingSubIn = null;
-      saveState();
+
+      // НЕ МЕНЯЕМ gameState.squadSlots и НЕ СОХРАНЯЕМ состояние
       renderMatchControls();
       botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300, { html: true });
     }
