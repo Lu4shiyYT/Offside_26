@@ -2408,10 +2408,16 @@ async function redeemPromoCode() {
       matchControls.innerHTML = html;
     }
 
-    async function startMatch() {
+        async function startMatch() {
       if (gameState.inMatch) { await botReply('⚠️ Матч уже идёт!', 300); return; }
       if (!gameState.squadSlots || Object.keys(gameState.squadSlots).length < 11) {
         await botReply('❌ Нужно расставить 11 игроков в составе перед матчем!', 400);
+        return;
+      }
+
+      // Проверка обязательных назначений
+      if (!gameState.captain || !gameState.cornerKicker || !gameState.freeKicker || !gameState.penaltyKicker) {
+        await botReply('❌ Перед матчем назначьте капитана, пенальтиста, подающего угловых и штрафных в разделе «Состав».', 400);
         return;
       }
 
@@ -2426,19 +2432,19 @@ async function redeemPromoCode() {
         if (!player) { await botReply('❌ Один из игроков состава не найден.', 400); return; }
         homePlayers.push({ ...player, slotPosition: positions[i], redCarded: false,
           stamina: player.stamina || 3.0,
-          staminaPct: 100,                
+          staminaPct: 100,
           matchStats: { goals: 0, assists: 0, shots: 0, shotsOnTarget: 0, fouls: 0, yellow: 0, red: 0, rating: 6.0 } });
       }
 
       const benchPlayers = [];
-            if (gameState.benchSlots) {
+      if (gameState.benchSlots) {
         for (const k in gameState.benchSlots) {
           const pid = gameState.benchSlots[k];
           if (pid) {
             const p = findPlayerById(pid);
             if (p) benchPlayers.push({...p,
               stamina: p.stamina || 3.0,
-              staminaPct: 100,   // ← ДОБАВЛЕНО
+              staminaPct: 100,
               matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 }
             });
           }
@@ -2451,11 +2457,11 @@ async function redeemPromoCode() {
       const botSquad = getBotSquad(awayName);
       const awayPlayers = botSquad.starting.map(p => ({ ...p, redCarded: false,
         stamina: p.stamina || (2.5 + Math.random() * 1.5),
-        staminaPct: 100,                                               
+        staminaPct: 100,
         matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
       const awayBench = (botSquad.bench || []).map(p => ({ ...p,
         stamina: p.stamina || (2.5 + Math.random() * 1.5),
-        staminaPct: 100,                                                  
+        staminaPct: 100,
         matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
 
       const tactic     = getCurrentTactic();
@@ -2577,7 +2583,7 @@ async function redeemPromoCode() {
       matchState.awaySubbedOutIds.push(outPlayer.name);
     }
 
-    function generateMatchEvent(minute) {
+        function generateMatchEvent(minute) {
       const homeOvr = getSquadAverageOvr();
       const awayOvr = matchState.awayOvr;
 
@@ -2596,10 +2602,16 @@ async function redeemPromoCode() {
       homeGoalChance -= matchState.homeRedCards * 0.005;
       awayGoalChance += matchState.homeRedCards * 0.005;
 
-      // ---- ВЛИЯНИЕ ВЫНОСЛИВОСТИ НА ШАНС ГОЛА (средняя усталость атакующей линии) ----
+      // Капитан на поле – небольшой бонус
+      const captain = matchState.homePlayers.find(p => p.id === gameState.captain && !p.redCarded);
+      if (captain) {
+        homeGoalChance += 0.002;
+      }
+
+      // ---- ВЛИЯНИЕ ВЫНОСЛИВОСТИ ----
       const homeAttackers = matchState.homePlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
       const awayAttackers = matchState.awayPlayers.filter(p => !p.redCarded && ['ST','CF','LW','RW','CAM'].includes(p.position));
-            const avgHomeStaminaPct = homeAttackers.length > 0
+      const avgHomeStaminaPct = homeAttackers.length > 0
         ? homeAttackers.reduce((s,p) => s + (p.staminaPct || 100), 0) / homeAttackers.length
         : 100;
       const avgAwayStaminaPct = awayAttackers.length > 0
@@ -2620,6 +2632,44 @@ async function redeemPromoCode() {
       matchState.awayPassSuccess += Math.floor(Math.random() * 4) + 1;
 
       const roll = Math.random();
+
+      // ---- ПЕНАЛЬТИ (редкое событие) ----
+      if (Math.random() < 0.008) {
+        let taker = matchState.homePlayers.find(p => p.id === gameState.penaltyKicker && !p.redCarded);
+        if (!taker) {
+          const eligible = matchState.homePlayers.filter(p => !p.redCarded && p.position !== 'GK');
+          if (eligible.length > 0) {
+            taker = eligible.reduce((best, p) => (getEffectiveStats(p).SHO || 0) > (getEffectiveStats(best).SHO || 0) ? p : best);
+          } else {
+            taker = matchState.homePlayers[0];
+          }
+        }
+        const gk = matchState.awayPlayers.find(p => p.position === 'GK' && !p.redCarded);
+        const gkStats = gk ? getEffectiveStats(gk) : { REF: 50, DIV: 50, HAN: 50 };
+        const shootStat = getEffectiveStats(taker).SHO || 50;
+        const gkAvg = ((gkStats.REF || 50) + (gkStats.DIV || 50) + (gkStats.HAN || 50)) / 3;
+        let penGoalChance = 0.75 + (shootStat - gkAvg) * 0.003;
+        penGoalChance = Math.max(0.25, Math.min(0.95, penGoalChance));
+
+        matchState.homeShots++;
+        matchState.homeShotsOnTarget++;
+        taker.matchStats.shots++;
+        taker.matchStats.shotsOnTarget++;
+
+        if (Math.random() < penGoalChance) {
+          matchState.homeScore++;
+          gameState.goalsScored = (gameState.goalsScored || 0) + 1;
+          gameState.goalsForQuest = (gameState.goalsForQuest || 0) + 1;
+          taker.matchStats.goals++;
+          botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ПЕНАЛЬТИ! <b>${taker.name}</b> реализует! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+          matchState.events.push({ minute, type: 'goal', team: 'home', player: taker.name, penalty: true });
+        } else {
+          botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 ПЕНАЛЬТИ! <b>${taker.name}</b> не забивает! Вратарь парирует.</div>`, 200, { html: true });
+          matchState.events.push({ minute, type: 'penalty_miss', team: 'home', player: taker.name });
+        }
+        saveState();
+        return;
+      }
 
       // ---- ГОЛ ДОМА ----
       if (roll < homeGoalChance) {
@@ -2723,7 +2773,8 @@ async function redeemPromoCode() {
       // ---- УГЛОВЫЕ ----
       if (Math.random() < 0.05) {
         matchState.homeCorners++;
-        const taker = matchState.homePlayers.find(p => !p.redCarded);
+        let taker = matchState.homePlayers.find(p => p.id === gameState.cornerKicker && !p.redCarded);
+        if (!taker) taker = matchState.homePlayers.find(p => !p.redCarded && p.position !== 'GK');
         const name = taker ? taker.name : 'игрок';
         const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
@@ -2735,6 +2786,38 @@ async function redeemPromoCode() {
         const name = taker ? taker.name : 'игрок';
         const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> У ворот ${matchState.homeName}: ${msg}</div>`, 150, { html: true });
+        return;
+      }
+
+      // ---- ШТРАФНЫЕ ----
+      if (Math.random() < 0.02) {
+        let taker = matchState.homePlayers.find(p => p.id === gameState.freeKicker && !p.redCarded);
+        if (!taker) taker = matchState.homePlayers.find(p => !p.redCarded && p.position !== 'GK');
+        if (taker) {
+          // штрафной удар с вероятностью гола
+          const gk = matchState.awayPlayers.find(p => p.position === 'GK' && !p.redCarded);
+          const gkStats = gk ? getEffectiveStats(gk) : { REF: 50, DIV: 50, HAN: 50 };
+          const shootStat = getEffectiveStats(taker).SHO || 50;
+          const gkAvg = ((gkStats.REF || 50) + (gkStats.DIV || 50) + (gkStats.HAN || 50)) / 3;
+          let fkGoalChance = 0.12 + (shootStat - gkAvg) * 0.002;
+          fkGoalChance = Math.max(0.05, Math.min(0.40, fkGoalChance));
+          matchState.homeShots++;
+          matchState.homeShotsOnTarget++;
+          taker.matchStats.shots++;
+          taker.matchStats.shotsOnTarget++;
+
+          if (Math.random() < fkGoalChance) {
+            matchState.homeScore++;
+            gameState.goalsScored = (gameState.goalsScored || 0) + 1;
+            gameState.goalsForQuest = (gameState.goalsForQuest || 0) + 1;
+            taker.matchStats.goals++;
+            botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ШТРАФНОЙ! <b>${taker.name}</b> забивает прямым ударом! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+            matchState.events.push({ minute, type: 'goal', team: 'home', player: taker.name, freekick: true });
+            saveState();
+          } else {
+            botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 Штрафной удар <b>${taker.name}</b> — мимо!</div>`, 150, { html: true });
+          }
+        }
         return;
       }
 
