@@ -2188,7 +2188,7 @@ async function redeemPromoCode() {
 // === INSERT MODULE: match engine ===
 // ============================================
 
-    // === MATCH ENGINE v3 — realistic goals, proper subs, fixed UI, halftime ===
+    // === MATCH ENGINE v4 — balanced goals, proper sub logic ===
     let matchState    = null;
     let matchInterval = null;
     let matchControls = null;
@@ -2231,7 +2231,6 @@ async function redeemPromoCode() {
       const formation  = getCurrentFormation();
       const positions  = formation.positions;
 
-      // собираем основной состав
       const homePlayers = [];
       for (let i = 0; i < 11; i++) {
         const pid = gameState.squadSlots[String(i)];
@@ -2241,7 +2240,6 @@ async function redeemPromoCode() {
         homePlayers.push({ ...player, slotPosition: positions[i], redCarded: false });
       }
 
-      // скамейка
       const benchPlayers = [];
       if (gameState.benchSlots) {
         for (const k in gameState.benchSlots) {
@@ -2272,7 +2270,8 @@ async function redeemPromoCode() {
         homeShotsOnTarget: 0, awayShotsOnTarget: 0,
         homePasses: 0, homePassSuccess: 0,
         homeFouls: 0, awayFouls: 0,
-        homeCorners: 0, awayCorners: 0
+        homeCorners: 0, awayCorners: 0,
+        subbedOutIds: []            // игроки, которых уже заменили (не могут вернуться)
       };
 
       gameState.inMatch = true;
@@ -2338,32 +2337,32 @@ async function redeemPromoCode() {
       const homeOvr = getSquadAverageOvr();
       const awayOvr = matchState.awayOvr;
 
-      // базовые вероятности голов (очень низкие, чтобы счёт был 0-3)
-      let homeGoalChance = 0.006;
-      let awayGoalChance = 0.005;
+      // ── balanced probabilities → ~3-4 гола за игру ──────────────────────
+      let homeGoalChance = 0.022;
+      let awayGoalChance = 0.018;
 
       const ovrDiff = homeOvr - awayOvr;
-      homeGoalChance += ovrDiff * 0.0004;
-      awayGoalChance -= ovrDiff * 0.0004;
+      homeGoalChance += ovrDiff * 0.0006;
+      awayGoalChance -= ovrDiff * 0.0006;
 
-      // тактики дают только небольшой сдвиг, а не множитель
-      if (matchState.homeTactic.attackMult > 1) homeGoalChance += 0.002;
-      if (matchState.homeTactic.defMult > 1) awayGoalChance -= 0.001;
-      homeGoalChance += (matchState.homeTactic.fastAttackChance || 0) * 0.3;
-      awayGoalChance += (matchState.homeTactic.counterChance || 0) * 0.3;
+      // тактики дают небольшой сдвиг
+      if (matchState.homeTactic.attackMult > 1) homeGoalChance += 0.003;
+      if (matchState.homeTactic.defMult > 1)    awayGoalChance -= 0.002;
+      homeGoalChance += (matchState.homeTactic.fastAttackChance || 0) * 0.4;
+      awayGoalChance += (matchState.homeTactic.counterChance || 0) * 0.4;
 
       // красные карточки
-      homeGoalChance -= matchState.homeRedCards * 0.003;
-      awayGoalChance += matchState.homeRedCards * 0.003;
+      homeGoalChance -= matchState.homeRedCards * 0.005;
+      awayGoalChance += matchState.homeRedCards * 0.005;
 
-      homeGoalChance = Math.max(0.002, Math.min(0.10, homeGoalChance));
-      awayGoalChance = Math.max(0.002, Math.min(0.08, awayGoalChance));
+      homeGoalChance = Math.max(0.004, Math.min(0.15, homeGoalChance));
+      awayGoalChance = Math.max(0.004, Math.min(0.12, awayGoalChance));
 
       // статистика
       matchState.homePasses      += Math.floor(Math.random() * 5) + 2;
       matchState.homePassSuccess += Math.floor(Math.random() * 4) + 1;
-      if (Math.random() < 0.02) matchState.homeFouls++;
-      if (Math.random() < 0.02) matchState.awayFouls++;
+      if (Math.random() < 0.03) matchState.homeFouls++;
+      if (Math.random() < 0.03) matchState.awayFouls++;
 
       const roll = Math.random();
 
@@ -2392,11 +2391,11 @@ async function redeemPromoCode() {
       }
 
       // нейтральные события
-      if (Math.random() < 0.04) { matchState.homeShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! Мимо ворот.</div>`, 150, { html: true }); return; }
-      if (Math.random() < 0.03) { matchState.awayShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от ${matchState.awayName}. Неточно.</div>`, 150, { html: true }); return; }
+      if (Math.random() < 0.05) { matchState.homeShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! Мимо ворот.</div>`, 150, { html: true }); return; }
+      if (Math.random() < 0.04) { matchState.awayShots++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от ${matchState.awayName}. Неточно.</div>`, 150, { html: true }); return; }
 
       // жёлтые/красные
-      if (Math.random() < 0.015) {
+      if (Math.random() < 0.018) {
         const activePlayers = matchState.homePlayers.filter(p => !p.redCarded);
         if (activePlayers.length === 0) return;
         const player = activePlayers[Math.floor(Math.random() * activePlayers.length)];
@@ -2415,9 +2414,9 @@ async function redeemPromoCode() {
         return;
       }
 
-      if (Math.random() < 0.01) { botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 Игрок ${matchState.awayName}</div>`, 200, { html: true }); return; }
-      if (Math.random() < 0.04) { matchState.homeCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой.</div>`, 150, { html: true }); return; }
-      if (Math.random() < 0.03) { matchState.awayCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой у наших ворот.</div>`, 150, { html: true }); return; }
+      if (Math.random() < 0.012) { botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 Игрок ${matchState.awayName}</div>`, 200, { html: true }); return; }
+      if (Math.random() < 0.05) { matchState.homeCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой.</div>`, 150, { html: true }); return; }
+      if (Math.random() < 0.04) { matchState.awayCorners++; botReply(`<div class="match-event"><span class="minute">${minute}'</span> Угловой у наших ворот.</div>`, 150, { html: true }); return; }
 
       const COMMENTS = ['пас в центре','борьба за мяч','мяч у защиты','атака развивается','неточный пас','вратарь забирает мяч','офсайд','фол в середине','штрафной','вброс'];
       botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${COMMENTS[Math.floor(Math.random()*COMMENTS.length)]}.</div>`, 150, { html: true });
@@ -2436,17 +2435,20 @@ async function redeemPromoCode() {
       return active[Math.floor(Math.random()*active.length)];
     }
 
-    // ---------- ЗАМЕНЫ ----------
+    // ---------- ЗАМЕНЫ (нельзя вернуть уже заменённого) ----------
     async function showSubMenu() {
       if (!matchState || matchState.finished) return;
       if (matchState.subCount >= matchState.maxSubs) { botReply('❌ Лимит замен.', 300); return; }
-      // можно заменить только тех, кто в поле и не удалён
+
       const availableOut = matchState.homePlayers.filter(p => !p.redCarded);
       if (availableOut.length === 0) { botReply('ℹ️ Нет доступных игроков для замены.', 300); return; }
-      if (!matchState.benchPlayers.length) { botReply('ℹ️ Скамейка пуста.', 300); return; }
+
+      // игроки на скамейке, которые ещё не выходили на поле (т.е. не в subbedOutIds)
+      const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
+      if (!eligibleBench.length) { botReply('ℹ️ Все игроки скамейки уже выходили на поле.', 300); return; }
 
       let html = '<div class="msg-text"><b>Выбери игрока со скамейки:</b></div><div class="inline-btn-row">';
-      for (const p of matchState.benchPlayers) {
+      for (const p of eligibleBench) {
         html += `<button class="inline-btn" onclick="selectSubOut('${p.id}')">${p.name} (${getEffectiveOvr(p)})</button>`;
       }
       html += '</div>';
@@ -2455,11 +2457,14 @@ async function redeemPromoCode() {
 
     async function selectSubOut(benchId) {
       const benchPlayer = findPlayerById(parseInt(benchId));
-      if (!benchPlayer || !matchState.benchPlayers.find(p => p.id == benchId)) {
+      if (!benchPlayer || !matchState.benchPlayers.some(p => p.id == benchId)) {
         botReply('❌ Игрок не найден на скамейке.', 300); return;
       }
+      if (matchState.subbedOutIds.includes(benchPlayer.id)) {
+        botReply('❌ Этого игрока уже заменяли – он не может снова выйти на поле.', 300); return;
+      }
       matchState._pendingSubIn = benchPlayer;
-      // показать список игроков в поле (не удалённых)
+
       const availableOut = matchState.homePlayers.filter(p => !p.redCarded);
       let html = `<div class="msg-text"><b>Кого заменить? (выходит ${benchPlayer.name})</b></div><div class="inline-btn-row">`;
       const formation = getCurrentFormation();
@@ -2501,6 +2506,10 @@ async function redeemPromoCode() {
       }
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
+
+      // этот игрок больше не может вернуться на поле
+      matchState.subbedOutIds.push(fieldPlayer.id);
+
       matchState.subCount++;
       matchState._pendingSubIn = null;
       saveState();
@@ -2571,7 +2580,6 @@ async function redeemPromoCode() {
     }
 
 // === END MODULE: match engine ===
-
   
 // ========== INIT ==========
 function init() {
