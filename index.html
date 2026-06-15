@@ -2408,19 +2408,56 @@ async function redeemPromoCode() {
       matchControls.innerHTML = html;
     }
 
-        async function startMatch() {
+            async function startMatch() {
       if (gameState.inMatch) { await botReply('⚠️ Матч уже идёт!', 300); return; }
       if (!gameState.squadSlots || Object.keys(gameState.squadSlots).length < 11) {
         await botReply('❌ Нужно расставить 11 игроков в составе перед матчем!', 400);
         return;
       }
 
-      // Проверка обязательных назначений
+      // ── Автоматическое назначение ролей, если не выбраны ─────────────────
       if (!gameState.captain || !gameState.cornerKicker || !gameState.freeKicker || !gameState.penaltyKicker) {
-        await botReply('❌ Перед матчем назначьте капитана, пенальтиста, подающего угловых и штрафных в разделе «Состав».', 400);
-        return;
+        // Собираем всех полевых игроков из стартового состава (не вратарей)
+        const fieldPlayers = [];
+        for (let i = 0; i < 11; i++) {
+          const pid = gameState.squadSlots[String(i)];
+          if (pid) {
+            const p = findPlayerById(pid);
+            if (p && p.position !== 'GK') fieldPlayers.push(p);
+          }
+        }
+        if (fieldPlayers.length === 0) {
+          await botReply('❌ В составе нет полевых игроков.', 400);
+          return;
+        }
+        const randomFieldPlayer = () => fieldPlayers[Math.floor(Math.random() * fieldPlayers.length)];
+
+        if (!gameState.captain) {
+          const p = randomFieldPlayer();
+          gameState.captain = p.id;
+          await botReply(`ℹ️ Капитан не был назначен. Автоматически выбран <b>${p.name}</b>.`, 300, { html: true });
+        }
+        if (!gameState.cornerKicker) {
+          const p = randomFieldPlayer();
+          gameState.cornerKicker = p.id;
+          await botReply(`ℹ️ Подающий угловых не назначен. Автоматически выбран <b>${p.name}</b>.`, 300, { html: true });
+        }
+        if (!gameState.freeKicker) {
+          const p = randomFieldPlayer();
+          gameState.freeKicker = p.id;
+          await botReply(`ℹ️ Исполнитель штрафных не назначен. Автоматически выбран <b>${p.name}</b>.`, 300, { html: true });
+        }
+        if (!gameState.penaltyKicker) {
+          // пенальтист – с наивысшим ударом (SHO)
+          const sorted = [...fieldPlayers].sort((a,b) => (getEffectiveStats(b).SHO||0) - (getEffectiveStats(a).SHO||0));
+          const p = sorted[0] || randomFieldPlayer();
+          gameState.penaltyKicker = p.id;
+          await botReply(`ℹ️ Пенальтист не был назначен. Автоматически выбран <b>${p.name}</b>.`, 300, { html: true });
+        }
+        saveState();
       }
 
+      // ── Далее всё как прежде ────────────────────────────────────────────
       const formation  = getCurrentFormation();
       const positions  = formation.positions;
 
