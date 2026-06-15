@@ -2022,11 +2022,13 @@ async function redeemPromoCode() {
         fieldHtml += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
       }
 
-      for (const player of availablePlayers) {
+            for (const player of availablePlayers) {
         const posColor = getPositionColor(player.position);
         fieldHtml +=
           `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
-          + `style="width:54px;min-height:70px;background:#1e2d3d;border:1px solid #2a4060;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:grab;font-size:10px;padding:4px;user-select:none;">`
+          + `style="width:54px;min-height:70px;background:#1e2d3d;border:1px solid #2a4060;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;font-size:10px;padding:4px;user-select:none;position:relative;">`
+          // кнопка ⇄
+          + `<button onclick="event.stopPropagation();startPlayerPlacement(${player.id})" style="position:absolute;top:2px;right:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>`
           + `<div style="width:26px;height:26px;border-radius:50%;background:${posColor};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;">${player.position}</div>`
           + `<div style="font-size:9px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
           + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${getEffectiveOvr(player)}</div>`
@@ -2220,6 +2222,50 @@ async function redeemPromoCode() {
       return count > 0 ? Math.round(total / count) : 0;
     }
 
+    async function startPlayerPlacement(playerId) {
+      const player = findPlayerById(playerId);
+      if (!player) return;
+
+      const formation = getCurrentFormation();
+      const positions = formation.positions;
+
+      // Проверка, не заблокирован ли вратарь/полевой
+      let html = `<div class="msg-text"><b>Куда поставить игрока «${player.name}»?</b></div>`;
+      html += '<div class="inline-btn-row" style="flex-direction:column;align-items:flex-start;">';
+
+      // Полевые слоты
+      for (let i = 0; i < 11; i++) {
+        const pid = gameState.squadSlots[String(i)];
+        const current = pid ? findPlayerById(pid) : null;
+        const pos = positions[i];
+        let label = `Слот ${i+1} (${pos})`;
+        if (current) label += ` — ${current.name}`;
+        else label += ` (пусто)`;
+
+        // блокируем невозможные позиции
+        if ((player.position === 'GK') !== (pos === 'GK')) {
+          label += ' ❌';
+          html += `<button class="inline-btn" disabled style="opacity:0.4;">${label}</button>`;
+        } else {
+          html += `<button class="inline-btn" onclick="assignToSlot(${playerId}, ${i}, '${pos}')">${label}</button>`;
+        }
+      }
+
+      // Скамейка
+      html += '<div style="margin-top:8px;font-size:12px;color:#7d8e9e;">Скамейка запасных:</div>';
+      for (let i = 0; i < 7; i++) {
+        const pid = gameState.benchSlots[String(i)];
+        const current = pid ? findPlayerById(pid) : null;
+        let label = `Скамейка ${i+1}`;
+        if (current) label += ` — ${current.name}`;
+        else label += ` (пусто)`;
+        html += `<button class="inline-btn" onclick="assignToBench(${playerId}, ${i})">${label}</button>`;
+      }
+      html += '</div>';
+
+      await botReply(html, 300, { html: true });
+    }
+        
 // === END MODULE: squad management ===
 
 // ============================================
@@ -2756,37 +2802,47 @@ async function redeemPromoCode() {
       </div>`;
     }
 
-        async function showActiveSquad() {
+            async function showActiveSquad() {
       if (!matchState || matchState.finished) return;
       const formation = getCurrentFormation();
+      const positions = formation.positions;
+      const rows = formation.rows;
+
       let html = '<div style="padding:10px;font-size:12px;color:#7d8e9e;">🔄 Активный состав (перетащи игрока скамейки на поле для замены)</div>';
-      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px 0;">';
-
-      for (let i = 0; i < 11; i++) {
-        const player = matchState.homePlayers[i];   // берём напрямую из матча
-        const pos = formation.positions[i];
-        if (player && !player.redCarded) {
-          const effOvr = getEffectiveOvr(player);
-          const staminaBar = renderStaminaBar(player);
-          html += `<div class="slot filled" data-slot="${i}" data-pos="${pos}"
-            ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
-            style="width:70px;min-height:80px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:2px;cursor:pointer;">
-            <div style="font-size:9px;color:#fff;">${player.name}</div>
-            <div style="font-size:11px;color:#f0c040;">${effOvr} (${pos})</div>
-            ${staminaBar}
-            <button onclick="subPlayerOut('${i}')" style="position:absolute;bottom:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>
-          </div>`;
-        } else if (player && player.redCarded) {
-          html += `<div class="slot" style="width:70px;min-height:80px;background:rgba(200,0,0,0.3);border:2px dashed rgba(255,0,0,0.4);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);font-size:9px;margin:2px;">${player.name}<br>🟥</div>`;
-        } else {
-          html += `<div class="slot" data-slot="${i}" data-pos="${pos}"
-            ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${i}')"
-            style="width:70px;min-height:80px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:9px;margin:2px;">${pos}</div>`;
+      
+      // ── Поле по рядам ─────────────────────────────────────────────
+      html += '<div style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:8px 0;border:2px solid rgba(255,255,255,0.1);">';
+      
+      for (const row of rows) {
+        html += '<div style="display:flex;justify-content:center;gap:6px;margin:4px 0;">';
+        for (const slotIndex of row) {
+          const pos = positions[slotIndex];
+          const player = matchState.homePlayers[slotIndex];
+          
+          if (player && !player.redCarded) {
+            const effOvr = getEffectiveOvr(player);
+            const staminaBar = renderStaminaBar(player);
+            html += `<div class="slot filled" data-slot="${slotIndex}" data-pos="${pos}"
+              ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${slotIndex}')"
+              style="width:54px;min-height:64px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:2px;cursor:pointer;">
+              <div style="font-size:9px;color:#fff;">${player.name}</div>
+              <div style="font-size:11px;color:#f0c040;">${effOvr} (${pos})</div>
+              ${staminaBar}
+              <button onclick="event.stopPropagation();subPlayerOut('${slotIndex}')" style="position:absolute;bottom:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>
+            </div>`;
+          } else if (player && player.redCarded) {
+            html += `<div class="slot" style="width:54px;min-height:64px;background:rgba(200,0,0,0.3);border:2px dashed rgba(255,0,0,0.4);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);font-size:9px;margin:2px;">${player.name}<br>🟥</div>`;
+          } else {
+            html += `<div class="slot" data-slot="${slotIndex}" data-pos="${pos}"
+              ondragover="handleDragOver(event)" ondrop="handleActiveSquadDrop(event, '${slotIndex}')"
+              style="width:54px;min-height:64px;background:rgba(0,0,0,0.3);border:2px dashed rgba(255,255,255,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:9px;margin:2px;">${pos}</div>`;
+          }
         }
+        html += '</div>';
       }
-      html += '</div>';
+      html += '</div>'; // конец поля
 
-      // скамейка – без изменений
+      // ── Скамейка ─────────────────────────────────────────────────
       html += '<div style="margin-top:10px;font-size:12px;color:#7d8e9e;">Скамейка (перетащи на слот):</div><div style="display:flex;gap:6px;overflow-x:auto;padding:6px;">';
       const eligibleBench = matchState.benchPlayers.filter(p => !matchState.subbedOutIds.includes(p.id));
       for (const bp of eligibleBench) {
