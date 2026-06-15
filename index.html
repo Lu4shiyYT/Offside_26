@@ -739,7 +739,7 @@ function buildPlayerCardHTML(player) {
         <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">${player.position}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${player.name}</div>
-          <div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}</div>
+          <div style="font-size:11px;color:#7d8e9e;">${player.club} • ${player.nation}${player.league ? ' • ' + player.league : ''}</div>
           <div style="display:flex;gap:4px;margin-top:2px;">
             ${programBadge}
             ${trainingBadge}
@@ -1721,7 +1721,6 @@ async function redeemPromoCode() {
       if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'inventory-modal';
-        overlay.className = 'modal-overlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
         overlay.innerHTML = `
           <div id="inv-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;">
@@ -1752,7 +1751,6 @@ async function redeemPromoCode() {
       const container = document.getElementById('inv-filters');
       if (!container) return;
 
-      // Получаем списки из коллекции игрока
       const allPlayers = gameState.myPlayers || [];
       const leagues = [...new Set(allPlayers.map(p => p.league || 'Без лиги'))].sort();
       const clubs = [...new Set(allPlayers.map(p => p.club))].sort();
@@ -1760,27 +1758,18 @@ async function redeemPromoCode() {
       const programs = [...new Set(allPlayers.map(p => p.program).filter(Boolean))].sort();
       const positions = [...new Set(allPlayers.map(p => p.position))].sort();
 
-      // Строим HTML
       let html = '<input id="filter-name" type="text" placeholder="🔍 Имя игрока..." oninput="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;margin-bottom:4px;" />';
 
-      // Фильтр по лиге
       html += '<select id="filter-league" onchange="updateClubFilter();renderInventoryList();" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
       html += '<option value="">Все лиги</option>';
-      for (const l of leagues) {
-        html += `<option value="${l}">${l}</option>`;
-      }
+      for (const l of leagues) html += `<option value="${l}">${l}</option>`;
       html += '</select>';
 
-      // Фильтр по клубу (будет обновляться при смене лиги)
       html += '<select id="filter-club" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
       html += '<option value="">Все клубы</option>';
-      // Заполним все клубы изначально, функция updateClubFilter() обновит при необходимости
-      for (const c of clubs) {
-        html += `<option value="${c}">${c}</option>`;
-      }
+      for (const c of clubs) html += `<option value="${c}">${c}</option>`;
       html += '</select>';
 
-      // Остальные фильтры без изменений
       html += '<select id="filter-nation" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
       html += '<option value="">Все страны</option>';
       for (const n of nations) html += `<option value="${n}">${n}</option>`;
@@ -1804,12 +1793,9 @@ async function redeemPromoCode() {
       html += '</select>';
 
       container.innerHTML = html;
-
-      // Инициализируем фильтр клубов в соответствии с выбранной лигой
       updateClubFilter();
     }
 
-    // Обновление списка клубов в зависимости от выбранной лиги
     function updateClubFilter() {
       const leagueSelect = document.getElementById('filter-league');
       const clubSelect = document.getElementById('filter-club');
@@ -1817,11 +1803,8 @@ async function redeemPromoCode() {
 
       const selectedLeague = leagueSelect.value;
       const allPlayers = gameState.myPlayers || [];
-
-      // Сохраняем текущий выбранный клуб, если он есть
       const currentClub = clubSelect.value;
 
-      // Формируем список клубов
       let filteredClubs;
       if (selectedLeague === '') {
         filteredClubs = [...new Set(allPlayers.map(p => p.club))].sort();
@@ -1829,7 +1812,6 @@ async function redeemPromoCode() {
         filteredClubs = [...new Set(allPlayers.filter(p => (p.league || 'Без лиги') === selectedLeague).map(p => p.club))].sort();
       }
 
-      // Перестраиваем селект клуба
       let optionsHtml = '<option value="">Все клубы</option>';
       for (const c of filteredClubs) {
         const sel = (c === currentClub) ? ' selected' : '';
@@ -1852,24 +1834,12 @@ async function redeemPromoCode() {
 
       let filtered = [...(gameState.myPlayers || [])];
 
-      if (nameFilter) {
-        filtered = filtered.filter(p => p.name.toLowerCase().includes(nameFilter));
-      }
-      if (leagueFilter) {
-        filtered = filtered.filter(p => (p.league || 'Без лиги') === leagueFilter);
-      }
-      if (clubFilter) {
-        filtered = filtered.filter(p => p.club === clubFilter);
-      }
-      if (nationFilter) {
-        filtered = filtered.filter(p => p.nation === nationFilter);
-      }
-      if (posFilter) {
-        filtered = filtered.filter(p => p.position === posFilter);
-      }
-      if (progFilter) {
-        filtered = filtered.filter(p => p.program === progFilter);
-      }
+      if (nameFilter) filtered = filtered.filter(p => p.name.toLowerCase().includes(nameFilter));
+      if (leagueFilter) filtered = filtered.filter(p => (p.league || 'Без лиги') === leagueFilter);
+      if (clubFilter) filtered = filtered.filter(p => p.club === clubFilter);
+      if (nationFilter) filtered = filtered.filter(p => p.nation === nationFilter);
+      if (posFilter) filtered = filtered.filter(p => p.position === posFilter);
+      if (progFilter) filtered = filtered.filter(p => p.program === progFilter);
       if (ovrFilter) {
         const [min, max] = ovrFilter.split('-').map(Number);
         filtered = filtered.filter(p => getEffectiveOvr(p) >= min && getEffectiveOvr(p) <= (max || 999));
@@ -1885,11 +1855,53 @@ async function redeemPromoCode() {
       let html = '';
       for (const player of filtered) {
         html += buildPlayerCardHTML(player);
-        html += `<div style="display:flex;gap:6px;margin-bottom:4px;">
-          <button class="inline-btn" onclick="exchangePlayerForFragments(${player.id})" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>
-        </div>`;
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
+        // Кнопка тренировки
+        html += `<button class="inline-btn" onclick="trainPlayer(${player.id})" style="font-size:10px;padding:3px 8px;"
+          ${(player.trainingLevel >= 10) ? 'disabled' : ''}>🎯 Тренировать (${TRAINING_COST_PER_LEVEL} очк)</button>`;
+        // Кнопка повышения OVR
+        const nextOvrCost = (player.ovrUpgrade < 5) ? OVR_UPGRADE_COSTS[player.ovrUpgrade] : null;
+        html += `<button class="inline-btn" onclick="upgradePlayerOvr(${player.id})" style="font-size:10px;padding:3px 8px;"
+          ${(player.ovrUpgrade >= 5) ? 'disabled' : ''}>⚡ Повысить OVR (${nextOvrCost || '-'} очк)</button>`;
+        // Обменять на фрагменты
+        html += `<button class="inline-btn" onclick="exchangePlayerForFragments(${player.id})" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
+        html += '</div>';
       }
       container.innerHTML = html;
+    }
+
+    // ── Функции тренировки и повышения OVR ─────────────────────────────
+    function trainPlayer(playerId) {
+      const player = findPlayerById(playerId);
+      if (!player) { botReply('❌ Игрок не найден.', 300); return; }
+      if (player.trainingLevel >= 10) { botReply('❌ Достигнут максимальный уровень тренировки (10).', 300); return; }
+      if ((gameState.trainingPoints || 0) < TRAINING_COST_PER_LEVEL) {
+        botReply(`❌ Недостаточно очков тренировки (нужно ${TRAINING_COST_PER_LEVEL}).`, 300);
+        return;
+      }
+      gameState.trainingPoints -= TRAINING_COST_PER_LEVEL;
+      player.trainingLevel = (player.trainingLevel || 0) + 1;
+      saveState();
+      updateHeaderResources();
+      renderInventoryList();
+      botReply(`✅ Тренировка <b>${player.name}</b> завершена! Уровень теперь ${player.trainingLevel}.`, 300, { html: true });
+    }
+
+    function upgradePlayerOvr(playerId) {
+      const player = findPlayerById(playerId);
+      if (!player) { botReply('❌ Игрок не найден.', 300); return; }
+      if (player.ovrUpgrade >= 5) { botReply('❌ Достигнут максимальный ранг OVR (5).', 300); return; }
+      const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
+      if ((gameState.ovrUpgradePoints || 0) < cost) {
+        botReply(`❌ Недостаточно очков повышения OVR (нужно ${cost}).`, 300);
+        return;
+      }
+      gameState.ovrUpgradePoints -= cost;
+      player.ovrUpgrade = (player.ovrUpgrade || 0) + 1;
+      saveState();
+      updateHeaderResources();
+      renderInventoryList();
+      botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! Теперь OVR +${player.ovrUpgrade}.`, 300, { html: true });
     }
 
     async function exchangePlayerForFragments(playerId) {
