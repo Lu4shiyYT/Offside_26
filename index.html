@@ -673,6 +673,7 @@ function drawPackCards(pack) {
       const candidates = getPlayersInOvrRange(range.minOvr,range.maxOvr);
       if (candidates.length) {
         player = JSON.parse(JSON.stringify(candidates[Math.floor(Math.random()*candidates.length)]));
+        player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         player.trainingLevel = 0; player.ovrUpgrade = 0; break;
       }
     }
@@ -693,6 +694,7 @@ function resolveDraftPull(cfg) {
   const pickedId = pool[Math.floor(Math.random()*pool.length)];
   const tpl = allPlayers.find(p=>p.id===pickedId)||null;
   const player = tpl ? JSON.parse(JSON.stringify(tpl)) : null;
+  if (player) player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   if (player) { player.trainingLevel=0; player.ovrUpgrade=0; }
   return {tier,player};
 }
@@ -804,7 +806,7 @@ async function redeemPromoCode() {
   if (r.playerIds?.length) {
     for (const pid of r.playerIds) {
       const tpl = allPlayers.find(p=>p.id===pid);
-      if (tpl) { const np = JSON.parse(JSON.stringify(tpl)); np.trainingLevel=0; np.ovrUpgrade=0; gameState.myPlayers.push(np); }
+      if (tpl) { const np = JSON.parse(JSON.stringify(tpl)); np.trainingLevel=0; np.ovrUpgrade=0; np.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9); gameState.myPlayers.push(np); }
     }
   }
   saveState(); updateHeaderResources();
@@ -1013,6 +1015,7 @@ async function redeemPromoCode() {
         const template = allPlayers.find(p => p.id === id);
         if (template) {
           const player = JSON.parse(JSON.stringify(template));
+          player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           player.trainingLevel = 0;
           player.ovrUpgrade    = 0;
           return { tier: 'B', player };
@@ -1029,6 +1032,7 @@ async function redeemPromoCode() {
         const template = allPlayers.find(p => p.id === id);
         if (template) {
           const player = JSON.parse(JSON.stringify(template));
+          player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           player.trainingLevel = 0;
           player.ovrUpgrade    = 0;
           return { tier: 'A', player };
@@ -1323,6 +1327,7 @@ async function redeemPromoCode() {
           const newPlayer = JSON.parse(JSON.stringify(template));
           newPlayer.trainingLevel = 0;
           newPlayer.ovrUpgrade    = 0;
+          newPlayer.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           gameState.myPlayers.push(newPlayer);
           rewardMsg = `👤 ${newPlayer.name} (OVR ${newPlayer.ovr})`;
         }
@@ -1517,6 +1522,7 @@ async function redeemPromoCode() {
           const newPlayer = JSON.parse(JSON.stringify(template));
           newPlayer.trainingLevel = 0;
           newPlayer.ovrUpgrade    = 0;
+          newPlayer.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           gameState.myPlayers.push(newPlayer);
           return `👤 ${newPlayer.name} (OVR ${newPlayer.ovr})`;
         }
@@ -1527,6 +1533,7 @@ async function redeemPromoCode() {
           const newPlayer = JSON.parse(JSON.stringify(template));
           newPlayer.trainingLevel = 0;
           newPlayer.ovrUpgrade    = 0;
+          newPlayer.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
           gameState.myPlayers.push(newPlayer);
           return `👤 ${newPlayer.name} (OVR ${newPlayer.ovr})`;
         }
@@ -1858,29 +1865,33 @@ async function redeemPromoCode() {
         html += buildPlayerCardHTML(player);
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
 
-        // Кнопка тренировки – показываем только если не достигнут лимит
+        // Кнопка тренировки
         if (player.trainingLevel < MAX_TRAINING_LEVEL) {
-          html += `<button class="inline-btn" onclick="trainPlayer(${player.id})" style="font-size:10px;padding:3px 8px;">
+          html += `<button class="inline-btn" onclick="trainPlayer('${player.cardId}')" style="font-size:10px;padding:3px 8px;">
             🎯 Тренировать (${TRAINING_COST_PER_LEVEL} очк)</button>`;
         }
 
-        // Кнопка повышения OVR – показываем только если не достигнут лимит
+        // Кнопка повышения OVR
         if (player.ovrUpgrade < 5) {
           const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
-          html += `<button class="inline-btn" onclick="upgradePlayerOvr(${player.id})" style="font-size:10px;padding:3px 8px;">
+          html += `<button class="inline-btn" onclick="upgradePlayerOvr('${player.cardId}')" style="font-size:10px;padding:3px 8px;">
             ⚡ Повысить OVR (${cost} очк)</button>`;
         }
 
-        // Обменять на фрагменты (всегда доступно)
-        html += `<button class="inline-btn" onclick="exchangePlayerForFragments(${player.id})" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
+        // Обменять на фрагменты
+        html += `<button class="inline-btn" onclick="exchangePlayerForFragments('${player.cardId}')" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
         html += '</div>';
       }
       container.innerHTML = html;
     }
 
-    // ── Функции тренировки и повышения OVR ─────────────────────────────
-    function trainPlayer(playerId) {
-      const player = findPlayerById(playerId);
+    // ── Новые функции, работающие с cardId ─────────────────────────────
+    function findPlayerByCardId(cardId) {
+      return (gameState.myPlayers || []).find(p => p.cardId === cardId) || null;
+    }
+
+    function trainPlayer(cardId) {
+      const player = findPlayerByCardId(cardId);
       if (!player) { botReply('❌ Игрок не найден.', 300); return; }
       if (player.trainingLevel >= MAX_TRAINING_LEVEL) {
         botReply(`❌ Достигнут максимальный уровень тренировки (${MAX_TRAINING_LEVEL}).`, 300);
@@ -1898,8 +1909,8 @@ async function redeemPromoCode() {
       botReply(`✅ Тренировка <b>${player.name}</b> завершена! Уровень теперь ${player.trainingLevel}.`, 300, { html: true });
     }
 
-    function upgradePlayerOvr(playerId) {
-      const player = findPlayerById(playerId);
+    function upgradePlayerOvr(cardId) {
+      const player = findPlayerByCardId(cardId);
       if (!player) { botReply('❌ Игрок не найден.', 300); return; }
       if (player.ovrUpgrade >= 5) {
         botReply('❌ Достигнут максимальный ранг OVR (5).', 300);
@@ -1918,8 +1929,8 @@ async function redeemPromoCode() {
       botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! Теперь OVR +${player.ovrUpgrade}.`, 300, { html: true });
     }
 
-    async function exchangePlayerForFragments(playerId) {
-      const idx = (gameState.myPlayers || []).findIndex(p => p.id === playerId);
+    async function exchangePlayerForFragments(cardId) {
+      const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
       if (idx === -1) {
         await botReply('❌ Игрок не найден.', 300);
         return;
@@ -3432,7 +3443,11 @@ function init() {
   updateHeaderResources();
   allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
-    gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>JSON.parse(JSON.stringify(p)));
+    gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>{
+  const copy = JSON.parse(JSON.stringify(p));
+  copy.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  return copy;
+});
     saveState();
   }
   if (gameState.registered) { hideStartOverlay(); botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true}); }
