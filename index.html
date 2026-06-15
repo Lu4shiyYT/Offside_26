@@ -183,7 +183,7 @@
         /* Фиксированная панель управления матчем */
     #match-controls {
       position: fixed;
-      bottom: 140px;
+      bottom: 110px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 50;
@@ -2200,11 +2200,13 @@ async function redeemPromoCode() {
         document.body.appendChild(matchControls);
       }
       matchControls.classList.add('visible');
+      document.getElementById('chat').style.paddingBottom = '120px';
       renderMatchControls();
     }
 
     function hideMatchControls() {
       if (matchControls) matchControls.classList.remove('visible');
+      document.getElementById('chat').style.paddingBottom = '';
     }
 
     function renderMatchControls() {
@@ -2298,21 +2300,25 @@ async function redeemPromoCode() {
     }
 
     function simulateMinute() {
+      if (matchState._halftimeActive) return;
       if (!matchState || matchState.finished) { clearInterval(matchInterval); return; }
       matchState.minute++;
       const min = matchState.minute;
 
       if (min === 45) {
-        clearInterval(matchInterval);
-        botReply(`⏸️ Перерыв! Счёт ${matchState.homeScore}:${matchState.awayScore}. Можно сделать замены (20 сек).`, 400);
-        setTimeout(() => {
-          if (!matchState || matchState.finished) return;
-          matchState.minute = 46;
-          botReply('▶️ Второй тайм начался!', 400);
-          matchInterval = setInterval(simulateMinute, 2000);
-        }, 20000);
-        return;
-      }
+  clearInterval(matchInterval);
+  matchInterval = null;
+  matchState._halftimeActive = true;
+  botReply(`⏸️ Перерыв! Счёт ${matchState.homeScore}:${matchState.awayScore}. Можно сделать замены (20 сек).`, 400);
+  setTimeout(() => {
+    if (!matchState || matchState.finished) return;
+    matchState._halftimeActive = false;
+    matchState.minute = 46;
+    botReply('▶️ Второй тайм начался!', 400);
+    matchInterval = setInterval(simulateMinute, 2000);
+  }, 20000);
+  return;
+}
 
       if (min > 90) { endMatch(); return; }
       generateMatchEvent(min);
@@ -2323,9 +2329,9 @@ async function redeemPromoCode() {
       const homeOvr = getSquadAverageOvr();
       const awayOvr = matchState.awayOvr;
 
-      // Сниженные базовые шансы для реалистичного счёта
-      let homeGoalChance = 0.04;
-      let awayGoalChance = 0.03;
+      // базовые шансы для реалистичного счёта
+      let homeGoalChance = 0.015;
+      let awayGoalChance = 0.010;
 
       const ovrDiff = homeOvr - awayOvr;
       homeGoalChance += ovrDiff * 0.0015;
@@ -2470,7 +2476,7 @@ async function redeemPromoCode() {
       matchState._pendingSubIn = null;
       saveState();
       renderMatchControls();
-      botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300);
+      botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300, { html: true });
     }
 
     // ---------- КОНЕЦ МАТЧА (без изменений в логике наград) ----------
@@ -2514,8 +2520,8 @@ async function redeemPromoCode() {
       const mvp = matchState.events.filter(e=>e.type==='goal'&&e.team==='home').pop();
       if (mvp) botReply(`🏆 MVP: <b>${mvp.player}</b>`, 400);
 
-      botReply(`<div class="inline-btn-row"><button class="inline-btn" onclick="startMatch()">🔁 Сыграть снова</button><button class="inline-btn" onclick="handleNavSquad()">📋 Состав</button></div>`, 600);
-      checkDivisionRewards();
+      botReply(`<div class="inline-btn-row"><button class="inline-btn" onclick="startMatch()">🔁 Сыграть снова</button><button class="inline-btn" onclick="handleNavSquad()">📋 Состав</button></div>`, 600, { html: true });
+      if (typeof checkDivisionRewards === 'function') checkDivisionRewards();
     }
 
 // === END MODULE: match engine ===
