@@ -486,23 +486,23 @@ document.getElementById('nav-quests').addEventListener('click', function() { han
 
 // ========== MODULE: GAMESTATE & DATA ==========
 const ALL_PLAYERS_TEMPLATE = [
-  { id: 1, name: 'Алексей Громов', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 2, name: 'Андрей Соколов', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 3, name: 'Сергей Петров', club: 'Спартак', nation: 'Россия', position: 'LB', altPositions: ['LM'], ovr: 64, stats: { PAC:72, SHO:40, PAS:62, DRB:68, DEF:70, STR:66 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 4, name: 'Иван Кузнецов', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 66, stats: { PAC:55, SHO:35, PAS:50, DRB:45, DEF:74, STR:78 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 5, name: 'Дмитрий Новиков', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 65, stats: { PAC:58, SHO:38, PAS:52, DRB:48, DEF:72, STR:76 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 6, name: 'Михаил Смирнов', club: 'Спартак', nation: 'Россия', position: 'RB', altPositions: ['RM'], ovr: 63, stats: { PAC:74, SHO:42, PAS:60, DRB:70, DEF:68, STR:65 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 7, name: 'Павел Орлов', club: 'Зенит', nation: 'Россия', position: 'CB', altPositions: [], ovr: 68, stats: { PAC:52, SHO:36, PAS:48, DRB:44, DEF:76, STR:80 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 8, name: 'Артем Лебедев', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CAM'], ovr: 67, stats: { PAC:68, SHO:62, PAS:72, DRB:70, DEF:55, STR:62 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 9, name: 'Кирилл Морозов', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CDM'], ovr: 65, stats: { PAC:62, SHO:58, PAS:70, DRB:66, DEF:60, STR:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 10, name: 'Максим Волков', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: [], ovr: 64, stats: { PAC:65, SHO:60, PAS:68, DRB:64, DEF:52, STR:60 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 11, name: 'Роман Зайцев', club: 'Зенит', nation: 'Россия', position: 'CDM', altPositions: ['CM'], ovr: 66, stats: { PAC:58, SHO:48, PAS:65, DRB:56, DEF:72, STR:70 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 12, name: 'Виктор Соловьев', club: 'Спартак', nation: 'Россия', position: 'LW', altPositions: ['ST'], ovr: 68, stats: { PAC:82, SHO:66, PAS:60, DRB:74, DEF:30, STR:58 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 13, name: 'Егор Федоров', club: 'Спартак', nation: 'Россия', position: 'RW', altPositions: ['ST'], ovr: 67, stats: { PAC:80, SHO:64, PAS:58, DRB:72, DEF:28, STR:56 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 14, name: 'Никита Васильев', club: 'Спартак', nation: 'Россия', position: 'ST', altPositions: ['CF'], ovr: 70, stats: { PAC:76, SHO:74, PAS:55, DRB:68, DEF:22, STR:72 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 15, name: 'Олег Тимофеев', club: 'Зенит', nation: 'Россия', position: 'ST', altPositions: [], ovr: 69, stats: { PAC:72, SHO:72, PAS:52, DRB:66, DEF:24, STR:74 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 16, name: 'Марко Росси', club: 'Милан', nation: 'Италия', position: 'CM', altPositions: ['CAM','CDM'], ovr: 85, stats: { PAC:72, SHO:74, PAS:88, DRB:82, DEF:68, STR:70 }, program: 'TOTY', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
-  { id: 17, name: 'Cristiano Ronaldo', club: 'Al-Nassr', nation: 'Portugal', position: 'ST', altPositions: ['LW'], ovr: 100, stats: { PAC:104, SHO:109, PAS:106, DRB:108, DEF:75, STR:102 }, program: 'Elite', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 }
+  { id: 1, name: 'Алексей Громов', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'GK', altPositions: [], ovr: 62, stats: { REF:60, KIC:55, PAS:50, SPE:58, DIV:62, HAN:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 2, name: 'Андрей Соколов', league: 'РПЛ (РОС)', club: 'Зенит', nation: 'Россия', position: 'GK', altPositions: [], ovr: 65, stats: { REF:64, KIC:58, PAS:52, SPE:60, DIV:65, HAN:67 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 3, name: 'Сергей Петров', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'LB', altPositions: ['LM'], ovr: 64, stats: { PAC:72, SHO:40, PAS:62, DRB:68, DEF:70, STR:66 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 4, name: 'Иван Кузнецов', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 66, stats: { PAC:55, SHO:35, PAS:50, DRB:45, DEF:74, STR:78 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 5, name: 'Дмитрий Новиков', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'CB', altPositions: [], ovr: 65, stats: { PAC:58, SHO:38, PAS:52, DRB:48, DEF:72, STR:76 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 6, name: 'Михаил Смирнов', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'RB', altPositions: ['RM'], ovr: 63, stats: { PAC:74, SHO:42, PAS:60, DRB:70, DEF:68, STR:65 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 7, name: 'Павел Орлов', league: 'РПЛ (РОС)', club: 'Зенит', nation: 'Россия', position: 'CB', altPositions: [], ovr: 68, stats: { PAC:52, SHO:36, PAS:48, DRB:44, DEF:76, STR:80 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 8, name: 'Артем Лебедев', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CAM'], ovr: 67, stats: { PAC:68, SHO:62, PAS:72, DRB:70, DEF:55, STR:62 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 9, name: 'Кирилл Морозов', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: ['CDM'], ovr: 65, stats: { PAC:62, SHO:58, PAS:70, DRB:66, DEF:60, STR:64 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 10, name: 'Максим Волков', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'CM', altPositions: [], ovr: 64, stats: { PAC:65, SHO:60, PAS:68, DRB:64, DEF:52, STR:60 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 11, name: 'Роман Зайцев', league: 'РПЛ (РОС)', club: 'Зенит', nation: 'Россия', position: 'CDM', altPositions: ['CM'], ovr: 66, stats: { PAC:58, SHO:48, PAS:65, DRB:56, DEF:72, STR:70 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 12, name: 'Виктор Соловьев', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'LW', altPositions: ['ST'], ovr: 68, stats: { PAC:82, SHO:66, PAS:60, DRB:74, DEF:30, STR:58 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 13, name: 'Егор Федоров', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'RW', altPositions: ['ST'], ovr: 67, stats: { PAC:80, SHO:64, PAS:58, DRB:72, DEF:28, STR:56 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 14, name: 'Никита Васильев', league: 'РПЛ (РОС)', club: 'Спартак', nation: 'Россия', position: 'ST', altPositions: ['CF'], ovr: 70, stats: { PAC:76, SHO:74, PAS:55, DRB:68, DEF:22, STR:72 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 15, name: 'Олег Тимофеев', league: 'РПЛ (РОС)', club: 'Зенит', nation: 'Россия', position: 'ST', altPositions: [], ovr: 69, stats: { PAC:72, SHO:72, PAS:52, DRB:66, DEF:24, STR:74 }, program: 'Base', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 16, name: 'Марко Росси', league: 'Кумиры (КУМ)', club: 'Милан', nation: 'Италия', position: 'CM', altPositions: ['CAM','CDM'], ovr: 85, stats: { PAC:72, SHO:74, PAS:88, DRB:82, DEF:68, STR:70 }, program: 'TOTY', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 },
+  { id: 17, name: 'Cristiano Ronaldo', league: 'Saudi Pro League (SAU)', club: 'Al-Nassr', nation: 'Portugal', position: 'ST', altPositions: ['LW'], ovr: 100, stats: { PAC:104, SHO:109, PAS:106, DRB:108, DEF:75, STR:102 }, program: 'Elite', image: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2 }
 ];
 
 const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
@@ -1748,23 +1748,39 @@ async function redeemPromoCode() {
       if (overlay) overlay.style.display = 'none';
     }
 
-        function renderInventoryFilters() {
+    function renderInventoryFilters() {
       const container = document.getElementById('inv-filters');
       if (!container) return;
 
-      // === ПОИСК ПО ИМЕНИ ===
+      // Получаем списки из коллекции игрока
+      const allPlayers = gameState.myPlayers || [];
+      const leagues = [...new Set(allPlayers.map(p => p.league || 'Без лиги'))].sort();
+      const clubs = [...new Set(allPlayers.map(p => p.club))].sort();
+      const nations = [...new Set(allPlayers.map(p => p.nation))].sort();
+      const programs = [...new Set(allPlayers.map(p => p.program).filter(Boolean))].sort();
+      const positions = [...new Set(allPlayers.map(p => p.position))].sort();
+
+      // Строим HTML
       let html = '<input id="filter-name" type="text" placeholder="🔍 Имя игрока..." oninput="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;margin-bottom:4px;" />';
 
-      const clubs = [...new Set((gameState.myPlayers || []).map(p => p.club))].sort();
-      const nations = [...new Set((gameState.myPlayers || []).map(p => p.nation))].sort();
-      const programs = [...new Set((gameState.myPlayers || []).map(p => p.program).filter(Boolean))].sort();
-      const positions = [...new Set((gameState.myPlayers || []).map(p => p.position))].sort();
-
-      html += '<select id="filter-club" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
-      html += '<option value="">Все клубы</option>';
-      for (const c of clubs) html += `<option value="${c}">${c}</option>`;
+      // Фильтр по лиге
+      html += '<select id="filter-league" onchange="updateClubFilter();renderInventoryList();" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
+      html += '<option value="">Все лиги</option>';
+      for (const l of leagues) {
+        html += `<option value="${l}">${l}</option>`;
+      }
       html += '</select>';
 
+      // Фильтр по клубу (будет обновляться при смене лиги)
+      html += '<select id="filter-club" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
+      html += '<option value="">Все клубы</option>';
+      // Заполним все клубы изначально, функция updateClubFilter() обновит при необходимости
+      for (const c of clubs) {
+        html += `<option value="${c}">${c}</option>`;
+      }
+      html += '</select>';
+
+      // Остальные фильтры без изменений
       html += '<select id="filter-nation" onchange="renderInventoryList()" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">';
       html += '<option value="">Все страны</option>';
       for (const n of nations) html += `<option value="${n}">${n}</option>`;
@@ -1788,12 +1804,46 @@ async function redeemPromoCode() {
       html += '</select>';
 
       container.innerHTML = html;
+
+      // Инициализируем фильтр клубов в соответствии с выбранной лигой
+      updateClubFilter();
+    }
+
+    // Обновление списка клубов в зависимости от выбранной лиги
+    function updateClubFilter() {
+      const leagueSelect = document.getElementById('filter-league');
+      const clubSelect = document.getElementById('filter-club');
+      if (!leagueSelect || !clubSelect) return;
+
+      const selectedLeague = leagueSelect.value;
+      const allPlayers = gameState.myPlayers || [];
+
+      // Сохраняем текущий выбранный клуб, если он есть
+      const currentClub = clubSelect.value;
+
+      // Формируем список клубов
+      let filteredClubs;
+      if (selectedLeague === '') {
+        filteredClubs = [...new Set(allPlayers.map(p => p.club))].sort();
+      } else {
+        filteredClubs = [...new Set(allPlayers.filter(p => (p.league || 'Без лиги') === selectedLeague).map(p => p.club))].sort();
+      }
+
+      // Перестраиваем селект клуба
+      let optionsHtml = '<option value="">Все клубы</option>';
+      for (const c of filteredClubs) {
+        const sel = (c === currentClub) ? ' selected' : '';
+        optionsHtml += `<option value="${c}"${sel}>${c}</option>`;
+      }
+      clubSelect.innerHTML = optionsHtml;
     }
 
     function renderInventoryList() {
       const container = document.getElementById('inv-list');
       if (!container) return;
 
+      const nameFilter = document.getElementById('filter-name')?.value?.trim().toLowerCase() || '';
+      const leagueFilter = document.getElementById('filter-league')?.value || '';
       const clubFilter = document.getElementById('filter-club')?.value || '';
       const nationFilter = document.getElementById('filter-nation')?.value || '';
       const posFilter = document.getElementById('filter-position')?.value || '';
@@ -1802,15 +1852,24 @@ async function redeemPromoCode() {
 
       let filtered = [...(gameState.myPlayers || [])];
 
-      const nameFilter = document.getElementById('filter-name')?.value?.trim().toLowerCase() || '';
       if (nameFilter) {
         filtered = filtered.filter(p => p.name.toLowerCase().includes(nameFilter));
       }
-      
-      if (clubFilter) filtered = filtered.filter(p => p.club === clubFilter);
-      if (nationFilter) filtered = filtered.filter(p => p.nation === nationFilter);
-      if (posFilter) filtered = filtered.filter(p => p.position === posFilter);
-      if (progFilter) filtered = filtered.filter(p => p.program === progFilter);
+      if (leagueFilter) {
+        filtered = filtered.filter(p => (p.league || 'Без лиги') === leagueFilter);
+      }
+      if (clubFilter) {
+        filtered = filtered.filter(p => p.club === clubFilter);
+      }
+      if (nationFilter) {
+        filtered = filtered.filter(p => p.nation === nationFilter);
+      }
+      if (posFilter) {
+        filtered = filtered.filter(p => p.position === posFilter);
+      }
+      if (progFilter) {
+        filtered = filtered.filter(p => p.program === progFilter);
+      }
       if (ovrFilter) {
         const [min, max] = ovrFilter.split('-').map(Number);
         filtered = filtered.filter(p => getEffectiveOvr(p) >= min && getEffectiveOvr(p) <= (max || 999));
@@ -1862,6 +1921,9 @@ async function redeemPromoCode() {
       setActiveNav('nav-inventory');
       openInventoryModal();
     };
+
+// === END MODULE: inventory modal ===
+  
 // ============================================
 // === INSERT MODULE: squad management ===
 // ============================================
