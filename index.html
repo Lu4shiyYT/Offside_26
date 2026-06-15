@@ -1878,18 +1878,14 @@ async function redeemPromoCode() {
             ⚡ Повысить OVR (${cost} очк)</button>`;
         }
 
-        // Обменять на фрагменты
-        html += `<button class="inline-btn" onclick="exchangePlayerForFragments('${player.cardId}')" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
+        // Кнопка обмена на фрагменты (теперь с подтверждением)
+        html += `<button class="inline-btn" onclick="confirmExchangePlayer('${player.cardId}')" style="font-size:10px;padding:3px 8px;">🧩 Обменять на фрагменты</button>`;
         html += '</div>';
       }
       container.innerHTML = html;
     }
 
-    // ── Новые функции, работающие с cardId ─────────────────────────────
-    function findPlayerByCardId(cardId) {
-      return (gameState.myPlayers || []).find(p => p.cardId === cardId) || null;
-    }
-
+    // ── Функции тренировки и повышения OVR (без изменений) ─────────────────
     function trainPlayer(cardId) {
       const player = findPlayerByCardId(cardId);
       if (!player) { botReply('❌ Игрок не найден.', 300); return; }
@@ -1929,7 +1925,28 @@ async function redeemPromoCode() {
       botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! Теперь OVR +${player.ovrUpgrade}.`, 300, { html: true });
     }
 
-    async function exchangePlayerForFragments(cardId) {
+    // ── НОВАЯ ЛОГИКА ОБМЕНА НА ФРАГМЕНТЫ (с подтверждением) ─────────────
+    async function confirmExchangePlayer(cardId) {
+      const player = findPlayerByCardId(cardId);
+      if (!player) {
+        await botReply('❌ Игрок не найден.', 300);
+        return;
+      }
+
+      const ovr = getEffectiveOvr(player);
+      const frags = getFragmentReward(ovr);
+
+      // Отправляем вопрос с кнопками Да / Нет
+      const msg = `Вы уверены, что хотите обменять игрока <b>${player.name}</b> (OVR ${ovr}) на <b>${frags}</b> фрагментов?`;
+      const btns = `
+        <div class="inline-btn-row">
+          <button class="inline-btn success" onclick="doExchangePlayerForFragments('${cardId}')">Да</button>
+          <button class="inline-btn danger" onclick="botReply('❌ Обмен отменён.', 200)">Нет</button>
+        </div>`;
+      await botReply(msg + btns, 400, { html: true });
+    }
+
+    async function doExchangePlayerForFragments(cardId) {
       const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
       if (idx === -1) {
         await botReply('❌ Игрок не найден.', 300);
@@ -1949,6 +1966,11 @@ async function redeemPromoCode() {
       if (document.getElementById('inventory-modal')?.style.display === 'flex') {
         renderInventoryList();
       }
+    }
+
+    // ── Вспомогательная функция поиска по cardId ─────────────────────────
+    function findPlayerByCardId(cardId) {
+      return (gameState.myPlayers || []).find(p => p.cardId === cardId) || null;
     }
 
     // Переопределяем навигационную функцию
