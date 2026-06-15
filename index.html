@@ -280,7 +280,8 @@ const DEFAULT_STATE = {
   rubins: 1500, offsideTokens: 0, trainingPoints: 1000, ovrUpgradePoints: 500,
   passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0,
   nickname: '', playerId: '', stars: 0, matchesPlayed: 0, goalsScored: 0,
-  registered: false, awaitingNickname: false
+  registered: false, awaitingNickname: false, awaitingClubName: false,
+  clubName: '' 
 };
 
 let gameState = {};
@@ -410,11 +411,29 @@ async function completeRegistration(nickname) {
   const trimmed = nickname.trim();
   if (!trimmed || trimmed.length < 2) { await botReply('Никнейм должен содержать минимум 2 символа.', 500); return; }
   if (trimmed.length > 20) { await botReply('Никнейм слишком длинный (макс. 20).', 500); return; }
+
   const playerId = generatePlayerId();
-  gameState.nickname = trimmed; gameState.playerId = playerId;
-  gameState.awaitingNickname = false; gameState.registered = true;
-  saveState(); updateHeaderResources();
-  await botReply(`Привет, <b>${escapeHtml(trimmed)}</b>! 🎉\n\nТвой ID: <code>${escapeHtml(playerId)}</code>`, 700, {html:true});
+  gameState.nickname = trimmed;
+  gameState.playerId = playerId;
+  gameState.awaitingNickname = false;
+  gameState.awaitingClubName = true;   // Включаем ожидание ввода клуба
+  saveState();
+
+  await botReply(`Привет, <b>${escapeHtml(trimmed)}</b>! Теперь введи название своего футбольного клуба:`, 700, { html: true });
+}
+
+async function completeClubRegistration(clubName) {
+  const trimmed = clubName.trim();
+  if (!trimmed || trimmed.length < 2) { await botReply('Название клуба должно содержать минимум 2 символа.', 500); return; }
+  if (trimmed.length > 25) { await botReply('Название клуба слишком длинное (макс. 25).', 500); return; }
+
+  gameState.clubName = trimmed;
+  gameState.awaitingClubName = false;
+  gameState.registered = true;
+  saveState();
+  updateHeaderResources();
+
+  await botReply(`Клуб <b>${escapeHtml(trimmed)}</b> основан! 🎉\n\nТвой ID: <code>${escapeHtml(gameState.playerId)}</code>`, 700, {html:true});
   await botReply(null, 900, {card: buildProfileCardHTML(gameState)});
   await botReply('Используй кнопки внизу для навигации. Удачи на поле! ⚽', 600);
 }
@@ -438,6 +457,7 @@ msgInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.
 function processUserMessage(text) {
   const lower = text.toLowerCase().trim();
   if (gameState.awaitingNickname) { completeRegistration(text); return; }
+  if (gameState.awaitingClubName) { completeClubRegistration(text); return; }
   if (!gameState.registered) { botReply('Нажми кнопку «НАЧАТЬ ИГРУ»!', 500); return; }
   if (lower==='профиль'||lower==='/profile') showProfile();
   else if (lower==='помощь'||lower==='/help') showHelp();
@@ -2589,7 +2609,6 @@ async function redeemPromoCode() {
           bench: squad.bench.map(p => ({ ...p }))
         };
       }
-      // fallback – случайный состав
       const posList = ['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'];
       const starting = posList.map(pos => ({
         name: 'Игрок ' + pos,
@@ -2602,7 +2621,7 @@ async function redeemPromoCode() {
       return { starting, bench: [] };
     }
 
-    // === БАЗОВЫЕ НАБОРЫ ФРАЗ ===
+    // === БАЗОВЫЕ НАБОРЫ ФРАЗ ДЛЯ РАЗНООБРАЗИЯ ===
     const SHOOT_MISS_COMMENTS = [
       'Мимо ворот!',
       'Выше перекладины!',
@@ -2681,16 +2700,9 @@ async function redeemPromoCode() {
     // --- вспомогательные функции для ног ---
     function getFootModifier(player) {
       if (!player) return 1.0;
-      const pref = player.preferredFoot || 'right';
-      // 50% шанс, что мяч попадёт под нерабочую ногу
-      if (Math.random() < 0.5) {
-        // попал под рабочую – без штрафа
-        return 1.0;
-      } else {
-        // попал под слабую – штраф
-        const weak = player.weakFoot || 1;
-        return 0.5 + 0.1 * weak;  // при 1 -> 0.6, при 5 -> 1.0
-      }
+      if (Math.random() < 0.5) return 1.0;
+      const weak = player.weakFoot || 1;
+      return 0.5 + 0.1 * weak;
     }
 
     async function startMatch() {
@@ -2745,7 +2757,7 @@ async function redeemPromoCode() {
           stamina: player.stamina || 3.0, staminaPct: 100,
           preferredFoot: player.preferredFoot || 'right',
           weakFoot: player.weakFoot || 1,
-          matchStats: { goals: 0, assists: 0, shots: 0, shotsOnTarget: 0, fouls: 0, yellow: 0, red: 0, rating: 6.0 } });
+          matchStats: { goals: 0, assists: 0, shots: 0, shotsOnTarget: 0, fouls: 0, yellow: 0, red: 0, rating: 6.5 } });
       }
 
       const benchPlayers = [];
@@ -2756,7 +2768,7 @@ async function redeemPromoCode() {
             const p = findPlayerById(pid);
             if (p) benchPlayers.push({...p, stamina: p.stamina || 3.0, staminaPct: 100,
               preferredFoot: p.preferredFoot || 'right', weakFoot: p.weakFoot || 1,
-              matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } });
+              matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 } });
           }
         }
       }
@@ -2767,16 +2779,17 @@ async function redeemPromoCode() {
       const botSquad = getBotSquad(awayName);
       const awayPlayers = botSquad.starting.map(p => ({ ...p, redCarded: false,
         stamina: p.stamina || (2.5 + Math.random() * 1.5), staminaPct: 100,
-        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 } }));
       const awayBench = (botSquad.bench || []).map(p => ({ ...p,
         stamina: p.stamina || (2.5 + Math.random() * 1.5), staminaPct: 100,
-        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } }));
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 } }));
 
       const tactic     = getCurrentTactic();
       const tacticName = Object.keys(TACTICS).find(k => TACTICS[k] === tactic) || 'Баланс';
 
       matchState = {
         homeName: gameState.nickname || 'Вы',
+        homeClub: gameState.clubName || 'Ваш клуб',
         awayName, awayOvr,
         homeScore: 0, awayScore: 0, minute: 0,
         homePlayers, benchPlayers,
@@ -2936,7 +2949,6 @@ async function redeemPromoCode() {
         const gkAvg = ((gkStats.REF || 50) + (gkStats.DIV || 50) + (gkStats.HAN || 50)) / 3;
         let penGoalChance = 0.75 + (shootStat - gkAvg) * 0.003;
         penGoalChance = Math.max(0.25, Math.min(0.95, penGoalChance));
-        // Учёт ноги
         penGoalChance *= getFootModifier(taker);
 
         matchState.homeShots++;
@@ -2949,10 +2961,10 @@ async function redeemPromoCode() {
           gameState.goalsScored = (gameState.goalsScored || 0) + 1;
           gameState.goalsForQuest = (gameState.goalsForQuest || 0) + 1;
           taker.matchStats.goals++;
-          botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ПЕНАЛЬТИ! <b>${taker.name}</b> реализует! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+          botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ПЕНАЛЬТИ! <b>${taker.name}</b> (${matchState.homeClub}) реализует! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
           matchState.events.push({ minute, type: 'goal', team: 'home', player: taker.name, penalty: true });
         } else {
-          botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 ПЕНАЛЬТИ! <b>${taker.name}</b> не забивает! Вратарь парирует.</div>`, 200, { html: true });
+          botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 ПЕНАЛЬТИ! <b>${taker.name}</b> (${matchState.homeClub}) не забивает! Вратарь парирует.</div>`, 200, { html: true });
           matchState.events.push({ minute, type: 'penalty_miss', team: 'home', player: taker.name });
         }
         saveState();
@@ -2963,14 +2975,12 @@ async function redeemPromoCode() {
       if (roll < homeGoalChance) {
         const scorer = pickRandomAttacker('home');
         const assist = pickRandomAssister('home', scorer);
-        // Учёт ноги для шанса гола
         const footMod = getFootModifier(scorer);
         if (Math.random() > footMod) {
-          // шанс снижен из-за слабой ноги – считаем ударом мимо
           matchState.homeShots++;
           scorer.matchStats.shots++;
           const msg = SHOOT_MISS_COMMENTS[Math.floor(Math.random() * SHOOT_MISS_COMMENTS.length)];
-          botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! <b>${scorer.name}</b> — ${msg}</div>`, 150, { html: true });
+          botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! <b>${scorer.name}</b> (${matchState.homeClub}) — ${msg}</div>`, 150, { html: true });
           return;
         }
         matchState.homeScore++;
@@ -2982,8 +2992,8 @@ async function redeemPromoCode() {
         scorer.matchStats.shots++;
         scorer.matchStats.shotsOnTarget++;
         if (assist) assist.matchStats.assists++;
-        const assistText = assist ? ` (асс. ${assist.name})` : '';
-        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b>${assistText}! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+        const assistText = assist ? ` (асс. <b>${assist.name}</b>, ${matchState.homeClub})` : '';
+        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b> (${matchState.homeClub})${assistText}! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
         matchState.events.push({ minute, type: 'goal', team: 'home', player: scorer.name, assist: assist?.name || '' });
         saveState();
         return;
@@ -3008,8 +3018,8 @@ async function redeemPromoCode() {
         scorer.matchStats.shots++;
         scorer.matchStats.shotsOnTarget++;
         if (assist) assist.matchStats.assists++;
-        const assistText = assist ? ` (асс. ${assist.name})` : '';
-        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b>${assistText} (${matchState.awayName})! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+        const assistText = assist ? ` (асс. <b>${assist.name}</b>, ${matchState.awayName})` : '';
+        botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ГОЛ! <b>${scorer.name}</b> (${matchState.awayName})${assistText}! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
         matchState.events.push({ minute, type: 'goal', team: 'away', player: scorer.name, assist: assist?.name || '' });
         return;
       }
@@ -3017,16 +3027,14 @@ async function redeemPromoCode() {
       // ---- УДАРЫ (неточные) ----
       if (Math.random() < 0.05) {
         const shooter = pickRandomAttacker('home');
-        matchState.homeShots++;
-        shooter.matchStats.shots++;
+        matchState.homeShots++; shooter.matchStats.shots++;
         const msg = SHOOT_MISS_COMMENTS[Math.floor(Math.random() * SHOOT_MISS_COMMENTS.length)];
-        botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! <b>${shooter.name}</b> — ${msg}</div>`, 150, { html: true });
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар! <b>${shooter.name}</b> (${matchState.homeClub}) — ${msg}</div>`, 150, { html: true });
         return;
       }
       if (Math.random() < 0.04) {
         const shooter = pickRandomAttacker('away');
-        matchState.awayShots++;
-        shooter.matchStats.shots++;
+        matchState.awayShots++; shooter.matchStats.shots++;
         const msg = SHOOT_MISS_COMMENTS[Math.floor(Math.random() * SHOOT_MISS_COMMENTS.length)];
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> Удар от <b>${shooter.name}</b> (${matchState.awayName}). ${msg}</div>`, 150, { html: true });
         return;
@@ -3039,14 +3047,13 @@ async function redeemPromoCode() {
           const player = active[Math.floor(Math.random() * active.length)];
           matchState.homeCards[player.id] = (matchState.homeCards[player.id] || 0) + 1;
           if (matchState.homeCards[player.id] >= 2) {
-            player.redCarded = true;
-            matchState.homeRedCards++;
+            player.redCarded = true; matchState.homeRedCards++;
             player.matchStats.red = 1;
-            botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 <b>${player.name}</b> удалён (2ЖК)!</div>`, 200, { html: true });
+            botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 <b>${player.name}</b> (${matchState.homeClub}) удалён (2ЖК)!</div>`, 200, { html: true });
             if (matchState.homeRedCards >= 5) { matchState.finished = true; matchState.homeScore = 0; matchState.awayScore = 3; endMatch(); return; }
           } else {
             player.matchStats.yellow = 1;
-            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', player.name);
+            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', `<b>${player.name}</b> (${matchState.homeClub})`);
             botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${ycMsg}</div>`, 200, { html: true });
           }
         }
@@ -3065,8 +3072,8 @@ async function redeemPromoCode() {
             botReply(`<div class="match-event event-red"><span class="minute">${minute}'</span> 🟥 <b>${player.name}</b> (${matchState.awayName}) удалён!</div>`, 200, { html: true });
           } else {
             player.matchStats.yellow = 1;
-            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', player.name);
-            botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${ycMsg} (${matchState.awayName})</div>`, 200, { html: true });
+            const ycMsg = YELLOW_COMMENTS[Math.floor(Math.random() * YELLOW_COMMENTS.length)].replace('{name}', `<b>${player.name}</b> (${matchState.awayName})`);
+            botReply(`<div class="match-event event-yellow"><span class="minute">${minute}'</span> 🟨 ${ycMsg}</div>`, 200, { html: true });
           }
         }
         return;
@@ -3078,7 +3085,7 @@ async function redeemPromoCode() {
         let taker = matchState.homePlayers.find(p => p.id === gameState.cornerKicker && !p.redCarded);
         if (!taker) taker = matchState.homePlayers.find(p => !p.redCarded && p.position !== 'GK');
         const name = taker ? taker.name : 'игрок';
-        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
+        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', `<b>${name}</b> (${matchState.homeClub})`);
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
         return;
       }
@@ -3086,7 +3093,7 @@ async function redeemPromoCode() {
         matchState.awayCorners++;
         const taker = matchState.awayPlayers.find(p => !p.redCarded);
         const name = taker ? taker.name : 'игрок';
-        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', name);
+        const msg = CORNER_COMMENTS[Math.floor(Math.random() * CORNER_COMMENTS.length)].replace('{name}', `<b>${name}</b> (${matchState.awayName})`);
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> У ворот ${matchState.homeName}: ${msg}</div>`, 150, { html: true });
         return;
       }
@@ -3113,11 +3120,11 @@ async function redeemPromoCode() {
             gameState.goalsScored = (gameState.goalsScored || 0) + 1;
             gameState.goalsForQuest = (gameState.goalsForQuest || 0) + 1;
             taker.matchStats.goals++;
-            botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ШТРАФНОЙ! <b>${taker.name}</b> забивает прямым ударом! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
+            botReply(`<div class="match-event event-goal"><span class="minute">${minute}'</span> ⚽ ШТРАФНОЙ! <b>${taker.name}</b> (${matchState.homeClub}) забивает прямым ударом! ${matchState.homeScore}:${matchState.awayScore}</div>`, 200, { html: true });
             matchState.events.push({ minute, type: 'goal', team: 'home', player: taker.name, freekick: true });
             saveState();
           } else {
-            botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 Штрафной удар <b>${taker.name}</b> — мимо!</div>`, 150, { html: true });
+            botReply(`<div class="match-event"><span class="minute">${minute}'</span> 🥅 Штрафной удар <b>${taker.name}</b> (${matchState.homeClub}) — мимо!</div>`, 150, { html: true });
           }
         }
         return;
@@ -3128,7 +3135,7 @@ async function redeemPromoCode() {
         matchState.homeFouls++;
         const fouler = matchState.homePlayers[Math.floor(Math.random() * matchState.homePlayers.length)];
         fouler.matchStats.fouls++;
-        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', fouler.name);
+        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', `<b>${fouler.name}</b> (${matchState.homeClub})`);
         botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
         return;
       }
@@ -3136,8 +3143,8 @@ async function redeemPromoCode() {
         matchState.awayFouls++;
         const fouler = matchState.awayPlayers[Math.floor(Math.random() * matchState.awayPlayers.length)];
         fouler.matchStats.fouls++;
-        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', fouler.name);
-        botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg} (${matchState.awayName})</div>`, 150, { html: true });
+        const msg = FOUL_COMMENTS[Math.floor(Math.random() * FOUL_COMMENTS.length)].replace('{name}', `<b>${fouler.name}</b> (${matchState.awayName})`);
+        botReply(`<div class="match-event"><span class="minute">${minute}'</span> ${msg}</div>`, 150, { html: true });
         return;
       }
 
@@ -3263,7 +3270,7 @@ async function redeemPromoCode() {
       matchState.homePlayers[slotIndex] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
         stamina: benchPlayer.stamina || 3.0, staminaPct: benchPlayer.staminaPct != null ? benchPlayer.staminaPct : 100,
         preferredFoot: benchPlayer.preferredFoot || 'right', weakFoot: benchPlayer.weakFoot || 1,
-        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 } };
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
       matchState.subbedOutIds.push(fieldPlayer.id);
@@ -3294,7 +3301,7 @@ async function redeemPromoCode() {
       matchState.homePlayers[slotIndex] = { ...benchPlayer, slotPosition: slotPos, redCarded: false,
         stamina: benchPlayer.stamina || 3.0, staminaPct: benchPlayer.staminaPct != null ? benchPlayer.staminaPct : 100,
         preferredFoot: benchPlayer.preferredFoot || 'right', weakFoot: benchPlayer.weakFoot || 1,
-        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.0 } };
+        matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 } };
       matchState.benchPlayers = matchState.benchPlayers.filter(p => p.id !== benchPlayer.id);
       matchState.benchPlayers.push(fieldPlayer);
       matchState.subbedOutIds.push(fieldPlayer.id);
@@ -3304,14 +3311,17 @@ async function redeemPromoCode() {
       botReply(`🔄 Замена: <b>${fieldPlayer.name}</b> ↓ <b>${benchPlayer.name}</b> ↑ (позиция ${slotPos})`, 300, { html: true });
     }
 
+    // ── НОВЫЙ РЕАЛИСТИЧНЫЙ РЕЙТИНГ ────────────────────────────────────────
     function calculateRating(stats, minutes) {
-      let rating = 6.0;
-      if (stats.goals > 0) rating += stats.goals * 1.5;
-      if (stats.assists > 0) rating += stats.assists * 1.0;
-      if (stats.shotsOnTarget > 0) rating += stats.shotsOnTarget * 0.2;
+      let rating = 6.5;
+      if (stats.goals > 0) rating += stats.goals * 0.8;
+      if (stats.assists > 0) rating += stats.assists * 0.6;
+      if (stats.shotsOnTarget > 0) rating += stats.shotsOnTarget * 0.15;
+      if (stats.shots > 0) rating += (stats.shots - stats.shotsOnTarget) * 0.05;
+      if (stats.fouls > 0) rating -= stats.fouls * 0.2;
       if (stats.yellow > 0) rating -= 0.5;
-      if (stats.red > 0) rating -= 2.0;
-      return Math.min(10, Math.max(4.0, rating));
+      if (stats.red > 0) rating -= 2.5;
+      return Math.min(10.0, Math.max(3.0, Math.round(rating * 10) / 10));
     }
 
     function endMatch() {
@@ -3352,12 +3362,17 @@ async function redeemPromoCode() {
         `🔄 Замен: ${matchState.subCount} – ${matchState.awaySubCount}<br>` +
         `📈 xG: ${matchState.homeXG.toFixed(2)} – ${matchState.awayXG.toFixed(2)}</div>`, 500, { html: true });
       let mvp = null;
-      const homeScorers = matchState.homePlayers.filter(p => p.matchStats.goals > 0);
-      if (homeScorers.length > 0) mvp = homeScorers.reduce((best, p) => p.matchStats.goals > best.matchStats.goals ? p : best);
-      else mvp = matchState.homePlayers.reduce((best, p) => (p.matchStats.rating || 6) > (best.matchStats.rating || 6) ? p : best, matchState.homePlayers[0]);
+      let bestRating = -1;
+      for (const p of matchState.homePlayers) {
+        const r = calculateRating(p.matchStats, 90);
+        p.matchStats.rating = r;
+        if (r > bestRating) {
+          bestRating = r;
+          mvp = p;
+        }
+      }
       if (mvp) {
-        calculateRating(mvp.matchStats, 90);
-        botReply(`🏆 MVP: <b>${mvp.name}</b><br>⚽ Голы: ${mvp.matchStats.goals} | 🅰️ Ассисты: ${mvp.matchStats.assists}<br>🎯 Удары: ${mvp.matchStats.shots} (в створ: ${mvp.matchStats.shotsOnTarget}) | ⭐ Оценка: ${mvp.matchStats.rating.toFixed(1)}`, 500, { html: true });
+        botReply(`🏆 MVP: <b>${mvp.name}</b> (${matchState.homeClub})<br>⚽ Голы: ${mvp.matchStats.goals} | 🅰️ Ассисты: ${mvp.matchStats.assists}<br>🎯 Удары: ${mvp.matchStats.shots} (в створ: ${mvp.matchStats.shotsOnTarget}) | ⭐ Оценка: ${mvp.matchStats.rating.toFixed(1)}`, 500, { html: true });
       }
       botReply(`<div class="inline-btn-row"><button class="inline-btn" onclick="startMatch()">🔁 Сыграть снова</button><button class="inline-btn" onclick="handleNavSquad()">📋 Состав</button></div>`, 600, { html: true });
       if (typeof checkDivisionRewards === 'function') checkDivisionRewards();
