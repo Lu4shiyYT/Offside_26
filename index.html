@@ -2050,12 +2050,12 @@ async function redeemPromoCode() {
       fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-top:10px;margin-bottom:4px;">⭐ Назначения</div>`;
       fieldHtml += `<div style="display:flex;flex-wrap:wrap;gap:6px;">`;
 
-      for (const role of roles) {
+            for (const role of roles) {
         fieldHtml += `<select onchange="assignRole('${role.key}', this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">`;
         fieldHtml += `<option value="">${role.label}: не выбран</option>`;
         for (const p of squadPlayers) {
           if (!p) continue;
-          const sel = gameState[role.key] === p.id ? ' selected' : '';
+          const sel = (gameState[role.key] != null && Number(gameState[role.key]) === p.id) ? ' selected' : '';
           fieldHtml += `<option value="${p.id}"${sel}>${p.name} (${p.position})</option>`;
         }
         fieldHtml += `</select>`;
