@@ -1941,8 +1941,9 @@ async function redeemPromoCode() {
       const btns = `
         <div class="inline-btn-row">
           <button class="inline-btn success" onclick="doExchangePlayerForFragments('${cardId}')">Да</button>
-          <button class="inline-btn danger" onclick="botReply('❌ Обмен отменён.', 200)">Нет</button>
+          <button class="inline-btn danger" onclick="botReply('❌ Обмен отменён.', 200); openInventoryModal();">Нет</button>
         </div>`;
+      closeInventoryModal();
       await botReply(msg + btns, 400, { html: true });
     }
 
@@ -1961,11 +1962,8 @@ async function redeemPromoCode() {
       saveState();
       updateHeaderResources();
 
-      await botReply(`🧩 Игрок <b>${player.name}</b> обменян на <b>${frags}</b> фрагментов.`, 500, { html: true });
-
-      if (document.getElementById('inventory-modal')?.style.display === 'flex') {
-        renderInventoryList();
-      }
+            await botReply(`🧩 Игрок <b>${player.name}</b> обменян на <b>${frags}</b> фрагментов.`, 500, { html: true });
+      openInventoryModal();   // сразу открываем инвентарь с актуальным списком
     }
 
     // ── Вспомогательная функция поиска по cardId ─────────────────────────
