@@ -365,7 +365,7 @@ function addMessage(content, type='bot', options={}) {
 function addTypingIndicator() {
   ensureDateDivider();
   const wrapper = document.createElement('div'); wrapper.className = 'msg-wrapper bot'; wrapper.id='typing-indicator';
-  wrapper.innerHTML = `<div class="msg-avatar">⚽</div><div class="msg-bubble"><div class="typing-indicator"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+  wrapper.innerHTML = `<img class="msg-avatar" src="https://example.com/coach.jpg" style="border-radius:50%; object-fit:cover;" /><div class="msg-bubble"><div class="typing-indicator"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
   chatEl.appendChild(wrapper); scrollChatToBottom(); return wrapper;
 }
 function removeTypingIndicator() { const el=document.getElementById('typing-indicator'); if(el)el.remove(); }
@@ -395,7 +395,7 @@ function buildProfileCardHTML(s) {
 
 // === REGISTRATION ===
 async function startRegistrationFlow() {
-  await botReply('Привет! Я — твой виртуальный тренер. 👋\n\nКак тебя зовут? Введи свой никнейм:', 800);
+  await botReply('Приветствую в Offside 26! Я — твой виртуальный тренер. Введи свой никнейм:', 800);
   gameState.awaitingNickname = true; saveState();
 }
 async function completeRegistration(nickname) {
