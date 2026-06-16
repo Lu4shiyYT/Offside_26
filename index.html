@@ -224,6 +224,19 @@
       font-size: 12px;
       cursor: pointer;
     }
+    .shop-nav-btn {
+      background: rgba(82,136,193,0.2);
+      border: 1px solid rgba(82,136,193,0.4);
+      color: var(--accent);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .shop-nav-btn:hover {
+      background: rgba(82,136,193,0.35);
+    }
   </style>
 </head>
 <body>
@@ -488,25 +501,260 @@ function handleNavEvents() { if(!gameState.registered){promptRegister();return;}
 function handleNavDivision() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-division'); botReply('⚽ <b>Дивизион</b> — в разработке.', 500, {html:true}); }
 function handleNavQuests() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
 
-// --- SHOP (заменяем заглушку) ---
-function handleNavShop() {
+// ============================================
+// === МАГАЗИН (МОДАЛЬНОЕ ОКНО) ==============
+// ============================================
+
+let shopState = { screen: 'main' }; // main / packs / special / resources / promo / packInfo:{id}
+
+function openShopModal() {
+  let overlay = document.getElementById('shop-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'shop-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeShopModal(); });
+    overlay.innerHTML = `<div id="shop-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;"></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderShopScreen();
+}
+
+function closeShopModal() {
+  const overlay = document.getElementById('shop-modal');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function shopBack() {
+  if (typeof shopState.screen === 'object' && shopState.screen.packInfo) {
+    // Если была информация о паке, возвращаемся к категории
+    shopState.screen = shopState.screen.returnTo || 'packs';
+  } else {
+    shopState.screen = 'main';
+  }
+  renderShopScreen();
+}
+
+function renderShopScreen() {
+  const box = document.getElementById('shop-modal-box');
+  if (!box) return;
+
+  let html = '';
+  const backBtn = shopState.screen !== 'main'
+    ? `<button onclick="shopBack()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;margin-bottom:10px;cursor:pointer;">← Назад</button>`
+    : '';
+
+  if (shopState.screen === 'main') {
+    html = '<h3 style="margin:0 0 12px;">🏪 Магазин</h3>';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    html += '<button class="shop-nav-btn" onclick="shopState.screen=\'packs\';renderShopScreen();">📦 Паки</button>';
+    html += '<button class="shop-nav-btn" onclick="shopState.screen=\'special\';renderShopScreen();">💎 Спец. предложения</button>';
+    html += '<button class="shop-nav-btn" onclick="shopState.screen=\'resources\';renderShopScreen();">🎯 Ресурсы</button>';
+    html += '<button class="shop-nav-btn" onclick="shopState.screen=\'promo\';renderShopScreen();">🔑 Промокод</button>';
+    html += '</div>';
+  } else if (shopState.screen === 'packs' || shopState.screen === 'special' || shopState.screen === 'resources') {
+    const category = shopState.screen;
+    const packs = SHOP_PACKS.filter(p => p.category === category);
+    html = backBtn + `<h3 style="margin:0 0 12px;">${category === 'packs' ? '📦 Паки' : category === 'special' ? '💎 Спец. предложения' : '🎯 Ресурсы'}</h3>`;
+    if (packs.length === 0) {
+      html += '<div style="color:#7d8e9e;">Нет доступных предложений.</div>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+      for (const pack of packs) {
+        const currencyIcon = pack.currency === 'rubins'
+          ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
+          : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+        html += `<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px;cursor:pointer;" onclick="shopState.screen={packInfo:'${pack.id}',returnTo:'${category}'};renderShopScreen();">`;
+        if (pack.label) html += `<div style="font-size:10px;color:#f0c040;margin-bottom:4px;">${pack.label}</div>`;
+        html += `<div style="display:flex;align-items:center;gap:8px;">`;
+        html += `<span style="font-size:24px;">${pack.emoji}</span>`;
+        html += `<div style="flex:1;"><div style="font-weight:700;">${pack.name}</div>`;
+        html += `<div style="font-size:11px;color:#7d8e9e;">${pack.description || ''}</div></div>`;
+        html += `<div style="font-size:14px;color:#f0c040;">${currencyIcon} ${pack.price}</div>`;
+        html += `</div></div>`;
+      }
+      html += '</div>';
+    }
+  } else if (typeof shopState.screen === 'object' && shopState.screen.packInfo) {
+    const pack = SHOP_PACKS.find(p => p.id === shopState.screen.packInfo);
+    if (!pack) { shopState.screen = 'packs'; renderShopScreen(); return; }
+    const currencyIcon = pack.currency === 'rubins'
+      ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
+      : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+    html = backBtn + `<h3 style="margin:0 0 12px;">${pack.emoji} ${pack.name}</h3>`;
+    html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:8px;">${pack.description || ''}</div>`;
+    if (pack.type === 'players') {
+      html += '<div style="font-size:12px;margin-bottom:8px;">📦 Содержит: <b>' + pack.count + '</b> карт.</div>';
+      if (pack.ovrRanges) {
+        html += '<div style="font-size:11px;color:#7d8e9e;">Шансы OVR:</div>';
+        for (const r of pack.ovrRanges) {
+          html += `<div style="font-size:11px;">${r.minOvr}-${r.maxOvr}: ${r.chance}%</div>`;
+        }
+      }
+      if (pack.idPools) {
+        html += '<div style="font-size:11px;color:#7d8e9e;">Специальные пулы:</div>';
+        for (const p of pack.idPools) {
+          html += `<div style="font-size:11px;">Пул (${p.chance}%): ${p.ids.join(', ')}</div>`;
+        }
+      }
+    } else if (pack.type === 'resources') {
+      html += '<div style="font-size:12px;margin-bottom:8px;">🎯 Ресурсы:</div>';
+      if (pack.resourceReward) {
+        html += `<div style="font-size:11px;">${formatResource(pack.resourceReward)}</div>`;
+      }
+      if (pack.resourcePool) {
+        html += '<div style="font-size:11px;color:#7d8e9e;">Случайный ресурс:</div>';
+        for (const r of pack.resourcePool) {
+          html += `<div style="font-size:11px;">${formatResource(r.reward)} — ${r.chance}%</div>`;
+        }
+      }
+    }
+    html += `<button class="shop-nav-btn" onclick="closeShopModal();purchasePack('${pack.id}');" style="margin-top:10px;width:100%;">${currencyIcon} Открыть за ${pack.price}</button>`;
+  } else if (shopState.screen === 'promo') {
+    html = backBtn + '<h3 style="margin:0 0 12px;">🔑 Промокод</h3>';
+    html += '<div style="display:flex;gap:6px;"><input id="promo-input" type="text" placeholder="Введите код..." style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;" /><button class="shop-nav-btn" onclick="closeShopModal();redeemPromoCode();" style="padding:6px 12px;">Активировать</button></div>';
+  }
+
+  box.innerHTML = html;
+}
+
+function formatResource(reward) {
+  const parts = [];
+  if (reward.rubins) parts.push(`💎 ${reward.rubins} сапфиров`);
+  if (reward.trainingPoints) parts.push(`🎯 ${reward.trainingPoints} очк. тренировки`);
+  if (reward.ovrUpgradePoints) parts.push(`⚡ ${reward.ovrUpgradePoints} очк. OVR`);
+  if (reward.fragments) parts.push(`🧩 ${reward.fragments} фрагментов`);
+  if (reward.draftTokens) parts.push(`🎟️ ${reward.draftTokens} купонов`);
+  if (reward.offsideTokens) parts.push(`🔮 ${reward.offsideTokens} Offside-токенов`);
+  if (reward.passCredits) parts.push(`🪙 ${reward.passCredits} очк. прогресса`);
+  return parts.join(', ') || 'пусто';
+}
+
+// ── Покупка пака ─────────────────────────────────────────────────────────
+async function purchasePack(packId) {
+  const pack = SHOP_PACKS.find(p => p.id === packId);
+  if (!pack) { await botReply('❌ Пак не найден.', 300); openShopModal(); return; }
+  const currencyKey = pack.currency === 'rubins' ? 'rubins' : 'offsideTokens';
+  if ((gameState[currencyKey] || 0) < pack.price) {
+    await botReply(`❌ Недостаточно средств.`, 400);
+    openShopModal();
+    return;
+  }
+  gameState[currencyKey] -= pack.price;
+
+  if (pack.type === 'resources') {
+    // Выдача ресурсов
+    if (pack.resourceReward) {
+      applyResourceReward(pack.resourceReward);
+      saveState(); updateHeaderResources();
+      await botReply(`🎁 Вы получили: ${formatResource(pack.resourceReward)}`, 500, { html: true });
+    } else if (pack.resourcePool) {
+      const totalChance = pack.resourcePool.reduce((s, r) => s + r.chance, 0);
+      let rand = Math.random() * totalChance;
+      let selected = null;
+      for (const r of pack.resourcePool) {
+        rand -= r.chance;
+        if (rand <= 0) { selected = r.reward; break; }
+      }
+      if (!selected) selected = pack.resourcePool[0].reward;
+      applyResourceReward(selected);
+      saveState(); updateHeaderResources();
+      await botReply(`🎁 Вы получили: ${formatResource(selected)}`, 500, { html: true });
+    }
+    openShopModal();
+    return;
+  }
+
+  // Выдача игроков
+  const drawn = drawPackCards(pack);
+  if (!drawn.length) {
+    gameState[currencyKey] += pack.price;
+    await botReply('⚠️ Нет доступных игроков.', 400);
+    openShopModal();
+    return;
+  }
+  for (const p of drawn) gameState.myPlayers.push(p);
+  gameState.packsOpened = (gameState.packsOpened || 0) + 1;
+  saveState(); updateHeaderResources();
+
+  // Сортируем по убыванию OVR
+  drawn.sort((a, b) => b.ovr - a.ovr);
+
+  const hasWalkout = drawn.some(p => p.ovr >= WALKOUT_THRESHOLD);
+
+  if (drawn.length === 1) {
+    const player = drawn[0];
+    if (player.ovr >= WALKOUT_THRESHOLD) {
+      await playWalkoutAnimation(player);
+    } else {
+      await botReply(null, 800, { card: buildPlayerCardHTML(player) });
+    }
+  } else {
+    if (hasWalkout) {
+      // Одна карта с волкаутом, остальные отдельно
+      const walkoutPlayer = drawn.find(p => p.ovr >= WALKOUT_THRESHOLD);
+      const others = drawn.filter(p => p !== walkoutPlayer);
+      await playWalkoutAnimation(walkoutPlayer);
+      if (others.length > 0) {
+        await showRemainingCards(others);
+      }
+    } else {
+      // Все карты в одном сообщении
+      await showRemainingCards(drawn);
+    }
+  }
+
+  await botReply(`${pack.currency === 'rubins'
+    ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
+    : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />'} Остаток: <b>${gameState[currencyKey] || 0}</b>`, 400, { html: true });
+  openShopModal();
+}
+
+function applyResourceReward(reward) {
+  if (reward.rubins) gameState.rubins = (gameState.rubins || 0) + reward.rubins;
+  if (reward.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints || 0) + reward.trainingPoints;
+  if (reward.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + reward.ovrUpgradePoints;
+  if (reward.fragments) gameState.fragments = (gameState.fragments || 0) + reward.fragments;
+  if (reward.draftTokens) gameState.draftTokens = (gameState.draftTokens || 0) + reward.draftTokens;
+  if (reward.offsideTokens) gameState.offsideTokens = (gameState.offsideTokens || 0) + reward.offsideTokens;
+  if (reward.passCredits) gameState.passCredits = (gameState.passCredits || 0) + reward.passCredits;
+}
+
+// ── Волкаут-анимация ────────────────────────────────────────────────────
+async function playWalkoutAnimation(player) {
+  // 1) Только изображение карточки
+  if (player.image) {
+    await botReply(`<img src="${player.image}" style="width:100%;border-radius:8px;" />`, 500, { html: true });
+  } else {
+    await botReply('🔥 Волкаут...', 500);
+  }
+  // 2) Флаг (нация)
+  await botReply(`🏳️ ${player.nation}`, 500);
+  // 3) Позиция
+  await botReply(`📍 ${player.position}`, 500);
+  // 4) Клуб
+  await botReply(`🏟️ ${player.club}`, 1000);
+  // 5) Карточка игрока
+  await botReply(null, 500, { card: buildPlayerCardHTML(player) });
+}
+
+// ── Остальные карты ─────────────────────────────────────────────────────
+async function showRemainingCards(cards) {
+  let html = '';
+  for (const p of cards) {
+    html += buildPlayerCardHTML(p);
+  }
+  await botReply(html, 800, { html: true });
+}
+
+// Переопределяем навигацию на магазин
+handleNavShop = function() {
   if (!gameState.registered) { promptRegister(); return; }
   setActiveNav('nav-shop');
-  let html = '<div class="msg-text"><b>🏪 Магазин</b></div><div class="inline-btn-row">';
-  for (const pack of SHOP_PACKS) {
-    const currEmoji = pack.currency === 'rubins'
-      ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:20px;height:20px;vertical-align:middle;" />'
-      : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:20px;height:20px;vertical-align:middle;" />';
-    html += `<button class="inline-btn" onclick="buyPack('${pack.id}')" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 14px;">
-      <span style="font-size:22px;">${pack.emoji}</span><span style="font-weight:600;">${pack.name}</span>
-      <span style="font-size:11px;color:#f0c040;">${currEmoji} ${pack.price} • ${pack.count} карт.</span></button>`;
-  }
-  html += '</div><div style="margin-top:12px;padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;">';
-  html += '<span style="font-size:12px;color:#7d8e9e;">🔑 Промокод:</span>';
-  html += '<div style="display:flex;gap:6px;margin-top:4px;"><input id="promo-input" type="text" placeholder="Введите код..." style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:5px 8px;color:#fff;font-size:13px;" /><button class="inline-btn" onclick="redeemPromoCode()" style="padding:5px 10px;">Активировать</button></div>';
-  html += '</div>';
-  botReply(html, 500, {html:true});
-}
+  shopState.screen = 'main';
+  openShopModal();
+};
 
 document.getElementById('nav-squad').addEventListener('click', function() { handleNavSquad(); });
 document.getElementById('nav-inventory').addEventListener('click', function() { handleNavInventory(); });
@@ -849,29 +1097,97 @@ function pickDailyQuests() {
 function getMoscowDateString() { const d=new Date(); d.setHours(d.getHours()+3); return d.toISOString().split('T')[0]; }
 
 // ========== SHOP PACKS & DRAFT POOLS ==========
+const WALKOUT_THRESHOLD = 98; // OVR, с которого начинается волкаут
+
 const SHOP_PACKS = [
-  // ПАК С КОНКРЕТНЫМ ОВР
+  // ── Обычные паки ─────────────────────────────────────────────
   {
-    id:'wcp26basepack', name:'Базовый пак Чемпионата Мира 2026', emoji:'📦', currency:'rubins', price:500, count:3,
-    ovrRanges:[{minOvr:45,maxOvr:64,chance:50},{minOvr:65,maxOvr:74,chance:30},{minOvr:75,maxOvr:84,chance:19},{minOvr:85,maxOvr:99,chance:1}]
+    id: 'standard',
+    name: 'Стандартный пак',
+    emoji: '📦',
+    category: 'packs',
+    type: 'players',
+    currency: 'rubins',
+    price: 500,
+    count: 3,
+    label: '',
+    description: '3 случайных игрока с шансом на высокий OVR',
+    ovrRanges: [
+      { minOvr:45, maxOvr:64, chance:50 },
+      { minOvr:65, maxOvr:74, chance:30 },
+      { minOvr:75, maxOvr:84, chance:9  },
+      { minOvr:85, maxOvr:99, chance:1  }
+    ]
   },
+  // ── Пак с конкретными ID ─────────────────────────────────────
   {
-    id:'wcp26goldpack', name:'Золотой пак Чемпионата Мира 2026', emoji:'📦', currency:'rubins', price:1200, count:3,
-    ovrRanges:[{minOvr:45,maxOvr:70,chance:30},{minOvr:71,maxOvr:80,chance:50},{minOvr:81,maxOvr:93,chance:20}]
+    id: 'player_pool',
+    name: 'Пул игроков',
+    emoji: '👥',
+    category: 'packs',
+    type: 'players',
+    currency: 'rubins',
+    price: 700,
+    count: 1,
+    label: 'Популярный',
+    description: '1 игрок из специального пула',
+    idPools: [
+      { chance: 30, ids: [7, 8, 9] },
+      { chance: 50, ids: [15, 16, 17] },
+      { chance: 20, ids: [21, 22, 23] }
+    ]
   },
-  // ПАК С КОНКРЕТНЫМИ КАРТОЧКАМИ ПО ID
+  // ── Спецпредложение ──────────────────────────────────────────
   {
-  id: 'player_pool',
-  name: 'Пул игроков',
-  emoji: '📦',
-  currency: 'rubins',
-  price: 700,
-  count: 1,
-  idPools: [
-    { chance: 30, ids: [1, 2] },
-    { chance: 50, ids: [3, 4] },
-    { chance: 20, ids: [5, 6] }
-  ]
+    id: 'special_mega',
+    name: 'Мега-пак',
+    emoji: '💥',
+    category: 'special',
+    type: 'players',
+    currency: 'rubins',
+    price: 2000,
+    count: 10,
+    label: 'Большие шансы',
+    description: '10 игроков с повышенным шансом на OVR 85+',
+    ovrRanges: [
+      { minOvr:65, maxOvr:74, chance:40 },
+      { minOvr:75, maxOvr:84, chance:35 },
+      { minOvr:85, maxOvr:94, chance:20 },
+      { minOvr:95, maxOvr:99, chance:5  }
+    ]
+  },
+  // ── Ресурсный пак (фиксированная награда) ────────────────────
+  {
+    id: 'resource_training',
+    name: 'Очки тренировки',
+    emoji: '🎯',
+    category: 'resources',
+    type: 'resources',
+    currency: 'rubins',
+    price: 300,
+    count: 1,
+    label: '',
+    description: '100 очков тренировки',
+    resourceReward: { trainingPoints: 100 }
+  },
+  // ── Ресурсный пак (случайная награда) ────────────────────────
+  {
+    id: 'resource_random',
+    name: 'Сундук ресурсов',
+    emoji: '🎁',
+    category: 'resources',
+    type: 'resources',
+    currency: 'rubins',
+    price: 500,
+    count: 1,
+    label: 'Распродажа',
+    description: 'Случайный ресурс',
+    resourcePool: [
+      { chance: 40, reward: { rubins: 200 } },
+      { chance: 30, reward: { trainingPoints: 80 } },
+      { chance: 20, reward: { ovrUpgradePoints: 50 } },
+      { chance: 10, reward: { draftTokens: 2 } }
+    ]
   }
 ];
 const DRAFT_CONFIGS = {
@@ -1065,21 +1381,6 @@ function buildPlayerCardHTML(player) {
 function showPlayerDetail(pid) {
   const player = findPlayerById(pid);
   if (player) botReply(null, 200, {card: buildPlayerCardHTML(player)});
-}
-async function buyPack(packId) {
-  const pack = getPackById(packId);
-  if (!pack) { await botReply('❌ Пак не найден.', 300); return; }
-  const currencyKey = pack.currency==='rubins'?'rubins':'offsideTokens';
-  if ((gameState[currencyKey]||0) < pack.price) { await botReply(`❌ Недостаточно ${pack.currency==='rubins'?'сапфиров':'Offside-токенов'}.`, 400); return; }
-  gameState[currencyKey] -= pack.price;
-  const drawn = drawPackCards(pack);
-  if (!drawn.length) { gameState[currencyKey] += pack.price; await botReply('⚠️ Нет доступных игроков.', 400); saveState(); updateHeaderResources(); return; }
-  for (const p of drawn) gameState.myPlayers.push(p);
-  gameState.packsOpened = (gameState.packsOpened||0)+1;
-  saveState(); updateHeaderResources();
-  await botReply(`🎉 Ты открыл <b>${pack.name}</b>!`, 400, {html:true});
-  for (const p of drawn) await botReply(null, 800, {card: buildPlayerCardHTML(p)});
-  await botReply(`Остаток: <b>${gameState[currencyKey]||0}</b> ${pack.currency==='rubins'?'сапфиров':'Offside-токенов'}.`, 400, {html:true});
 }
 
 // ========== PROMO CODES ==========
