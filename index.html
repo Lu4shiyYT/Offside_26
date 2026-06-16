@@ -2926,8 +2926,40 @@ async function redeemPromoCode() {
       if (overlay) overlay.style.display = 'none';
     }
 
-    function getPositionPenalty(player, slotPos) { /* ... без изменений ... */ }
-    function getSlotBgStyle(player) { /* ... без изменений ... */ }
+    function getPositionPenalty(player, slotPos) {
+      if (!player || !slotPos) return 0;
+      if (player.position === slotPos ||
+          (Array.isArray(player.altPositions) && player.altPositions.includes(slotPos))) {
+        return 0;
+      }
+      if ((player.position === 'GK') !== (slotPos === 'GK')) return 999;
+      const LINE_GROUPS = {
+        GK: [], LB: ['LB','CB','RB'], CB: ['LB','CB','RB','CDM'], RB: ['LB','CB','RB'],
+        CDM: ['LM','CM','CAM','RM','CDM','CB'], CM: ['LM','CM','CAM','RM','CDM'],
+        CAM: ['LM','CM','CAM','RM','CDM'], LM: ['LM','CM','CAM','RM','CDM'],
+        RM: ['LM','CM','CAM','RM','CDM'], LW: ['LW','RW','ST','CF'],
+        RW: ['LW','RW','ST','CF'], ST: ['LW','RW','ST','CF'], CF: ['LW','RW','ST','CF']
+      };
+      const sameLine = LINE_GROUPS[player.position] || [];
+      return sameLine.includes(slotPos) ? 4 : 15;
+    }
+
+    // Фоновый стиль слота (изображение или обычный фон) + обязательный контур
+    function getSlotBgStyle(player) {
+      const img = player ? (player.squadImage || player.image || '') : '';
+      if (img) {
+        return `background-image: url(${img}); background-size: cover; background-position: center; border: 2px solid rgba(255,255,255,0.4);`;
+      }
+      return `background: rgba(0,0,0,0.3); border: 2px dashed rgba(255,255,255,0.2);`;
+    }
+
+    // Безопасное получение OVR с защитой от NaN
+    function safeEffectiveOvr(player) {
+      if (!player) return 0;
+      const base = Number(player.ovr) || 0;
+      const upgrade = Number(player.ovrUpgrade) || 0;
+      return base + upgrade;
+    }
 
     function renderSquadModal() {
       const box = document.getElementById('squad-modal-box');
@@ -2968,8 +3000,8 @@ async function redeemPromoCode() {
               displayOvr = '❌';
               penaltyBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;color:#e05050;">GK↔Поле</div>`;
             } else {
-              const effectiveOvr = getEffectiveOvr(player) - penalty;
-              displayOvr = effectiveOvr;
+              const effectiveOvr = safeEffectiveOvr(player) - penalty;
+              displayOvr = isNaN(effectiveOvr) ? '?' : effectiveOvr;
               if (penalty > 0) {
                 penaltyBadge = `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:8px;color:#f0a040;">-${penalty}</div>`;
                 penaltyInfo = ` (-${penalty})`;
@@ -2980,6 +3012,7 @@ async function redeemPromoCode() {
           const bgStyle = getSlotBgStyle(player);
           const hasImage = !!(player && (player.squadImage || player.image));
           const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
+
           const playerName = player ? player.name : '';
           const posText = player
             ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${pos}</span>`
@@ -2996,7 +3029,7 @@ async function redeemPromoCode() {
             + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
             + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
             + `onclick="handleSlotClick(${slotIndex}, '${pos}')" `
-            + `style="width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;transition:border-color 0.2s;position:relative;">`
+            + `style="width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;transition:border-color 0.2s;position:relative;overflow:hidden;">`
             + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
             + (hasImage ? '' : posText)
             + `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${playerName}</div>`
@@ -3011,8 +3044,9 @@ async function redeemPromoCode() {
       }
       html += `</div>`;
 
+      // Средний OVR команды (с защитой от NaN)
       const teamOvr = getSquadAverageOvr();
-      html += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${teamOvr}</b></div>`;
+      html += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${isNaN(teamOvr) ? '—' : teamOvr}</b></div>`;
 
       // Скамейка
       html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">📋 Скамейка запасных (7 мест)</div>`;
@@ -3028,7 +3062,7 @@ async function redeemPromoCode() {
           ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`
           : `<span style="font-size:9px;color:rgba(255,255,255,0.3);">пусто</span>`;
         const ovrText = player
-          ? `<span style="font-size:11px;color:#f0c040;font-weight:700;">${getEffectiveOvr(player)}</span>`
+          ? `<span style="font-size:11px;color:#f0c040;font-weight:700;">${safeEffectiveOvr(player)}</span>`
           : '';
         const removeBtn = player
           ? `<button onclick="event.stopPropagation();removeFromBench(${i})" style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
@@ -3039,7 +3073,7 @@ async function redeemPromoCode() {
           + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
           + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
           + `onclick="handleBenchClick(${i})" `
-          + `style="flex-shrink:0;width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);text-align:center;position:relative;">`
+          + `style="flex-shrink:0;width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);text-align:center;position:relative;overflow:hidden;">`
           + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
           + (hasImage ? '' : posText)
           + `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${playerName}</div>`
@@ -3051,11 +3085,11 @@ async function redeemPromoCode() {
       }
       html += `</div>`;
 
-      // Доступные игроки
+      // Доступные игроки (резерв)
       const usedIds = new Set();
       if (gameState.squadSlots) for (const k in gameState.squadSlots) if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
       if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
-      const availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id)).sort((a,b) => getEffectiveOvr(b)-getEffectiveOvr(a));
+      const availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id)).sort((a,b) => safeEffectiveOvr(b) - safeEffectiveOvr(a));
 
       html += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (нажми для выбора, затем нажми на слот)</div>`;
       html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
@@ -3072,12 +3106,12 @@ async function redeemPromoCode() {
         html +=
           `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
           + `onclick="selectReservePlayer(event, ${player.id})" `
-          + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;">`
+          + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;overflow:hidden;">`
           + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;">`
           + (hasImage ? '' : `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`)
           + `<div style="font-size:9px;color:#fff;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
           + (hasImage ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>` : '')
-          + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${getEffectiveOvr(player)}</div>`
+          + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${safeEffectiveOvr(player)}</div>`
           + `</div>`
           + `</div>`;
       }
@@ -3280,7 +3314,8 @@ async function redeemPromoCode() {
             const player = findPlayerById(pid);
             if (player) {
               const penalty = getPositionPenalty(player, positions[i]);
-              total += getEffectiveOvr(player) - (penalty < 999 ? penalty : 0);
+              const ovr = safeEffectiveOvr(player) - (penalty < 999 ? penalty : 0);
+              total += ovr;
               count++;
             }
           }
@@ -3291,7 +3326,7 @@ async function redeemPromoCode() {
           const pid = gameState.benchSlots[String(i)];
           if (pid != null) {
             const player = findPlayerById(pid);
-            if (player) { total += getEffectiveOvr(player); count++; }
+            if (player) { total += safeEffectiveOvr(player); count++; }
           }
         }
       }
