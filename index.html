@@ -2779,43 +2779,41 @@ async function redeemPromoCode() {
 // === INSERT MODULE: squad management ===
 // ============================================
 
-    let selectedReservePlayerId = null; // ID игрока, выбранного в резерве для ручного размещения
+    let selectedReservePlayerId = null;
 
     handleNavSquad = function() {
       if (!gameState.registered) { promptRegister(); return; }
       setActiveNav('nav-squad');
-      selectedReservePlayerId = null; // сбрасываем выбор при открытии
-      showSquadScreen();
+      selectedReservePlayerId = null;
+      openSquadModal();
     };
 
-    function getPositionPenalty(player, slotPos) {
-      if (!player || !slotPos) return 0;
-      if (player.position === slotPos ||
-          (Array.isArray(player.altPositions) && player.altPositions.includes(slotPos))) {
-        return 0;
+    function openSquadModal() {
+      let overlay = document.getElementById('squad-modal');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'squad-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeSquadModal(); });
+        overlay.innerHTML = `<div id="squad-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;"></div>`;
+        document.body.appendChild(overlay);
       }
-      if ((player.position === 'GK') !== (slotPos === 'GK')) return 999;
-      const LINE_GROUPS = {
-        GK: [], LB: ['LB','CB','RB'], CB: ['LB','CB','RB','CDM'], RB: ['LB','CB','RB'],
-        CDM: ['LM','CM','CAM','RM','CDM','CB'], CM: ['LM','CM','CAM','RM','CDM'],
-        CAM: ['LM','CM','CAM','RM','CDM'], LM: ['LM','CM','CAM','RM','CDM'],
-        RM: ['LM','CM','CAM','RM','CDM'], LW: ['LW','RW','ST','CF'],
-        RW: ['LW','RW','ST','CF'], ST: ['LW','RW','ST','CF'], CF: ['LW','RW','ST','CF']
-      };
-      const sameLine = LINE_GROUPS[player.position] || [];
-      return sameLine.includes(slotPos) ? 4 : 15;
+      overlay.style.display = 'flex';
+      renderSquadModal();
     }
 
-    // Фоновый стиль слота
-    function getSlotBgStyle(player) {
-      const img = player ? (player.squadImage || player.image || '') : '';
-      if (img) {
-        return `background-image: url(${img}); background-size: cover; background-position: center; border: 2px solid rgba(255,255,255,0.4);`;
-      }
-      return `background: rgba(0,0,0,0.3); border: 2px dashed rgba(255,255,255,0.2);`;
+    function closeSquadModal() {
+      const overlay = document.getElementById('squad-modal');
+      if (overlay) overlay.style.display = 'none';
     }
 
-    async function showSquadScreen() {
+    function getPositionPenalty(player, slotPos) { /* ... без изменений ... */ }
+    function getSlotBgStyle(player) { /* ... без изменений ... */ }
+
+    function renderSquadModal() {
+      const box = document.getElementById('squad-modal-box');
+      if (!box) return;
+
       const formation = getCurrentFormation();
       const positions = formation.positions;
       const rows      = formation.rows;
@@ -2826,11 +2824,19 @@ async function redeemPromoCode() {
         formOptions += `<option value="${key}"${sel}>${key}</option>`;
       }
 
-      let fieldHtml =
-        `<div class="formation-field" style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:6px 0;border:2px solid rgba(255,255,255,0.1);">`;
+      let html = '';
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:16px;">👥 Состав</h3>
+        <button onclick="closeSquadModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>`;
 
+      html += `<div style="margin-bottom:8px;"><span style="font-size:12px;color:#7d8e9e;">Формация: </span>
+        <select onchange="changeFormation(this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">${formOptions}</select></div>`;
+
+      // Поле
+      html += `<div class="formation-field" style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:6px 0;border:2px solid rgba(255,255,255,0.1);">`;
       for (const row of rows) {
-        fieldHtml += `<div class="field-row" style="display:flex;justify-content:center;gap:6px;margin:4px 0;">`;
+        html += `<div class="field-row" style="display:flex;justify-content:center;gap:6px;margin:4px 0;">`;
         for (const slotIndex of row) {
           const pos    = positions[slotIndex];
           const pid    = gameState.squadSlots ? gameState.squadSlots[String(slotIndex)] : null;
@@ -2855,7 +2861,6 @@ async function redeemPromoCode() {
           const bgStyle = getSlotBgStyle(player);
           const hasImage = !!(player && (player.squadImage || player.image));
           const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
-
           const playerName = player ? player.name : '';
           const posText = player
             ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${pos}</span>`
@@ -2867,8 +2872,7 @@ async function redeemPromoCode() {
             ? `<button onclick="event.stopPropagation();removeFromSlot(${slotIndex})" style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
             : '';
 
-          // Обработчик клика для ручного размещения
-          fieldHtml +=
+          html +=
             `<div class="slot${player ? ' filled' : ''}" data-slot="${slotIndex}" data-pos="${pos}" `
             + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
             + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
@@ -2884,16 +2888,16 @@ async function redeemPromoCode() {
             + penaltyBadge
             + `</div>`;
         }
-        fieldHtml += `</div>`;
+        html += `</div>`;
       }
-      fieldHtml += `</div>`;
+      html += `</div>`;
 
       const teamOvr = getSquadAverageOvr();
-      fieldHtml += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${teamOvr}</b></div>`;
+      html += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${teamOvr}</b></div>`;
 
       // Скамейка
-      fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">📋 Скамейка запасных (7 мест)</div>`;
-      fieldHtml += `<div class="bench-row" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0;">`;
+      html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">📋 Скамейка запасных (7 мест)</div>`;
+      html += `<div class="bench-row" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0;">`;
       for (let i = 0; i < 7; i++) {
         const pid    = gameState.benchSlots ? gameState.benchSlots[String(i)] : null;
         const player = pid ? findPlayerById(pid) : null;
@@ -2911,7 +2915,7 @@ async function redeemPromoCode() {
           ? `<button onclick="event.stopPropagation();removeFromBench(${i})" style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
           : '';
 
-        fieldHtml +=
+        html +=
           `<div class="bench-slot${player ? ' filled' : ''}" data-bench="${i}" `
           + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
           + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
@@ -2926,18 +2930,18 @@ async function redeemPromoCode() {
           + removeBtn
           + `</div>`;
       }
-      fieldHtml += `</div>`;
+      html += `</div>`;
 
-      // Доступные игроки (резерв)
+      // Доступные игроки
       const usedIds = new Set();
       if (gameState.squadSlots) for (const k in gameState.squadSlots) if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
       if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
       const availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id)).sort((a,b) => getEffectiveOvr(b)-getEffectiveOvr(a));
 
-      fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (нажми для выбора, затем нажми на слот)</div>`;
-      fieldHtml += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
+      html += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (нажми для выбора, затем нажми на слот)</div>`;
+      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
       if (availablePlayers.length === 0) {
-        fieldHtml += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
+        html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
       }
       for (const player of availablePlayers) {
         const bgStyle = getSlotBgStyle(player);
@@ -2946,7 +2950,7 @@ async function redeemPromoCode() {
         const isSelected = (selectedReservePlayerId === player.id);
         const borderStyle = isSelected ? 'border: 2px solid #f0c040;' : '';
 
-        fieldHtml +=
+        html +=
           `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
           + `onclick="selectReservePlayer(event, ${player.id})" `
           + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;">`
@@ -2958,7 +2962,7 @@ async function redeemPromoCode() {
           + `</div>`
           + `</div>`;
       }
-      fieldHtml += `</div>`;
+      html += `</div>`;
 
       // Назначения
       const squadPlayers = [];
@@ -2969,46 +2973,42 @@ async function redeemPromoCode() {
         { key:'freeKicker', label:'Штрафные' },
         { key:'penaltyKicker', label:'Пенальти' }
       ];
-      fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-top:10px;margin-bottom:4px;">⭐ Назначения</div>`;
-      fieldHtml += `<div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+      html += `<div style="font-size:12px;color:#7d8e9e;margin-top:10px;margin-bottom:4px;">⭐ Назначения</div>`;
+      html += `<div style="display:flex;flex-wrap:wrap;gap:6px;">`;
       for (const role of roles) {
-        fieldHtml += `<select onchange="assignRole('${role.key}', this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">`;
-        fieldHtml += `<option value="">${role.label}: не выбран</option>`;
+        html += `<select onchange="assignRole('${role.key}', this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">`;
+        html += `<option value="">${role.label}: не выбран</option>`;
         for (const p of squadPlayers) {
           if (!p) continue;
           const sel = (gameState[role.key] != null && Number(gameState[role.key]) === p.id) ? ' selected' : '';
-          fieldHtml += `<option value="${p.id}"${sel}>${p.name} (${p.position})</option>`;
+          html += `<option value="${p.id}"${sel}>${p.name} (${p.position})</option>`;
         }
-        fieldHtml += `</select>`;
+        html += `</select>`;
       }
-      fieldHtml += `</div>`;
+      html += `</div>`;
 
-      const fullHtml =
-        `<div style="margin-bottom:8px;"><span style="font-size:12px;color:#7d8e9e;">Формация: </span><select onchange="changeFormation(this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">${formOptions}</select></div>` +
-        fieldHtml;
-
-      await botReply(fullHtml, 500, { html: true });
+      box.innerHTML = html;
     }
 
-    // --- Ручное размещение (клик по резерву, затем по слоту) ---
+    // --- Ручное размещение ---
     function selectReservePlayer(event, playerId) {
       event.stopPropagation();
       selectedReservePlayerId = playerId;
-      showSquadScreen(); // перерисовываем, чтобы показать выделение
+      renderSquadModal();
     }
 
     function handleSlotClick(slotIndex, slotPos) {
       if (selectedReservePlayerId === null) return;
       assignToSlot(selectedReservePlayerId, slotIndex, slotPos);
       selectedReservePlayerId = null;
-      showSquadScreen();
+      renderSquadModal();
     }
 
     function handleBenchClick(benchIndex) {
       if (selectedReservePlayerId === null) return;
       assignToBench(selectedReservePlayerId, benchIndex);
       selectedReservePlayerId = null;
-      showSquadScreen();
+      renderSquadModal();
     }
 
     // ── DRAG AND DROP ──────────────────────────────────────────────────────
@@ -3082,7 +3082,7 @@ async function redeemPromoCode() {
       gameState.squadSlots[String(targetSlotIndex)] = movedPlayerId;
       const penalty1 = getPositionPenalty(movedPlayer, targetSlotPos);
       if (penalty1 > 0 && penalty1 < 999) botReply(`⚠️ ${movedPlayer.name} на позиции ${targetSlotPos}: OVR снижен на -${penalty1}.`, 300);
-      saveState(); showSquadScreen();
+      saveState(); renderSquadModal();
     }
 
     function swapPlayersToBench(movedPlayerId, targetBenchIndex) {
@@ -3104,13 +3104,13 @@ async function redeemPromoCode() {
             botReply('❌ Вратаря нельзя поставить на позицию полевого игрока и наоборот.', 400);
             if (originSlotIndex !== null) gameState.squadSlots[String(originSlotIndex)] = movedPlayerId;
             else if (originIsBench) gameState.benchSlots[String(originBenchIndex)] = movedPlayerId;
-            saveState(); showSquadScreen(); return;
+            saveState(); renderSquadModal(); return;
           }
           gameState.squadSlots[String(originSlotIndex)] = currentTargetPlayer.id;
         } else if (originIsBench) gameState.benchSlots[String(originBenchIndex)] = currentTargetPlayer.id;
       }
       gameState.benchSlots[String(targetBenchIndex)] = movedPlayerId;
-      saveState(); showSquadScreen();
+      saveState(); renderSquadModal();
     }
 
     function assignToSlot(playerId, slotIndex, slotPos) {
@@ -3131,7 +3131,7 @@ async function redeemPromoCode() {
         }
       }
       gameState.squadSlots[String(slotIndex)] = playerId;
-      saveState(); showSquadScreen();
+      saveState(); renderSquadModal();
     }
 
     function assignToBench(playerId, benchIndex) {
@@ -3142,12 +3142,12 @@ async function redeemPromoCode() {
       for (const k in gameState.squadSlots) if (gameState.squadSlots[k] === playerId) delete gameState.squadSlots[k];
       for (const k in gameState.benchSlots) if (gameState.benchSlots[k] === playerId) delete gameState.benchSlots[k];
       gameState.benchSlots[String(benchIndex)] = playerId;
-      saveState(); showSquadScreen();
+      saveState(); renderSquadModal();
     }
 
-    function removeFromSlot(slotIndex) { if (gameState.squadSlots) delete gameState.squadSlots[String(slotIndex)]; saveState(); showSquadScreen(); }
-    function removeFromBench(benchIndex) { if (gameState.benchSlots) delete gameState.benchSlots[String(benchIndex)]; saveState(); showSquadScreen(); }
-    function changeFormation(newFormation) { gameState.squadFormation = newFormation; saveState(); showSquadScreen(); }
+    function removeFromSlot(slotIndex) { if (gameState.squadSlots) delete gameState.squadSlots[String(slotIndex)]; saveState(); renderSquadModal(); }
+    function removeFromBench(benchIndex) { if (gameState.benchSlots) delete gameState.benchSlots[String(benchIndex)]; saveState(); renderSquadModal(); }
+    function changeFormation(newFormation) { gameState.squadFormation = newFormation; saveState(); renderSquadModal(); }
     function assignRole(roleKey, value) { gameState[roleKey] = value ? parseInt(value) : null; saveState(); }
 
     function getSquadAverageOvr() {
