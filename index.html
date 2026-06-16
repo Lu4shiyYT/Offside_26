@@ -2779,9 +2779,12 @@ async function redeemPromoCode() {
 // === INSERT MODULE: squad management ===
 // ============================================
 
+    let selectedReservePlayerId = null; // ID игрока, выбранного в резерве для ручного размещения
+
     handleNavSquad = function() {
       if (!gameState.registered) { promptRegister(); return; }
       setActiveNav('nav-squad');
+      selectedReservePlayerId = null; // сбрасываем выбор при открытии
       showSquadScreen();
     };
 
@@ -2803,18 +2806,7 @@ async function redeemPromoCode() {
       return sameLine.includes(slotPos) ? 4 : 15;
     }
 
-    // Аватарка (изображение или цветной круг)
-    function getSquadAvatarHTML(player, size = 26) {
-      const imgSrc = player.squadImage || player.image || '';
-      if (imgSrc) {
-        return `<img src="${imgSrc}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;" />`;
-      } else {
-        const color = getPositionColor(player.position);
-        return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size/2.5)}px;font-weight:700;color:#fff;">${player.position}</div>`;
-      }
-    }
-
-    // Фоновый стиль слота (изображение или обычный фон)
+    // Фоновый стиль слота
     function getSlotBgStyle(player) {
       const img = player ? (player.squadImage || player.image || '') : '';
       if (img) {
@@ -2875,10 +2867,12 @@ async function redeemPromoCode() {
             ? `<button onclick="event.stopPropagation();removeFromSlot(${slotIndex})" style="position:absolute;top:2px;right:2px;background:rgba(224,82,82,0.85);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;line-height:16px;cursor:pointer;padding:0;z-index:2;">✕</button>`
             : '';
 
+          // Обработчик клика для ручного размещения
           fieldHtml +=
             `<div class="slot${player ? ' filled' : ''}" data-slot="${slotIndex}" data-pos="${pos}" `
             + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
             + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
+            + `onclick="handleSlotClick(${slotIndex}, '${pos}')" `
             + `style="width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;transition:border-color 0.2s;position:relative;">`
             + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
             + (hasImage ? '' : posText)
@@ -2921,6 +2915,7 @@ async function redeemPromoCode() {
           `<div class="bench-slot${player ? ' filled' : ''}" data-bench="${i}" `
           + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
           + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
+          + `onclick="handleBenchClick(${i})" `
           + `style="flex-shrink:0;width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);text-align:center;position:relative;">`
           + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
           + (hasImage ? '' : posText)
@@ -2939,7 +2934,7 @@ async function redeemPromoCode() {
       if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
       const availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id)).sort((a,b) => getEffectiveOvr(b)-getEffectiveOvr(a));
 
-      fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (перетащи в слот)</div>`;
+      fieldHtml += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (нажми для выбора, затем нажми на слот)</div>`;
       fieldHtml += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
       if (availablePlayers.length === 0) {
         fieldHtml += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
@@ -2948,11 +2943,13 @@ async function redeemPromoCode() {
         const bgStyle = getSlotBgStyle(player);
         const hasImage = !!(player && (player.squadImage || player.image));
         const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
+        const isSelected = (selectedReservePlayerId === player.id);
+        const borderStyle = isSelected ? 'border: 2px solid #f0c040;' : '';
 
         fieldHtml +=
           `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
-          + `style="width:54px;min-height:70px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:grab;font-size:10px;padding:4px;user-select:none;position:relative;">`
-          + `<button onclick="event.stopPropagation();startPlayerPlacement(${player.id})" style="position:absolute;top:2px;right:2px;background:rgba(82,136,193,0.8);border:none;color:#fff;border-radius:4px;font-size:9px;padding:1px 4px;cursor:pointer;">⇄</button>`
+          + `onclick="selectReservePlayer(event, ${player.id})" `
+          + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;">`
           + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;">`
           + (hasImage ? '' : `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`)
           + `<div style="font-size:9px;color:#fff;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
@@ -2991,6 +2988,27 @@ async function redeemPromoCode() {
         fieldHtml;
 
       await botReply(fullHtml, 500, { html: true });
+    }
+
+    // --- Ручное размещение (клик по резерву, затем по слоту) ---
+    function selectReservePlayer(event, playerId) {
+      event.stopPropagation();
+      selectedReservePlayerId = playerId;
+      showSquadScreen(); // перерисовываем, чтобы показать выделение
+    }
+
+    function handleSlotClick(slotIndex, slotPos) {
+      if (selectedReservePlayerId === null) return;
+      assignToSlot(selectedReservePlayerId, slotIndex, slotPos);
+      selectedReservePlayerId = null;
+      showSquadScreen();
+    }
+
+    function handleBenchClick(benchIndex) {
+      if (selectedReservePlayerId === null) return;
+      assignToBench(selectedReservePlayerId, benchIndex);
+      selectedReservePlayerId = null;
+      showSquadScreen();
     }
 
     // ── DRAG AND DROP ──────────────────────────────────────────────────────
@@ -3159,40 +3177,6 @@ async function redeemPromoCode() {
         }
       }
       return count > 0 ? Math.round(total / count) : 0;
-    }
-
-    async function startPlayerPlacement(playerId) {
-      const player = findPlayerById(playerId);
-      if (!player) return;
-      const formation = getCurrentFormation();
-      const positions = formation.positions;
-      let html = `<div class="msg-text"><b>Куда поставить игрока «${player.name}»?</b></div>`;
-      html += '<div class="inline-btn-row" style="flex-direction:column;align-items:flex-start;">';
-      for (let i = 0; i < 11; i++) {
-        const pid = gameState.squadSlots[String(i)];
-        const current = pid ? findPlayerById(pid) : null;
-        const pos = positions[i];
-        let label = `Слот ${i+1} (${pos})`;
-        if (current) label += ` — ${current.name}`;
-        else label += ` (пусто)`;
-        if ((player.position === 'GK') !== (pos === 'GK')) {
-          label += ' ❌';
-          html += `<button class="inline-btn" disabled style="opacity:0.4;">${label}</button>`;
-        } else {
-          html += `<button class="inline-btn" onclick="assignToSlot(${playerId}, ${i}, '${pos}')">${label}</button>`;
-        }
-      }
-      html += '<div style="margin-top:8px;font-size:12px;color:#7d8e9e;">Скамейка запасных:</div>';
-      for (let i = 0; i < 7; i++) {
-        const pid = gameState.benchSlots[String(i)];
-        const current = pid ? findPlayerById(pid) : null;
-        let label = `Скамейка ${i+1}`;
-        if (current) label += ` — ${current.name}`;
-        else label += ` (пусто)`;
-        html += `<button class="inline-btn" onclick="assignToBench(${playerId}, ${i})">${label}</button>`;
-      }
-      html += '</div>';
-      await botReply(html, 300, { html: true });
     }
 
 // === END MODULE: squad management ===
