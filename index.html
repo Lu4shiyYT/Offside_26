@@ -506,7 +506,8 @@ function handleNavQuests() { if(!gameState.registered){promptRegister();return;}
 // ============================================
 
 let shopState = { screen: 'main' }; // main / packs / special / resources / promo / packInfo:{id}
-
+let shopStateBeforePurchase = { screen: 'main' };
+  
 function openShopModal() {
   let overlay = document.getElementById('shop-modal');
   if (!overlay) {
@@ -633,18 +634,22 @@ function formatResource(reward) {
 
 // ── Покупка пака ─────────────────────────────────────────────────────────
 async function purchasePack(packId) {
+  // Сохраняем состояние магазина перед покупкой
+  shopStateBeforePurchase = JSON.parse(JSON.stringify(shopState));
+
   const pack = SHOP_PACKS.find(p => p.id === packId);
-  if (!pack) { await botReply('❌ Пак не найден.', 300); openShopModal(); return; }
+  if (!pack) { await botReply('❌ Пак не найден.', 300); return; }
+
   const currencyKey = pack.currency === 'rubins' ? 'rubins' : 'offsideTokens';
   if ((gameState[currencyKey] || 0) < pack.price) {
     await botReply(`❌ Недостаточно средств.`, 400);
-    openShopModal();
     return;
   }
+
   gameState[currencyKey] -= pack.price;
 
+  // ── Ресурсный пак ──────────────────────────────────────────────────────
   if (pack.type === 'resources') {
-    // Выдача ресурсов
     if (pack.resourceReward) {
       applyResourceReward(pack.resourceReward);
       saveState(); updateHeaderResources();
@@ -662,18 +667,19 @@ async function purchasePack(packId) {
       saveState(); updateHeaderResources();
       await botReply(`🎁 Вы получили: ${formatResource(selected)}`, 500, { html: true });
     }
-    openShopModal();
+    await showReturnToShopButton();
     return;
   }
 
-  // Выдача игроков
+  // ── Пак с игроками ─────────────────────────────────────────────────────
   const drawn = drawPackCards(pack);
   if (!drawn.length) {
     gameState[currencyKey] += pack.price;
     await botReply('⚠️ Нет доступных игроков.', 400);
-    openShopModal();
+    await showReturnToShopButton();
     return;
   }
+
   for (const p of drawn) gameState.myPlayers.push(p);
   gameState.packsOpened = (gameState.packsOpened || 0) + 1;
   saveState(); updateHeaderResources();
@@ -692,7 +698,6 @@ async function purchasePack(packId) {
     }
   } else {
     if (hasWalkout) {
-      // Одна карта с волкаутом, остальные отдельно
       const walkoutPlayer = drawn.find(p => p.ovr >= WALKOUT_THRESHOLD);
       const others = drawn.filter(p => p !== walkoutPlayer);
       await playWalkoutAnimation(walkoutPlayer);
@@ -700,14 +705,29 @@ async function purchasePack(packId) {
         await showRemainingCards(others);
       }
     } else {
-      // Все карты в одном сообщении
       await showRemainingCards(drawn);
     }
   }
 
-  await botReply(`${pack.currency === 'rubins'
+  // Сообщение об остатке средств
+  const currencyIcon = pack.currency === 'rubins'
     ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
-    : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />'} Остаток: <b>${gameState[currencyKey] || 0}</b>`, 400, { html: true });
+    : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  await botReply(`${currencyIcon} Остаток: <b>${gameState[currencyKey] || 0}</b>`, 400, { html: true });
+
+  await showReturnToShopButton();
+}
+
+async function showReturnToShopButton() {
+  await botReply(
+    `<button class="inline-btn" onclick="returnToShop()">⬅️ Вернуться в магазин</button>`,
+    400,
+    { html: true }
+  );
+}
+
+function returnToShop() {
+  shopState = JSON.parse(JSON.stringify(shopStateBeforePurchase));
   openShopModal();
 }
 
@@ -723,20 +743,228 @@ function applyResourceReward(reward) {
 
 // ── Волкаут-анимация ────────────────────────────────────────────────────
 async function playWalkoutAnimation(player) {
-  // 1) Только изображение карточки
-  if (player.image) {
-    await botReply(`<img src="${player.image}" style="width:100%;border-radius:8px;" />`, 500, { html: true });
+  // 1) Флаг нации (эмодзи)
+  const nationFlag = getFlagEmoji(player.nation) || '🏳️';
+  await botReply(`<span style="font-size:36px;">${nationFlag}</span>`, 500, { html: true });
+
+  // 2) Позиция
+  await botReply(`<span style="font-size:24px;font-weight:700;">${player.position}</span>`, 500, { html: true });
+
+  // 3) Если клуб == нация → показываем флаг нации + название нации
+  //    Иначе → показываем флаг страны клуба + название клуба
+  const clubFlag = getFlagEmoji(player.club) || nationFlag;
+  if (player.club.toLowerCase() === player.nation.toLowerCase()) {
+    await botReply(`<span style="font-size:20px;">${nationFlag} ${player.nation}</span>`, 1000, { html: true });
   } else {
-    await botReply('🔥 Волкаут...', 500);
+    await botReply(`<span style="font-size:20px;">${clubFlag} ${player.club}</span>`, 1000, { html: true });
   }
-  // 2) Флаг (нация)
-  await botReply(`🏳️ ${player.nation}`, 500);
-  // 3) Позиция
-  await botReply(`📍 ${player.position}`, 500);
-  // 4) Клуб
-  await botReply(`🏟️ ${player.club}`, 1000);
-  // 5) Карточка игрока
-  await botReply(null, 500, { card: buildPlayerCardHTML(player) });
+
+  // 4) Карточка игрока
+  await botReply(null, 1000, { card: buildPlayerCardHTML(player) });
+}
+
+const FLAG_MAP = { // флаги стран и клубов
+  // флаги стран
+  'Afghanistan': '🇦🇫',
+  'Albania': '🇦🇱',
+  'Algeria': '🇩🇿',
+  'Andorra': '🇦🇩',
+  'Angola': '🇦🇴',
+  'Antigua and Barbuda': '🇦🇬',
+  'Argentina': '🇦🇷',
+  'Armenia': '🇦🇲',
+  'Australia': '🇦🇺',
+  'Austria': '🇦🇹',
+  'Azerbaijan': '🇦🇿',
+  'Bahamas': '🇧🇸',
+  'Bahrain': '🇧🇭',
+  'Bangladesh': '🇧🇩',
+  'Barbados': '🇧🇧',
+  'Belarus': '🇧🇾',
+  'Belgium': '🇧🇪',
+  'Belize': '🇧🇿',
+  'Benin': '🇧🇯',
+  'Bhutan': '🇧🇹',
+  'Bolivia': '🇧🇴',
+  'Bosnia and Herzegovina': '🇧🇦',
+  'Botswana': '🇧🇼',
+  'Brazil': '🇧🇷',
+  'Brunei': '🇧🇳',
+  'Bulgaria': '🇧🇬',
+  'Burkina Faso': '🇧🇫',
+  'Burundi': '🇧🇮',
+  'Cabo Verde': '🇨🇻',
+  'Cambodia': '🇰🇭',
+  'Cameroon': '🇨🇲',
+  'Canada': '🇨🇦',
+  'Central African Republic': '🇨🇫',
+  'Chad': '🇹🇩',
+  'Chile': '🇨🇱',
+  'China': '🇨🇳',
+  'Colombia': '🇨🇴',
+  'Comoros': '🇰🇲',
+  'Congo': '🇨🇬',
+  'Costa Rica': '🇨🇷',
+  "Cote d'Ivoire": '🇨🇮',
+  'Croatia': '🇭🇷',
+  'Cuba': '🇨🇺',
+  'Cyprus': '🇨🇾',
+  'Czech Republic': '🇨🇿',
+  'DR Congo': '🇨🇩',
+  'Denmark': '🇩🇰',
+  'Djibouti': '🇩🇯',
+  'Dominica': '🇩🇲',
+  'Dominican Republic': '🇩🇴',
+  'Ecuador': '🇪🇨',
+  'Egypt': '🇪🇬',
+  'El Salvador': '🇸🇻',
+  'Equatorial Guinea': '🇬🇶',
+  'Eritrea': '🇪🇷',
+  'Estonia': '🇪🇪',
+  'Eswatini': '🇸🇿',
+  'Ethiopia': '🇪🇹',
+  'Fiji': '🇫🇯',
+  'Finland': '🇫🇮',
+  'France': '🇫🇷',
+  'Gabon': '🇬🇦',
+  'Gambia': '🇬🇲',
+  'Georgia': '🇬🇪',
+  'Germany': '🇩🇪',
+  'Ghana': '🇬🇭',
+  'Greece': '🇬🇷',
+  'Grenada': '🇬🇩',
+  'Guatemala': '🇬🇹',
+  'Guinea': '🇬🇳',
+  'Guinea-Bissau': '🇬🇼',
+  'Guyana': '🇬🇾',
+  'Haiti': '🇭🇹',
+  'Honduras': '🇭🇳',
+  'Hungary': '🇭🇺',
+  'Iceland': '🇮🇸',
+  'India': '🇮🇳',
+  'Indonesia': '🇮🇩',
+  'Iran': '🇮🇷',
+  'Iraq': '🇮🇶',
+  'Ireland': '🇮🇪',
+  'Israel': '🇮🇱',
+  'Italy': '🇮🇹',
+  'Jamaica': '🇯🇲',
+  'Japan': '🇯🇵',
+  'Jordan': '🇯🇴',
+  'Kazakhstan': '🇰🇿',
+  'Kenya': '🇰🇪',
+  'Kiribati': '🇰🇮',
+  'Kuwait': '🇰🇼',
+  'Kyrgyzstan': '🇰🇬',
+  'Laos': '🇱🇦',
+  'Latvia': '🇱🇻',
+  'Lebanon': '🇱🇧',
+  'Lesotho': '🇱🇸',
+  'Liberia': '🇱🇷',
+  'Libya': '🇱🇾',
+  'Liechtenstein': '🇱🇮',
+  'Lithuania': '🇱🇹',
+  'Luxembourg': '🇱🇺',
+  'Madagascar': '🇲🇬',
+  'Malawi': '🇲🇼',
+  'Malaysia': '🇲🇾',
+  'Maldives': '🇲🇻',
+  'Mali': '🇲🇱',
+  'Malta': '🇲🇹',
+  'Marshall Islands': '🇲🇭',
+  'Mauritania': '🇲🇷',
+  'Mauritius': '🇲🇺',
+  'Mexico': '🇲🇽',
+  'Micronesia': '🇫🇲',
+  'Moldova': '🇲🇩',
+  'Monaco': '🇲🇨',
+  'Mongolia': '🇲🇳',
+  'Montenegro': '🇲🇪',
+  'Morocco': '🇲🇦',
+  'Mozambique': '🇲🇿',
+  'Myanmar': '🇲🇲',
+  'Namibia': '🇳🇦',
+  'Nauru': '🇳🇷',
+  'Nepal': '🇳🇵',
+  'Netherlands': '🇳🇱',
+  'New Zealand': '🇳🇿',
+  'Nicaragua': '🇳🇮',
+  'Niger': '🇳🇪',
+  'Nigeria': '🇳🇬',
+  'North Korea': '🇰🇵',
+  'North Macedonia': '🇲🇰',
+  'Norway': '🇳🇴',
+  'Oman': '🇴🇲',
+  'Pakistan': '🇵🇰',
+  'Palau': '🇵🇼',
+  'Panama': '🇵🇦',
+  'Papua New Guinea': '🇵🇬',
+  'Paraguay': '🇵🇾',
+  'Peru': '🇵🇪',
+  'Philippines': '🇵🇭',
+  'Poland': '🇵🇱',
+  'Portugal': '🇵🇹',
+  'Qatar': '🇶🇦',
+  'Romania': '🇷🇴',
+  'Russia': '🇷🇺',
+  'Rwanda': '🇷🇼',
+  'Saint Kitts and Nevis': '🇰🇳',
+  'Saint Lucia': '🇱🇨',
+  'Saint Vincent and the Grenadines': '🇻🇨',
+  'Samoa': '🇼🇸',
+  'San Marino': '🇸🇲',
+  'Sao Tome and Principe': '🇸🇹',
+  'Saudi Arabia': '🇸🇦',
+  'Senegal': '🇸🇳',
+  'Serbia': '🇷🇸',
+  'Seychelles': '🇸🇨',
+  'Sierra Leone': '🇸🇱',
+  'Singapore': '🇸🇬',
+  'Slovakia': '🇸🇰',
+  'Slovenia': '🇸🇮',
+  'Solomon Islands': '🇸🇧',
+  'Somalia': '🇸🇴',
+  'South Africa': '🇿🇦',
+  'South Korea': '🇰🇷',
+  'South Sudan': '🇸🇸',
+  'Spain': '🇪🇸',
+  'Sri Lanka': '🇱🇰',
+  'Sudan': '🇸🇩',
+  'Suriname': '🇸🇷',
+  'Sweden': '🇸🇪',
+  'Switzerland': '🇨🇭',
+  'Syria': '🇸🇾',
+  'Tajikistan': '🇹🇯',
+  'Tanzania': '🇹🇿',
+  'Thailand': '🇹🇭',
+  'Timor-Leste': '🇹🇱',
+  'Togo': '🇹🇬',
+  'Tonga': '🇹🇴',
+  'Trinidad and Tobago': '🇹🇹',
+  'Tunisia': '🇹🇳',
+  'Turkey': '🇹🇷',
+  'Turkmenistan': '🇹🇲',
+  'Tuvalu': '🇹🇻',
+  'Uganda': '🇺🇬',
+  'Ukraine': '🇺🇦',
+  'United Arab Emirates': '🇦🇪',
+  'United Kingdom': '🇬🇧',
+  'United States': '🇺🇸',
+  'Uruguay': '🇺🇾',
+  'Uzbekistan': '🇺🇿',
+  'Vanuatu': '🇻🇺',
+  'Vatican City': '🇻🇦',
+  'Venezuela': '🇻🇪',
+  'Vietnam': '🇻🇳',
+  'Yemen': '🇾🇪',
+  'Zambia': '🇿🇲',
+  'Zimbabwe': '🇿🇼',
+  // флаги клубов
+  'Al-Nassr': '🇸🇦'
+};
+
+function getFlagEmoji(country) {
+  return FLAG_MAP[country] || '';
 }
 
 // ── Остальные карты ─────────────────────────────────────────────────────
@@ -2299,7 +2527,7 @@ async function redeemPromoCode() {
         overlay.innerHTML = `
           <div id="inv-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <h3 style="margin:0;font-size:16px;">🎒 Мои игроки</h3>
+              <h3 style="margin:0;font-size:16px;">🎒 Мои игроки (${gameState.myPlayers.length})</h3>
               <button onclick="closeInventoryModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
             </div>
             <div id="inv-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
