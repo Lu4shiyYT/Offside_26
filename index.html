@@ -293,8 +293,10 @@ const DEFAULT_STATE = {
   rubins: 1500, offsideTokens: 0, trainingPoints: 1000, ovrUpgradePoints: 500,
   passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0,
   nickname: '', playerId: '', stars: 0, matchesPlayed: 0, goalsScored: 0,
-  registered: false, awaitingNickname: false, awaitingClubName: false,
-  clubName: '' 
+  registered: false, awaitingNickname: false, awaitingClubName: false, clubName: '',
+  customDataUrl: '',
+  customDataETag: '',
+  customDataLastModified: ''
 };
 
 let gameState = {};
@@ -413,6 +415,98 @@ function buildProfileCardHTML(s) {
     <div class="profile-card-row"><span class="label">⚽ Матчей сыграно</span><span class="value">${s.matchesPlayed}</span></div>
     <div class="profile-card-row"><span class="label">🥅 Голов забито</span><span class="value">${s.goalsScored}</span></div>
     <div class="profile-card-id">🆔 ID: ${escapeHtml(s.playerId)}</div></div>`;
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
+    <button class="inline-btn" onclick="showCustomDataDialog()" style="width:100%;text-align:center;">
+      📦 Загрузить дата-пак
+    </button>
+    ${s.customDataUrl ? `<div style="font-size:10px;color:#7d8e9e;margin-top:4px;">🔗 ${escapeHtml(s.customDataUrl)}</div>` : ''}
+  </div>
+}
+
+async function showCustomDataDialog() {
+  const msg = '⚠️ Вы загружаете собственный набор данных. Убедитесь, что вы имеете право использовать эти имена и изображения. Разработчик не несёт ответственности за содержимое пользовательских дата-паков.<br><br>Введите ссылку на JSON-файл с игроками:';
+  const inputHtml = `
+    <div style="display:flex;gap:6px;margin-top:4px;">
+      <input id="custom-url-input" type="text" placeholder="https://example.com/players.json" style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;" />
+      <button class="inline-btn" onclick="loadCustomDataPack()">Загрузить</button>
+    </div>`;
+  await botReply(msg + inputHtml, 400, { html: true });
+}
+
+async function loadCustomDataPack() {
+  const input = document.getElementById('custom-url-input');
+  if (!input) return;
+  const url = input.value.trim();
+  if (!url) { await botReply('❌ Введите ссылку.', 300); return; }
+
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const etag = response.headers.get('ETag') || '';
+    const lastModified = response.headers.get('Last-Modified') || '';
+
+    if (etag && etag === gameState.customDataETag && lastModified && lastModified === gameState.customDataLastModified) {
+      await botReply('✅ Дата-пак уже актуален.', 400);
+      return;
+    }
+
+    const dataResponse = await fetch(url);
+    if (!dataResponse.ok) throw new Error('Ошибка загрузки');
+    const players = await dataResponse.json();
+
+    if (!Array.isArray(players) || players.length === 0) {
+      throw new Error('Файл должен содержать массив игроков');
+    }
+
+    const requiredFields = ['id', 'name', 'position', 'ovr', 'stats'];
+    for (const field of requiredFields) {
+      if (!(field in players[0])) {
+        throw new Error(`Отсутствует обязательное поле "${field}"`);
+      }
+    }
+
+    gameState.customDataUrl = url;
+    gameState.customDataETag = etag;
+    gameState.customDataLastModified = lastModified;
+
+    allPlayers = players.map(p => JSON.parse(JSON.stringify(p)));
+    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+    saveState();
+
+    await botReply(
+      '✅ Дата-пак загружен! Старые игроки в вашей коллекции могут не соответствовать новому списку. Рекомендуется сбросить инвентарь и состав (кнопка «Сбросить прогресс» в профиле) (при сбрасывании все ваши накопленные ресурсы и игроки пропадают).',
+      500
+    );
+  } catch (err) {
+    console.error(err);
+    await botReply(`❌ Ошибка: ${err.message}`, 400);
+  }
+}
+
+async function checkCustomDataUpdate() {
+  if (!gameState.customDataUrl) return;
+  try {
+    const response = await fetch(gameState.customDataUrl, { method: 'HEAD' });
+    const etag = response.headers.get('ETag') || '';
+    const lastModified = response.headers.get('Last-Modified') || '';
+
+    if (
+      (etag && etag !== gameState.customDataETag) ||
+      (lastModified && lastModified !== gameState.customDataLastModified)
+    ) {
+      const dataResponse = await fetch(gameState.customDataUrl);
+      const players = await dataResponse.json();
+      if (Array.isArray(players) && players.length > 0) {
+        allPlayers = players.map(p => JSON.parse(JSON.stringify(p)));
+        localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+        gameState.customDataETag = etag;
+        gameState.customDataLastModified = lastModified;
+        saveState();
+        botReply('🔄 Кастомный дата-пак автоматически обновлён.', 400);
+      }
+    }
+  } catch (err) {
+    console.warn('Ошибка проверки обновлений дата-пака:', err);
+  }
 }
 
 // === REGISTRATION ===
@@ -4033,9 +4127,19 @@ async function redeemPromoCode() {
 // ========== INIT ==========
 function init() {
   loadState();
+  checkCustomDataUpdate();
   gameState.inMatch = false;   // сбрасываем флаг матча при перезагрузке
   updateHeaderResources();
-  allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+  const savedPlayers = localStorage.getItem('footballManager_allPlayers');
+  if (savedPlayers) {
+    try {
+      allPlayers = JSON.parse(savedPlayers);
+    } catch (e) {
+      allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+    }
+  } else {
+    allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+  }
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
     gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>{
   const copy = JSON.parse(JSON.stringify(p));
