@@ -850,6 +850,7 @@ function getMoscowDateString() { const d=new Date(); d.setHours(d.getHours()+3);
 
 // ========== SHOP PACKS & DRAFT POOLS ==========
 const SHOP_PACKS = [
+  // ПАК С КОНКРЕТНЫМ ОВР
   {
     id:'wcp26basepack', name:'Базовый пак Чемпионата Мира 2026', emoji:'📦', currency:'rubins', price:500, count:3,
     ovrRanges:[{minOvr:45,maxOvr:64,chance:50},{minOvr:65,maxOvr:74,chance:30},{minOvr:75,maxOvr:84,chance:19},{minOvr:85,maxOvr:99,chance:1}]
@@ -858,6 +859,20 @@ const SHOP_PACKS = [
     id:'wcp26goldpack', name:'Золотой пак Чемпионата Мира 2026', emoji:'📦', currency:'rubins', price:1200, count:3,
     ovrRanges:[{minOvr:45,maxOvr:70,chance:30},{minOvr:71,maxOvr:80,chance:50},{minOvr:81,maxOvr:93,chance:20}]
   }
+  // ПАК С КОНКРЕТНЫМИ КАРТОЧКАМИ ПО ID
+  /* {
+  id: 'player_pool',
+  name: 'Пул игроков',
+  emoji: '📦',
+  currency: 'rubins',
+  price: 700,
+  count: 1,
+  idPools: [
+    { chance: 30, ids: [1, 2] },
+    { chance: 50, ids: [3, 4] },
+    { chance: 20, ids: [5, 6] }
+  ]
+  } */
 ];
 const DRAFT_CONFIGS = {
   // 'toty': { name:'TOTY Draft', emoji:'🏆', cost:1, costBulk:10, poolA:[], poolB:[], poolC:[] }
@@ -876,7 +891,49 @@ function getPlayersInOvrRange(min,max) { return allPlayers.filter(p=>p.ovr>=min&
 function drawPackCards(pack) {
   const drawn = [];
 
-  // 1. Собираем только те диапазоны, в которых есть хотя бы один игрок
+  // ── Новый режим: пулы конкретных ID ──────────────────────────────────
+  if (pack.idPools && pack.idPools.length > 0) {
+    // Собираем только те пулы, в которых есть реальные игроки в allPlayers
+    const availablePools = [];
+    for (const pool of pack.idPools) {
+      const existing = pool.ids
+        .map(id => allPlayers.find(p => p.id === id))
+        .filter(p => p !== undefined);
+      if (existing.length > 0) {
+        availablePools.push({
+          chance: pool.chance,
+          candidates: existing
+        });
+      }
+    }
+    if (availablePools.length === 0) return drawn;
+
+    const totalWeight = availablePools.reduce((sum, p) => sum + p.chance, 0);
+
+    for (let i = 0; i < (pack.count || 1); i++) {
+      let rand = Math.random() * totalWeight;
+      let selectedPool = null;
+      for (const p of availablePools) {
+        rand -= p.chance;
+        if (rand <= 0) {
+          selectedPool = p;
+          break;
+        }
+      }
+      if (!selectedPool) selectedPool = availablePools[availablePools.length - 1];
+
+      const player = JSON.parse(JSON.stringify(
+        selectedPool.candidates[Math.floor(Math.random() * selectedPool.candidates.length)]
+      ));
+      player.trainingLevel = 0;
+      player.ovrUpgrade    = 0;
+      player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      drawn.push(player);
+    }
+    return drawn;
+  }
+
+  // ── Старый режим: OVR‑диапазоны ──────────────────────────────────────
   const availableRanges = [];
   for (const range of pack.ovrRanges) {
     const candidates = getPlayersInOvrRange(range.minOvr, range.maxOvr);
@@ -890,13 +947,10 @@ function drawPackCards(pack) {
     }
   }
 
-  // 2. Если вообще нет доступных игроков – возвращаем пустой массив
   if (availableRanges.length === 0) return drawn;
 
-  // 3. Суммируем веса оставшихся диапазонов
   const totalWeight = availableRanges.reduce((sum, r) => sum + r.chance, 0);
 
-  // 4. Генерируем ровно pack.count карт
   for (let i = 0; i < (pack.count || 1); i++) {
     let rand = Math.random() * totalWeight;
     let selectedRange = null;
@@ -907,7 +961,6 @@ function drawPackCards(pack) {
         break;
       }
     }
-    // fallback (на случай погрешности)
     if (!selectedRange) selectedRange = availableRanges[availableRanges.length - 1];
 
     const player = JSON.parse(JSON.stringify(
