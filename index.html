@@ -414,13 +414,14 @@ function buildProfileCardHTML(s) {
     <div class="profile-card-row"><span class="label"><img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:16px;height:16px;vertical-align:middle;" /> Купоны открытия</span><span class="value">${s.draftTokens}</span></div>
     <div class="profile-card-row"><span class="label">⚽ Матчей сыграно</span><span class="value">${s.matchesPlayed}</span></div>
     <div class="profile-card-row"><span class="label">🥅 Голов забито</span><span class="value">${s.goalsScored}</span></div>
-    <div class="profile-card-id">🆔 ID: ${escapeHtml(s.playerId)}</div></div>`;
+    <div class="profile-card-id">🆔 ID: ${escapeHtml(s.playerId)}</div>
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);">
-    <button class="inline-btn" onclick="showCustomDataDialog()" style="width:100%;text-align:center;">
-      📦 Загрузить дата-пак
-    </button>
-    ${s.customDataUrl ? `<div style="font-size:10px;color:#7d8e9e;margin-top:4px;">🔗 ${escapeHtml(s.customDataUrl)}</div>` : ''}
-  </div>
+      <button class="inline-btn" onclick="showCustomDataDialog()" style="width:100%;text-align:center;">
+        📦 Загрузить дата-пак
+      </button>
+      ${s.customDataUrl ? `<div style="font-size:10px;color:#7d8e9e;margin-top:4px;">🔗 ${escapeHtml(s.customDataUrl)}</div>` : ''}
+    </div>
+  </div>`;
 }
 
 async function showCustomDataDialog() {
