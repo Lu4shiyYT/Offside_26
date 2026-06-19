@@ -2971,16 +2971,27 @@ function renderInventoryList() {
     return;
   }
 
+  const imgTrain = '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const imgOvr   = '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const imgFrag  = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const btnSt    = 'font-size:10px;padding:3px 8px;';
+
   let html = '';
   for (const player of filtered) {
-    html += buildPlayerCardvertical-align:middle;" /> Тренировать (${TRAINING_COST_PER_LEVEL} очк)</button>`;
+    html += buildPlayerCardHTML(player);
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
+
+    if (player.trainingLevel < MAX_TRAINING_LEVEL) {
+      html += '<button class="inline-btn" onclick="trainPlayer(\'' + player.cardId + '\')" style="' + btnSt + '">'
+            + imgTrain + ' Тренировать (' + TRAINING_COST_PER_LEVEL + ' очк)</button>';
     }
     if (player.ovrUpgrade < 5) {
       const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
-      html += `<button class="inline-btn" onclick="upgradePlayerOvr('${player.cardId}')" style="font-size:10px;padding:3px 8px;">
-        <img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> Повысить OVR (${cost} очк)</button>`;
+      html += '<button class="inline-btn" onclick="upgradePlayerOvr(\'' + player.cardId + '\')" style="' + btnSt + '">'
+            + imgOvr + ' Повысить OVR (' + cost + ' очк)</button>';
     }
-    html += `<button class="inline-btn" onclick="confirmExchangePlayer('${player.cardId}')" style="font-size:10px;padding:3px 8px;"><img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> Обменять на фрагменты</button>`;
+    html += '<button class="inline-btn" onclick="confirmExchangePlayer(\'' + player.cardId + '\')" style="' + btnSt + '">'
+          + imgFrag + ' Обменять на фрагменты</button>';
     html += '</div>';
   }
   container.innerHTML = html;
