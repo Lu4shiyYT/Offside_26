@@ -110,7 +110,7 @@
     #chat {
       flex: 1; overflow-y: auto; overflow-x: hidden;
       padding: 12px 8px 8px; display: flex; flex-direction: column; gap: 4px;
-      scroll-behavior: smooth;
+      scroll-behavior: smooth; min-height: 0;
     }
     #chat::-webkit-scrollbar { width: 4px; }
     #chat::-webkit-scrollbar-track { background: transparent; }
@@ -283,7 +283,10 @@
     </div>
   </div>
 
-  <div id="chat"></div>
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
+    <div id="chat" style="flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 8px 8px;display:flex;flex-direction:column;gap:4px;scroll-behavior:smooth;"></div>
+    <button id="scroll-down-btn" onclick="forceScrollToBottom()" style="display:none;position:absolute;bottom:12px;right:12px;width:38px;height:38px;border-radius:50%;background:rgba(82,136,193,0.9);border:none;color:#fff;font-size:18px;cursor:pointer;z-index:20;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);">↓</button>
+  </div>
 
   <div id="input-area">
     <input type="text" id="msg-input" placeholder="Написать сообщение..." autocomplete="off" autocorrect="off" spellcheck="false" maxlength="200" />
@@ -362,7 +365,52 @@ function ensureDateDivider() {
     chatEl.appendChild(div);
   }
 }
-function scrollChatToBottom() { setTimeout(()=>{ chatEl.scrollTop = chatEl.scrollHeight; }, 50); }
+// ── Флаг: пользователь листает вверх ─────────────────────────────────────
+let userScrolledUp = false;
+
+function scrollChatToBottom() {
+  setTimeout(() => {
+    if (!userScrolledUp) {
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+    updateScrollDownBtn();
+  }, 50);
+}
+
+// Принудительная прокрутка вниз (по кнопке)
+function forceScrollToBottom() {
+  userScrolledUp = false;
+  chatEl.scrollTop = chatEl.scrollHeight;
+  updateScrollDownBtn();
+}
+
+// Показывать/скрывать кнопку прокрутки вниз
+// Показывать/скрывать кнопку прокрутки вниз
+function updateScrollDownBtn() {
+  const btn = document.getElementById('scroll-down-btn');
+  if (!btn) return;
+  const isAtBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 60;
+  if (isAtBottom) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'flex';
+    // Смещаем кнопку выше если идёт матч (панель тактик видима)
+    const mc = document.getElementById('match-controls');
+    if (mc && mc.classList.contains('visible')) {
+      const mcHeight = mc.offsetHeight;
+      btn.style.bottom = (mcHeight + 18) + 'px';
+    } else {
+      btn.style.bottom = '12px';
+    }
+  }
+}
+
+// Слушаем скролл чата
+chatEl.addEventListener('scroll', function() {
+  const isAtBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 60;
+  userScrolledUp = !isAtBottom;
+  updateScrollDownBtn();
+});
 
 function addMessage(content, type='bot', options={}) {
   ensureDateDivider();
@@ -2893,7 +2941,13 @@ function renderInvFilterModal() {
 }
 
 // ── Переключение чипа фильтра ─────────────────────────────────────────────
+// ── Переключение чипа фильтра ─────────────────────────────────────────────
 function toggleInvFilter(key, val) {
+  // Сохраняем позицию скролла ДО перерисовки
+  const fOverlay = document.getElementById('inv-filter-modal');
+  const scrollContainer = fOverlay ? fOverlay.querySelector('div') : null;
+  const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+
   // Для числовых значений приводим тип
   let typedVal = val;
   if (['ovrUpgrades','weakFeets'].includes(key)) typedVal = parseInt(val);
@@ -2908,6 +2962,10 @@ function toggleInvFilter(key, val) {
   if (key === 'leagues') invFilters.clubs = [];
 
   renderInvFilterModal();
+
+  // Восстанавливаем позицию скролла ПОСЛЕ перерисовки
+  const newScrollContainer = fOverlay ? fOverlay.querySelector('div') : null;
+  if (newScrollContainer) newScrollContainer.scrollTop = scrollTop;
 }
 
 // ── Применить фильтры ─────────────────────────────────────────────────────
@@ -2920,7 +2978,11 @@ function applyInvFilters() {
 
 function resetInvFiltersFromModal() {
   invFilters = { name:'', ovrMin:'', ovrMax:'', programs:[], positions:[], trainMin:'', trainMax:'', ovrUpgrades:[], leagues:[], clubs:[], nations:[], staminas:[], weakFeets:[], preferredFeet:[] };
+  const fOverlay = document.getElementById('inv-filter-modal');
   renderInvFilterModal();
+  // После сброса скролл в начало — это логично
+  const sc = fOverlay ? fOverlay.querySelector('div') : null;
+  if (sc) sc.scrollTop = 0;
 }
 
 // ── Рендер списка игроков ─────────────────────────────────────────────────
