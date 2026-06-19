@@ -4362,9 +4362,12 @@ function renderDivisionModal() {
     html += `<div style="display:flex;align-items:center;gap:8px;">`;
 
     // Иконка статуса
+    // wasReached = true если игрок когда-либо достигал этого дивизиона
+    // (либо он сейчас выше, либо уже забрал награду за этот дивизион)
+    const wasReached = isPassed || isClaimed;
     if (isCurrent) {
       html += `<span style="font-size:14px;">👈</span>`;
-    } else if (isPassed) {
+    } else if (wasReached) {
       html += `<span style="font-size:14px;color:#4dc05a;">✓</span>`;
     } else {
       html += `<span style="font-size:14px;color:#2a3a4a;">○</span>`;
