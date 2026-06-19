@@ -4158,7 +4158,7 @@ async function redeemPromoCode() {
       const emoji = result === 'win' ? '🎉' : result === 'draw' ? '🤝' : '😞';
       const text  = result === 'win' ? 'Победа!' : result === 'draw' ? 'Ничья' : 'Поражение';
       botReply(`${emoji} <b>${text}</b> ${matchState.homeScore}:${matchState.awayScore}`, 500, { html: true });
-      botReply(`${SAPPHIRE_ICON} +${rubinsEarned} сапфиров | ${XP_ICON} +${xpEarned} | ${DIVISION_STAR_ICON} Звёзды: ${gameState.stars}`, 400);
+      botReply(`${SAPPHIRE_ICON} +${rubinsEarned} сапфиров | ${XP_ICON} +${xpEarned} | ${DIVISION_STAR_ICON} Звёзды: ${gameState.stars}`, 400, { html: true });
       const homePassAcc = matchState.homePasses ? Math.round(matchState.homePassSuccess/matchState.homePasses*100) : 0;
       const awayPassAcc = matchState.awayPasses ? Math.round(matchState.awayPassSuccess/matchState.awayPasses*100) : 0;
       const homeYellows = matchState.events.filter(e=>e.type==='yellow'&&e.team==='home').length;
@@ -4235,9 +4235,13 @@ function formatSeasonTimeLeft() {
 
 // ── Построение звёздного прогресса дивизиона ─────────────────────────────
 function buildDivisionStarsHTML(div, stars) {
+  // Для Diamond I (maxStars = 9999) звёзды не показываем вообще
+  if (div.maxStars >= 9999) {
+    return `<div style="font-size:12px;color:#7d8e9e;">⭐ Максимальный дивизион — звёзды не ограничены</div>`;
+  }
   const total = div.maxStars - div.minStars + 1;
   const filled = Math.min(stars - div.minStars, total);
-  let html = '<div style="display:flex;gap:3px;align-items:center;">';
+  let html = '<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">';
   for (let i = 0; i < total; i++) {
     if (i < filled) {
       html += `<span style="color:#f0c040;font-size:16px;">★</span>`;
