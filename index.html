@@ -268,9 +268,13 @@
   <div id="header">
     <img class="header-avatar" src="https://i.ibb.co/0pN8LQch/Offside-26-logo.png" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
     <div class="header-info">
-      <div class="header-name">Тренер</div>
-      <div class="header-status">online</div>
-    </div>
+        <div class="header-name">Тренер</div>
+        <div class="header-status">online</div>
+      </div>
+      <button onclick="if(gameState.registered){handleNavQuests();}else{promptRegister();}" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#f0c040;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;">
+        <span style="font-size:18px;">🏅</span>
+        <span>Квесты</span>
+      </button>
     <div class="header-resources">
       <div class="resources-row">
         <div class="resource-item"><img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-rubins">0</span></div>
@@ -295,11 +299,11 @@
 
   <nav id="bottom-nav">
     <button class="nav-btn" id="nav-squad"><span class="nav-emoji">👥</span><span class="nav-label">Состав</span></button>
-    <button class="nav-btn" id="nav-inventory"><span class="nav-emoji">🎒</span><span class="nav-label">Игроки</span></button>
+    <button class="nav-btn" id="nav-market"><span class="nav-emoji">💹</span><span class="nav-label">Рынок</span></button>
+    <button class="nav-btn" id="nav-fragmarket"><span class="nav-emoji">🧩</span><span class="nav-label">Ярмарка</span></button>
     <button class="nav-btn" id="nav-shop"><span class="nav-emoji">🏪</span><span class="nav-label">Магазин</span></button>
     <button class="nav-btn" id="nav-events"><span class="nav-emoji">📋</span><span class="nav-label">События</span></button>
     <button class="nav-btn" id="nav-division"><span class="nav-emoji">⚽</span><span class="nav-label">Дивизион</span></button>
-    <button class="nav-btn" id="nav-quests"><span class="nav-emoji">🏅</span><span class="nav-label">Квесты</span></button>
   </nav>
 </div>
 
@@ -688,7 +692,9 @@ handleNavDivision = function() {
   setActiveNav('nav-division');
   openDivisionModal();
 };
-function handleNavQuests() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-quests'); botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
+function handleNavQuests() { if(!gameState.registered){promptRegister();return;} botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
+function handleNavMarket() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-market'); botReply('💹 <b>Рынок</b> — в разработке.', 500, {html:true}); }
+function handleNavFragMarket() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-fragmarket'); botReply('🧩 <b>Ярмарка фрагментов</b> — в разработке.', 500, {html:true}); }
 
 // ============================================
 // === МАГАЗИН (МОДАЛЬНОЕ ОКНО) ==============
@@ -1174,11 +1180,11 @@ handleNavShop = function() {
 };
 
 document.getElementById('nav-squad').addEventListener('click', function() { handleNavSquad(); });
-document.getElementById('nav-inventory').addEventListener('click', function() { handleNavInventory(); });
+document.getElementById('nav-market').addEventListener('click', function() { handleNavMarket(); });
+document.getElementById('nav-fragmarket').addEventListener('click', function() { handleNavFragMarket(); });
 document.getElementById('nav-shop').addEventListener('click', function() { handleNavShop(); });
 document.getElementById('nav-events').addEventListener('click', function() { handleNavEvents(); });
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
-document.getElementById('nav-quests').addEventListener('click', function() { handleNavQuests(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
 const ALL_PLAYERS_TEMPLATE = [
@@ -2769,7 +2775,7 @@ function openInventoryModal() {
     <div id="inv-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <h3 style="margin:0;font-size:16px;">🎒 Мои игроки</h3>
-        <button onclick="closeInventoryModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        <button onclick="closeInventoryModal();openSquadModal();" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button onclick="openInvFilterModal()" style="flex:1;padding:9px;background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);border-radius:10px;color:#5288c1;font-size:13px;cursor:pointer;font-family:inherit;">
@@ -3386,15 +3392,21 @@ function applyFormation() {
       let html = '';
       html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <h3 style="margin:0;font-size:16px;">👥 Состав</h3>
-        <button onclick="closeSquadModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="closeSquadModal();openInventoryModal();" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">🎒 Игроки</button>
+          <button onclick="closeSquadModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+        </div>
       </div>`;
 
-      html += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:12px;color:#7d8e9e;">Схема: <b style="color:#f0c040;">${gameState.squadFormation}</b></span>
-  <button onclick="openFormationModal()" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
-    📐 Схемы
-  </button>
-</div>`;
+      html += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:#7d8e9e;">Схема: <b style="color:#f0c040;">${gameState.squadFormation}</b></span>
+          <button onclick="openFormationModal()" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+            📐 Схемы
+          </button>
+          <button onclick="autoPickSquad()" style="background:rgba(77,192,90,0.2);border:1px solid rgba(77,192,90,0.4);color:#4dc05a;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+            ⚡ Автоподбор
+          </button>
+        </div>`;
 
       // Поле
       html += `<div class="formation-field" style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:6px 0;border:2px solid rgba(255,255,255,0.1);">`;
@@ -3427,7 +3439,7 @@ function applyFormation() {
 
           const playerName = player ? player.name : '';
           const posText = player
-            ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${pos}</span>`
+            ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`
             : `<span style="font-size:9px;color:rgba(255,255,255,0.4);">${pos}</span>`;
           const ovrText = player
             ? `<span style="font-size:11px;color:#f0c040;font-weight:700;">${displayOvr}${penaltyInfo}</span>`
@@ -3712,6 +3724,88 @@ function applyFormation() {
 
     function removeFromSlot(slotIndex) { if (gameState.squadSlots) delete gameState.squadSlots[String(slotIndex)]; saveState(); renderSquadModal(); }
     function removeFromBench(benchIndex) { if (gameState.benchSlots) delete gameState.benchSlots[String(benchIndex)]; saveState(); renderSquadModal(); }
+    // ── Автоподбор состава ────────────────────────────────────────────────────
+function autoPickSquad() {
+  if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
+    botReply('❌ Нет игроков для подбора.', 300);
+    return;
+  }
+
+  const formation = getCurrentFormation();
+  const positions = formation.positions; // 11 позиций основы
+
+  // Сбрасываем слоты
+  gameState.squadSlots = {};
+  gameState.benchSlots = {};
+
+  // Копия всех игроков (будем убирать уже назначенных)
+  let pool = [...gameState.myPlayers];
+
+  // Группы совместимости позиций (для фолбэка)
+  const LINE_GROUPS = {
+    GK:  ['GK'],
+    LB:  ['LB','RB','CB'],
+    CB:  ['CB','LB','RB','CDM'],
+    RB:  ['RB','LB','CB'],
+    CDM: ['CDM','CM','CB'],
+    CM:  ['CM','CDM','CAM','LM','RM'],
+    CAM: ['CAM','CM','LM','RM','LW','RW'],
+    LM:  ['LM','CM','CAM','LW','RM'],
+    RM:  ['RM','CM','CAM','RW','LM'],
+    LW:  ['LW','LM','CAM','RW','CF','ST'],
+    RW:  ['RW','RM','CAM','LW','CF','ST'],
+    ST:  ['ST','CF','LW','RW'],
+    CF:  ['CF','ST','LW','RW','CAM'],
+  };
+
+  // Функция: найти лучшего игрока из pool для слота slotPos
+  function pickBestFor(slotPos) {
+    // 1) Сначала ищем игрока с родной позицией или альтернативной
+    let candidates = pool.filter(p =>
+      p.position === slotPos ||
+      (Array.isArray(p.altPositions) && p.altPositions.includes(slotPos))
+    );
+    // 2) Если нет — берём из линейной группы (без штрафа GK↔поле)
+    if (candidates.length === 0) {
+      const fallbacks = LINE_GROUPS[slotPos] || [];
+      const isGKSlot = slotPos === 'GK';
+      candidates = pool.filter(p => {
+        const isGKPlayer = p.position === 'GK';
+        if (isGKSlot !== isGKPlayer) return false; // нельзя мешать GK и поле
+        return fallbacks.includes(p.position);
+      });
+    }
+    // 3) Если совсем ничего — любой с той же стороной поля (GK или полевой)
+    if (candidates.length === 0) {
+      const isGKSlot = slotPos === 'GK';
+      candidates = pool.filter(p => (p.position === 'GK') === isGKSlot);
+    }
+    if (candidates.length === 0) return null;
+    // Берём лучшего по OVR
+    candidates.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
+    return candidates[0];
+  }
+
+  // ── Заполняем основу ─────────────────────────────────────────────────
+  for (let i = 0; i < 11; i++) {
+    const slotPos = positions[i];
+    const picked = pickBestFor(slotPos);
+    if (picked) {
+      gameState.squadSlots[String(i)] = picked.id;
+      pool = pool.filter(p => p.id !== picked.id);
+    }
+  }
+
+  // ── Заполняем скамейку (7 мест) — по убыванию OVR ────────────────────
+  pool.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
+  for (let i = 0; i < 7 && i < pool.length; i++) {
+    gameState.benchSlots[String(i)] = pool[i].id;
+  }
+
+  saveState();
+  renderSquadModal();
+  botReply('⚡ Автоподбор выполнен! Расставлены лучшие игроки по схеме <b>' + gameState.squadFormation + '</b>.', 400, { html: true });
+}
     function changeFormation(newFormation) { gameState.squadFormation = newFormation; saveState(); renderSquadModal(); }
     function assignRole(roleKey, value) { gameState[roleKey] = value ? parseInt(value) : null; saveState(); }
 
