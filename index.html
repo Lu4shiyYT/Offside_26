@@ -1405,14 +1405,40 @@ function getFragmentReward(ovr) {
 
 // ========== FORMATIONS & TACTICS ==========
 const FORMATIONS = {
-  '4-3-3':{name:'4-3-3',positions:['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
-  '4-3-3 Атака':{name:'4-3-3 Атака',positions:['GK','LB','CB','CB','RB','CM','CAM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
-  '4-3-3 Оборона':{name:'4-3-3 Оборона',positions:['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'],rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]]},
-  '4-5-1':{name:'4-5-1',positions:['GK','LB','CB','CB','RB','LM','CM','CAM','CM','RM','ST'],rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]]},
-  '3-4-3 Ромб':{name:'3-4-3 Ромб',positions:['GK','CB','CB','CB','LM','CDM','CAM','RM','LW','ST','RW'],rows:[[0],[1,2,3],[4,5,6,7],[8,9,10]]},
-  '4-4-2':{name:'4-4-2',positions:['GK','LB','CB','CB','RB','LM','CM','CM','RM','ST','ST'],rows:[[0],[1,2,3,4],[5,6,7,8],[9,10]]},
-  '3-5-2 Ложная девятка':{name:'3-5-2 Ложная девятка',positions:['GK','CB','CB','CB','LM','CM','CAM','CM','RM','CF','ST'],rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]]},
-  '4-3-2-1':{name:'4-3-2-1',positions:['GK','LB','CB','CB','RB','CDM','CM','CDM','CAM','CAM','ST'],rows:[[0],[1,2,3,4],[5,6,7],[8,9],[10]]}
+  '3-4-3 (Ромб)':        { name:'3-4-3 (Ромб)',        positions:['GK','CB','CB','CB','LM','CDM','CAM','RM','LW','ST','RW'],          rows:[[0],[1,2,3],[4,5,6,7],[8,9,10]] },
+  '4-3-3 (Ложная 9)':    { name:'4-3-3 (Ложная 9)',    positions:['GK','LB','CB','CB','RB','CM','CDM','CM','LW','CF','RW'],            rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '4-2-4':               { name:'4-2-4',               positions:['GK','LB','CB','CB','RB','CM','CM','LW','ST','ST','RW'],             rows:[[0],[1,2,3,4],[5,6],[7,8,9,10]] },
+  '4-2-1-3':             { name:'4-2-1-3',             positions:['GK','LB','CB','CB','RB','CDM','CAM','CDM','LW','ST','RW'],          rows:[[0],[1,2,3,4],[5,7],[6],[8,9,10]] },
+  '4-1-3-2':             { name:'4-1-3-2',             positions:['GK','LB','CB','CB','RB','CDM','LM','CM','RM','ST','ST'],            rows:[[0],[1,2,3,4],[5],[6,7,8],[9,10]] },
+  '4-3-2-1':             { name:'4-3-2-1',             positions:['GK','LB','CB','CB','RB','CM','CM','CM','CAM','CAM','ST'],           rows:[[0],[1,2,3,4],[5,6,7],[8,9],[10]] },
+  '4-4-1-1 (Атака)':     { name:'4-4-1-1 (Атака)',     positions:['GK','LB','CB','CB','RB','LM','CM','CAM','CM','RM','ST'],            rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '3-1-4-2':             { name:'3-1-4-2',             positions:['GK','CB','CB','CB','LM','CM','CDM','CM','RM','ST','ST'],            rows:[[0],[1,2,3],[6],[4,5,7,8],[9,10]] },
+  '3-4-2-1':             { name:'3-4-2-1',             positions:['GK','CB','CB','CB','LM','CM','CM','RM','CAM','CAM','ST'],           rows:[[0],[1,2,3],[4,5,6,7],[8,9],[10]] },
+  '5-4-1 (Защита)':      { name:'5-4-1 (Защита)',      positions:['GK','LB','CB','CB','CB','RB','LM','CM','CM','RM','ST'],             rows:[[0],[1,2,3,4,5],[6,7,8,9],[10]] },
+  '4-3-3 (Атака)':       { name:'4-3-3 (Атака)',       positions:['GK','LB','CB','CB','RB','CM','CAM','CM','LW','CF','RW'],            rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '4-4-2 (Линия)':       { name:'4-4-2 (Линия)',       positions:['GK','LB','CB','CB','RB','LM','CM','CM','RM','ST','ST'],             rows:[[0],[1,2,3,4],[5,6,7,8],[9,10]] },
+  '3-4-3 (Линия)':       { name:'3-4-3 (Линия)',       positions:['GK','CB','CB','CB','LM','CM','CM','RM','LW','ST','RW'],             rows:[[0],[1,2,3],[4,5,6,7],[8,9,10]] },
+  '4-2-3-1 (Узкая)':     { name:'4-2-3-1 (Узкая)',     positions:['GK','LB','CB','CB','RB','CDM','CDM','CAM','CAM','CAM','ST'],        rows:[[0],[1,2,3,4],[5,6],[7,8,9],[10]] },
+  '4-1-4-1':             { name:'4-1-4-1',             positions:['GK','LB','CB','CB','RB','CDM','LM','CM','CM','RM','ST'],            rows:[[0],[1,2,3,4],[5],[6,7,8,9],[10]] },
+  '5-2-2-1':             { name:'5-2-2-1',             positions:['GK','LB','CB','CB','CB','RB','CM','CM','LW','ST','RW'],             rows:[[0],[1,2,3,4,5],[6,7],[8,9,10]] },
+  '4-1-2-1-2 (Узкая)':   { name:'4-1-2-1-2 (Узкая)',   positions:['GK','LB','CB','CB','RB','CDM','CM','CM','CAM','ST','ST'],           rows:[[0],[1,2,3,4],[5],[6,7],[8],[9,10]] },
+  '4-5-1 (Атака)':       { name:'4-5-1 (Атака)',       positions:['GK','LB','CB','CB','RB','LM','CM','RM','CAM','CAM','ST'],           rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '4-2-2-2':             { name:'4-2-2-2',             positions:['GK','LB','CB','CB','RB','CDM','CDM','CAM','CAM','ST','ST'],         rows:[[0],[1,2,3,4],[5,6],[7,8],[9,10]] },
+  '4-3-3':               { name:'4-3-3',               positions:['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'],             rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '5-4-1 (Удержание)':   { name:'5-4-1 (Удержание)',   positions:['GK','LB','CB','CB','CB','RB','LM','CDM','CAM','RM','ST'],           rows:[[0],[1,2,3,4,5],[6,7,8,9],[10]] },
+  '5-2-1-2':             { name:'5-2-1-2',             positions:['GK','LB','CB','CB','CB','RB','CM','CAM','CM','ST','ST'],            rows:[[0],[1,2,3,4,5],[6,8],[7],[9,10]] },
+  '4-5-1 (Линия)':       { name:'4-5-1 (Линия)',       positions:['GK','LB','CB','CB','RB','LM','CM','CM','CM','RM','ST'],             rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '3-5-1-1':             { name:'3-5-1-1',             positions:['GK','CB','CB','CB','LM','CDM','CM','CDM','RM','ST','CF'],           rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]] },
+  '4-1-2-1-2 (Широкая)': { name:'4-1-2-1-2 (Широкая)', positions:['GK','LB','CB','CB','RB','CDM','LM','CAM','RM','ST','ST'],           rows:[[0],[1,2,3,4],[5],[6,7,8],[9,10]] },  // wait actually rows need rethink
+  '4-3-3 (Удержание)':   { name:'4-3-3 (Удержание)',   positions:['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'],            rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '3-5-2':               { name:'3-5-2',               positions:['GK','CB','CB','CB','LM','CDM','CDM','RM','CAM','ST','ST'],          rows:[[0],[1,2,3],[4,5,6,7],[8],[9,10]] },
+  '4-3-3 (Защита)':      { name:'4-3-3 (Защита)',      positions:['GK','LB','CB','CB','RB','CDM','CM','CDM','LW','ST','RW'],           rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
+  '5-3-2':               { name:'5-3-2',               positions:['GK','LB','CB','CB','CB','RB','CM','CM','CM','ST','ST'],             rows:[[0],[1,2,3,4,5],[6,7,8],[9,10]] },
+  '4-2-3-1 (Широкая)':   { name:'4-2-3-1 (Широкая)',   positions:['GK','LB','CB','CB','RB','LM','CDM','CAM','CDM','RM','ST'],          rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '4-4-2 (Удержание)':   { name:'4-4-2 (Удержание)',   positions:['GK','LB','CB','CB','RB','LM','CDM','CDM','RM','ST','ST'],           rows:[[0],[1,2,3,4],[5,6,7,8],[9,10]] },
+  '4-3-1-2':             { name:'4-3-1-2',             positions:['GK','LB','CB','CB','RB','CM','CM','CM','CAM','ST','ST'],            rows:[[0],[1,2,3,4],[5,6,7],[8],[9,10]] },
+  '4-4-1-1 (Линия)':     { name:'4-4-1-1 (Линия)',     positions:['GK','LB','CB','CB','RB','LM','CM','CF','CM','RM','ST'],             rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '3-4-1-2':             { name:'3-4-1-2',             positions:['GK','CB','CB','CB','LM','CM','CAM','CM','RM','ST','ST'],            rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]] },
 };
 const DEFAULT_FORMATION = '4-3-3';
 const TACTICS = {
@@ -3166,6 +3192,154 @@ handleNavInventory = function() {
       if (overlay) overlay.style.display = 'none';
     }
 
+    // ── Модал выбора схемы ────────────────────────────────────────────────────
+let pendingFormation = null; // схема, выбранная но ещё не применённая
+
+function openFormationModal() {
+  pendingFormation = gameState.squadFormation;
+  let overlay = document.getElementById('formation-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'formation-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;flex-direction:column;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderFormationModal();
+}
+
+function closeFormationModal() {
+  const overlay = document.getElementById('formation-modal');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function renderFormationModal() {
+  const overlay = document.getElementById('formation-modal');
+  if (!overlay) return;
+
+  const keys = Object.keys(FORMATIONS);
+
+  // ── Мини-поле SVG для схемы ──────────────────────────────────────────
+  function buildMiniField(formKey) {
+    const f = FORMATIONS[formKey];
+    const pos = f.positions;
+    const rows = f.rows;
+    const W = 80, H = 100;
+    const rowCount = rows.length;
+    let dots = '';
+    rows.forEach((row, ri) => {
+      const y = H - 10 - (ri / (rowCount - 1)) * (H - 20);
+      row.forEach((slotIdx, ci) => {
+        const x = (W / (row.length + 1)) * (ci + 1);
+        const isGK = pos[slotIdx] === 'GK';
+        dots += `<circle cx="${x}" cy="${y}" r="${isGK ? 4 : 3.5}" fill="${isGK ? '#e8a020' : '#fff'}" opacity="0.9"/>`;
+      });
+    });
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;">
+      <rect width="${W}" height="${H}" fill="#2d7a2d" rx="4"/>
+      <rect x="20" y="5" width="40" height="15" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="10" y="5" width="60" height="30" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <rect x="20" y="${H-20}" width="40" height="15" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      ${dots}
+    </svg>`;
+  }
+
+  // ── Предпросмотр выбранной схемы ─────────────────────────────────────
+  function buildPreviewField(formKey) {
+    const f = FORMATIONS[formKey];
+    const pos = f.positions;
+    const rows = f.rows;
+    const W = 260, H = 320;
+    const rowCount = rows.length;
+    let dots = '';
+    rows.forEach((row, ri) => {
+      const y = H - 20 - (ri / (rowCount - 1)) * (H - 50);
+      row.forEach((slotIdx, ci) => {
+        const slotPos = pos[slotIdx];
+        const color = POSITION_COLORS[slotPos] || POSITION_COLORS.DEFAULT;
+        const isGK = slotPos === 'GK';
+        const x = (W / (row.length + 1)) * (ci + 1);
+        const r = isGK ? 14 : 13;
+        dots += `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="0.9"/>`;
+        dots += `<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="8" font-weight="700" fill="#fff" font-family="sans-serif">${slotPos}</text>`;
+      });
+    });
+    return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;border-radius:10px;">
+      <defs>
+        <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a5c1a"/>
+          <stop offset="50%" stop-color="#2d7a2d"/>
+          <stop offset="100%" stop-color="#1a5c1a"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#fg)" rx="10"/>
+      <rect x="${W*0.25}" y="8" width="${W*0.5}" height="${H*0.12}" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+      <rect x="${W*0.1}" y="8" width="${W*0.8}" height="${H*0.25}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <circle cx="${W/2}" cy="${H/2}" r="30" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <rect x="${W*0.25}" y="${H-8-H*0.12}" width="${W*0.5}" height="${H*0.12}" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+      <rect x="${W*0.1}" y="${H-8-H*0.25}" width="${W*0.8}" height="${H*0.25}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      ${dots}
+    </svg>`;
+  }
+
+  const sel = pendingFormation || gameState.squadFormation;
+
+  overlay.innerHTML = `
+    <div style="background:#0e1621;flex:1;display:flex;flex-direction:column;max-width:600px;width:100%;margin:0 auto;overflow:hidden;">
+
+      <!-- Шапка -->
+      <div style="background:#17212b;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+        <button onclick="closeFormationModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;">← Назад</button>
+        <div style="font-size:16px;font-weight:700;">Схемы</div>
+        <button onclick="applyFormation()" style="background:#5288c1;border:none;color:#fff;padding:6px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">Применить</button>
+      </div>
+
+      <!-- Основной контент: превью + список -->
+      <div style="flex:1;display:flex;overflow:hidden;">
+
+        <!-- Левая: превью схемы -->
+        <div style="flex:0 0 55%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;background:#0e1621;border-right:1px solid #1e2d3d;">
+          <div style="font-size:15px;font-weight:700;color:#f0c040;margin-bottom:8px;">${sel}</div>
+          ${buildPreviewField(sel)}
+        </div>
+
+        <!-- Правая: список схем -->
+        <div style="flex:1;overflow-y:auto;padding:8px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            ${keys.map(key => {
+              const isActive = key === sel;
+              return `<div onclick="selectFormation('${key.replace(/'/g,"\\'")}')"
+                style="background:${isActive ? 'rgba(82,136,193,0.3)' : 'rgba(255,255,255,0.04)'};
+                       border:${isActive ? '2px solid #5288c1' : '1px solid #1e2d3d'};
+                       border-radius:8px;padding:6px;cursor:pointer;text-align:center;position:relative;">
+                ${isActive ? '<div style="position:absolute;top:3px;right:5px;color:#5288c1;font-size:10px;">✓</div>' : ''}
+                ${buildMiniField(key)}
+                <div style="font-size:9px;color:${isActive ? '#5288c1' : '#e8e8e8'};margin-top:4px;font-weight:${isActive ? '700' : '400'};line-height:1.3;">${key}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+}
+
+function selectFormation(key) {
+  pendingFormation = key;
+  renderFormationModal();
+}
+
+function applyFormation() {
+  if (pendingFormation && FORMATIONS[pendingFormation]) {
+    gameState.squadFormation = pendingFormation;
+    saveState();
+    closeFormationModal();
+    renderSquadModal();
+  }
+}
+
     function getPositionPenalty(player, slotPos) {
       if (!player || !slotPos) return 0;
       if (player.position === slotPos ||
@@ -3209,20 +3383,18 @@ handleNavInventory = function() {
       const positions = formation.positions;
       const rows      = formation.rows;
 
-      let formOptions = '';
-      for (const key of getFormationKeys()) {
-        const sel = key === gameState.squadFormation ? ' selected' : '';
-        formOptions += `<option value="${key}"${sel}>${key}</option>`;
-      }
-
       let html = '';
       html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <h3 style="margin:0;font-size:16px;">👥 Состав</h3>
         <button onclick="closeSquadModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
       </div>`;
 
-      html += `<div style="margin-bottom:8px;"><span style="font-size:12px;color:#7d8e9e;">Формация: </span>
-        <select onchange="changeFormation(this.value)" style="background:#0e1621;border:1px solid #1e2d3d;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;">${formOptions}</select></div>`;
+      html += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:12px;color:#7d8e9e;">Схема: <b style="color:#f0c040;">${gameState.squadFormation}</b></span>
+  <button onclick="openFormationModal()" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;padding:4px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">
+    📐 Схемы
+  </button>
+</div>`;
 
       // Поле
       html += `<div class="formation-field" style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:6px 0;border:2px solid rgba(255,255,255,0.1);">`;
