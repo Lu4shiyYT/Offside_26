@@ -829,7 +829,11 @@ handleNavDivision = function() {
   setActiveNav('nav-division');
   openDivisionModal();
 };
-function handleNavQuests() { if(!gameState.registered){promptRegister();return;} botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
+handleNavQuests = function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  checkAndRefreshQuests();
+  openQuestsModal();
+};
 // ============================================
 // === MODULE: MARKET ===
 // ============================================
@@ -1800,6 +1804,8 @@ async function purchasePack(packId) {
   for (const p of drawn) gameState.myPlayers.push(p);
   gameState.packsOpened = (gameState.packsOpened || 0) + 1;
   saveState(); updateHeaderResources();
+  checkAndRefreshQuests();
+  updateQuestProgress('packs', 1);
 
   // Сортируем по убыванию OVR
   drawn.sort((a, b) => b.ovr - a.ovr);
@@ -2322,7 +2328,12 @@ Object.assign(DEFAULT_STATE, {
   myPlayers: [], squadSlots: {}, benchSlots: {}, captain: null, cornerKicker: null, freeKicker: null, penaltyKicker: null,
   squadFormation: '4-3-3', reachedDivisions: [], dailyQuests: [], dailyQuestsDate: '', allQuestsBonus: false,
   dailyRewardLastDate: '', passLevel: 0, passClaimedLevels: [], draftCounterB: 0, draftCounterA: 0,
-  promoUsed: [], goalsForQuest: 0, matchesForQuest: 0, packsOpened: 0, levelsGained: 0
+  promoUsed: [], goalsForQuest: 0, matchesForQuest: 0, packsOpened: 0, levelsGained: 0,
+  questsDate: '',           // дата МСК последнего обновления квестов
+  quests: [],               // текущие 4 квеста
+  allQuestsBonusClaimed: false,  // получена ли общая награда сегодня
+  dailyRewardDate: '',      // дата МСК последнего получения ежедневной награды
+  winsForQuest: 0,          // победы для квестов
 });
 
 let allPlayers = [];
@@ -2447,32 +2458,87 @@ const MATCH_REWARDS = {
 };
 
 // ========== DAILY QUESTS & REWARDS ==========
-const DAILY_QUEST_POOL = [
-  {id:'q1',title:'Сыграть 2 матча',type:'matches',target:2,rewards:{rubins:100,xp:20,passCredits:75}},
-  {id:'q2',title:'Сыграть 5 матчей',type:'matches',target:5,rewards:{rubins:150,xp:20,passCredits:75}},
-  {id:'q3',title:'Забить 10 голов',type:'goals',target:10,rewards:{rubins:150,xp:20,passCredits:75}},
-  {id:'q4',title:'Забить 20 голов',type:'goals',target:20,rewards:{rubins:200,xp:20,passCredits:75}},
-  {id:'q5',title:'Открыть 1 пак',type:'packs',target:1,rewards:{rubins:0,xp:20,passCredits:75,fragments:30}},
-  {id:'q6',title:'Повысить уровень',type:'levels',target:1,rewards:{rubins:150,xp:20,passCredits:75}},
-  {id:'q7',title:'Получить ежедневную награду',type:'daily',target:1,rewards:{rubins:30,xp:20,passCredits:75}}
+// ── Пул квестов ───────────────────────────────────────────────────────────
+const QUEST_POOL = [
+  { id:'q_goals10',   title:'Забей 10 голов',            type:'goals',   target:10, rewards:{ xp:20, passCredits:75, rubins:100  } },
+  { id:'q_goals20',   title:'Забей 20 голов',            type:'goals',   target:20, rewards:{ xp:25, passCredits:75, rubins:150  } },
+  { id:'q_wins1',     title:'Выиграй 1 матч',            type:'wins',    target:1,  rewards:{ xp:20, passCredits:75, rubins:100  } },
+  { id:'q_wins3',     title:'Выиграй 3 матча',           type:'wins',    target:3,  rewards:{ xp:30, passCredits:75, rubins:250  } },
+  { id:'q_matches3',  title:'Сыграй 3 матча',            type:'matches', target:3,  rewards:{ xp:30, passCredits:75, rubins:170  } },
+  { id:'q_matches5',  title:'Сыграй 5 матчей',           type:'matches', target:5,  rewards:{ xp:50, passCredits:75, rubins:220  } },
+  { id:'q_packs1',    title:'Открой 1 пак',              type:'packs',   target:1,  rewards:{ xp:20, passCredits:75, rubins:50   } },
+  { id:'q_daily',     title:'Забери ежедневную награду', type:'daily',   target:1,  rewards:{ xp:20, passCredits:75, rubins:50   } },
 ];
-const ALL_QUESTS_BONUS = {rubins:500,draftTokens:1,fragments:150,xp:50,passCredits:150};
+
+// Бонус за выполнение всех 4 квестов
+const ALL_QUESTS_BONUS = {
+  xp: 150, passCredits: 150, rubins: 500,
+  fragments: 500, ovrUpgradePoints: 30, trainingPoints: 100
+};
+
+// Ежедневная награда
 const DAILY_REWARD_TABLE = [
-  {label:'50 фрагментов',weight:28,reward:{fragments:50}},
-  {label:'100 сапфиров',weight:26,reward:{rubins:100}},
-  {label:'50 очков тренировки',weight:25,reward:{trainingPoints:50}},
-  {label:'30 очков повышения OVR',weight:19,reward:{ovrUpgradePoints:30}},
-  {label:'1 купон открытия',weight:2,reward:{draftTokens:1}}
+  { label:'20 000 монет',         weight:35, reward:{ coins: 20000            } },
+  { label:'100 очков тренировки', weight:25, reward:{ trainingPoints: 100     } },
+  { label:'20 очков OVR',         weight:20, reward:{ ovrUpgradePoints: 20    } },
+  { label:'500 сапфиров',         weight:15, reward:{ rubins: 500             } },
+  { label:'Игрок 85+',            weight:5,  reward:{ player85: true          } },
 ];
-function getDailyReward() {
-  const tw = DAILY_REWARD_TABLE.reduce((s,i)=>s+i.weight,0);
-  let r = Math.random()*tw;
-  for (const i of DAILY_REWARD_TABLE) if ((r-=i.weight)<=0) return i;
-  return DAILY_REWARD_TABLE[DAILY_REWARD_TABLE.length-1];
+
+function rollDailyReward() {
+  const total = DAILY_REWARD_TABLE.reduce((s, r) => s + r.weight, 0);
+  let rand = Math.random() * total;
+  for (const r of DAILY_REWARD_TABLE) { rand -= r.weight; if (rand <= 0) return r; }
+  return DAILY_REWARD_TABLE[0];
 }
+
+function getMoscowDateString() {
+  const d = new Date();
+  // UTC+3
+  const msk = new Date(d.getTime() + 3 * 60 * 60 * 1000);
+  return msk.toISOString().split('T')[0];
+}
+
+// Выбрать 4 случайных квеста
 function pickDailyQuests() {
-  const sh = [...DAILY_QUEST_POOL].sort(()=>Math.random()-0.5);
-  return sh.slice(0,4).map(q=>({id:q.id,title:q.title,type:q.type,target:q.target,rewards:{...q.rewards},progress:0,completed:false}));
+  const shuffled = [...QUEST_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4).map(q => ({
+    id: q.id, title: q.title, type: q.type, target: q.target,
+    rewards: { ...q.rewards }, progress: 0, completed: false, claimed: false
+  }));
+}
+
+// Проверить/обновить квесты (вызывать при входе и после действий)
+function checkAndRefreshQuests() {
+  const today = getMoscowDateString();
+  if (gameState.questsDate !== today) {
+    gameState.questsDate = today;
+    gameState.quests = pickDailyQuests();
+    gameState.allQuestsBonusClaimed = false;
+    // Сбрасываем счётчики квестов
+    gameState.goalsForQuest   = 0;
+    gameState.matchesForQuest = 0;
+    gameState.winsForQuest    = 0;
+    gameState.packsOpened     = 0;
+    saveState();
+  }
+}
+
+// Обновить прогресс квестов
+function updateQuestProgress(type, amount) {
+  if (!gameState.quests || !gameState.quests.length) return;
+  let changed = false;
+  for (const q of gameState.quests) {
+    if (q.completed) continue;
+    if (q.type === type) {
+      q.progress = Math.min(q.target, (q.progress || 0) + amount);
+      if (q.progress >= q.target) {
+        q.completed = true;
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveState();
 }
 function getMoscowDateString() { const d=new Date(); d.setHours(d.getHours()+3); return d.toISOString().split('T')[0]; }
 
@@ -5737,6 +5803,12 @@ function getSkillModifier(player) {
       if (result === 'win') gameState.stars = (gameState.stars || 0) + 1;
       else if (result === 'loss') gameState.stars = Math.max(0, (gameState.stars || 0) - 1);
       saveState(); updateHeaderResources();
+      // ── Обновляем квесты ──────────────────────────────────────────────────
+      checkAndRefreshQuests();
+      const goalsThisMatch = matchState.homeScore || 0;
+      updateQuestProgress('goals',   goalsThisMatch);
+      updateQuestProgress('matches', 1);
+      if (result === 'win') updateQuestProgress('wins', 1);
       const emoji = result === 'win' ? '🎉' : result === 'draw' ? '🤝' : '😞';
       const text  = result === 'win' ? 'Победа!' : result === 'draw' ? 'Ничья' : 'Поражение';
       botReply(`${emoji} <b>${text}</b> ${matchState.homeScore}:${matchState.awayScore}`, 500, { html: true });
@@ -6120,11 +6192,268 @@ setInterval(() => {
 
 // === END MODULE: division ===
 
+// ============================================
+// === MODULE: quests ===
+// ============================================
+
+function openQuestsModal() {
+  let overlay = document.getElementById('quests-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'quests-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeQuestsModal(); });
+    overlay.innerHTML = `<div id="quests-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;"></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderQuestsModal();
+}
+
+function closeQuestsModal() {
+  const o = document.getElementById('quests-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderQuestsModal() {
+  const box = document.getElementById('quests-modal-box');
+  if (!box) return;
+
+  checkAndRefreshQuests();
+
+  const today      = getMoscowDateString();
+  const quests     = gameState.quests || [];
+  const bonusDone  = gameState.allQuestsBonusClaimed || false;
+  const dailyDone  = (gameState.dailyRewardDate === today);
+  const allDone    = quests.length === 4 && quests.every(q => q.completed);
+
+  // Иконки ресурсов
+  const iRuby  = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:13px;height:13px;vertical-align:middle;" />';
+  const iXP    = '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:13px;height:13px;vertical-align:middle;" />';
+  const iTrain = '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:13px;height:13px;vertical-align:middle;" />';
+  const iOvr   = '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:13px;height:13px;vertical-align:middle;" />';
+  const iFrag  = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="margin:0;font-size:16px;">🏅 Квесты</h3>
+      <button onclick="closeQuestsModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>`;
+
+  // ── Ежедневная награда ────────────────────────────────────────────────
+  html += `<div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:1px solid #2a4060;border-radius:12px;padding:12px;margin-bottom:12px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🎁 Ежедневная награда</div>
+    <div style="font-size:11px;color:#7d8e9e;margin-bottom:8px;">Монеты, ресурсы или игрок 85+ — раз в день!</div>`;
+
+  if (dailyDone) {
+    html += `<div style="text-align:center;padding:8px;background:rgba(77,192,90,0.15);border-radius:8px;font-size:13px;color:#4dc05a;">✓ Уже получено сегодня</div>`;
+  } else {
+    html += `<button onclick="claimDailyReward()" style="width:100%;padding:11px;background:linear-gradient(135deg,#f0c040,#d4a800);border:none;border-radius:10px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Забрать награду</button>`;
+  }
+  html += `</div>`;
+
+  // ── Квесты ────────────────────────────────────────────────────────────
+  html += `<div style="font-size:13px;font-weight:700;color:#7d8e9e;margin-bottom:8px;">📋 Ежедневные квесты</div>`;
+
+  for (const q of quests) {
+    const pct       = Math.min(100, Math.round((q.progress / q.target) * 100));
+    const isDone    = q.completed;
+    const isClaimed = q.claimed;
+    const canClaim  = isDone && !isClaimed;
+    const rewardStr = buildQuestRewardStr(q.rewards, iXP, iRuby);
+
+    html += `<div style="background:rgba(255,255,255,0.04);border:1px solid ${isDone ? '#4dc05a44' : '#1e2d3d'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:18px;">${isDone ? '✅' : '⏳'}</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:${isDone?'700':'500'};color:${isDone?'#4dc05a':'#e8e8e8'};">${q.title}</div>
+          <div style="font-size:10px;color:#7d8e9e;">${rewardStr}</div>
+        </div>
+        <div style="font-size:11px;color:#7d8e9e;white-space:nowrap;">${q.progress}/${q.target}</div>
+      </div>
+      <div style="background:#0e1621;border-radius:4px;height:6px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${isDone?'#4dc05a':'#5288c1'};border-radius:4px;transition:width 0.3s;"></div>
+      </div>
+      ${canClaim
+        ? `<button onclick="claimQuestReward('${q.id}')" style="margin-top:8px;width:100%;padding:8px;background:rgba(77,192,90,0.2);border:1px solid rgba(77,192,90,0.4);border-radius:8px;color:#4dc05a;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">🎁 Забрать</button>`
+        : isClaimed
+          ? `<div style="margin-top:6px;text-align:center;font-size:11px;color:#4dc05a;">✓ Получено</div>`
+          : ''}
+    </div>`;
+  }
+
+  // ── Общая награда за все квесты ───────────────────────────────────────
+  const completedCount = quests.filter(q => q.claimed).length;
+
+  html += `<div style="background:linear-gradient(135deg,#1e3050,#1a2f45);border:1px solid ${allDone && !bonusDone ? '#f0c040' : '#2a4060'};border-radius:12px;padding:12px;margin-top:4px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">🏆 Все квесты выполнены!</div>
+    <div style="font-size:11px;color:#7d8e9e;margin-bottom:8px;">Выполни все 4 квеста и забери общую награду</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:11px;">${iXP} 150 XP</span>
+      <span style="font-size:11px;">${iRuby} 500 сапф.</span>
+      <span style="font-size:11px;">${iFrag} 500 фрагм.</span>
+      <span style="font-size:11px;">${iOvr} 30 OVR</span>
+      <span style="font-size:11px;">${iTrain} 100 трен.</span>
+    </div>
+    <div style="background:#0e1621;border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;">
+      <div style="height:100%;width:${completedCount * 25}%;background:#f0c040;border-radius:4px;"></div>
+    </div>
+    <div style="font-size:11px;color:#7d8e9e;margin-bottom:6px;">Выполнено: ${completedCount}/4</div>`;
+
+  if (bonusDone) {
+    html += `<div style="text-align:center;padding:8px;background:rgba(77,192,90,0.15);border-radius:8px;font-size:13px;color:#4dc05a;">✓ Уже получено сегодня</div>`;
+  } else if (allDone) {
+    html += `<button onclick="claimAllQuestsBonus()" style="width:100%;padding:10px;background:linear-gradient(135deg,#f0c040,#d4a800);border:none;border-radius:10px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">🎁 Забрать общую награду</button>`;
+  } else {
+    html += `<div style="text-align:center;padding:8px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:#7d8e9e;">Выполни все квесты и забери бонус</div>`;
+  }
+
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
+function buildQuestRewardStr(rewards, iXP, iRuby) {
+  const parts = [];
+  if (rewards.xp)          parts.push(`${iXP} ${rewards.xp} XP`);
+  if (rewards.rubins)      parts.push(`${iRuby} ${rewards.rubins} сапф.`);
+  if (rewards.passCredits) parts.push(`🪙 ${rewards.passCredits} прогр.`);
+  return parts.join(' · ');
+}
+
+// ── Забрать награду за квест ──────────────────────────────────────────────
+async function claimQuestReward(questId) {
+  closeQuestsModal();
+  checkAndRefreshQuests();
+
+  const q = (gameState.quests || []).find(qq => qq.id === questId);
+  if (!q || !q.completed || q.claimed) {
+    await botReply('❌ Награда недоступна.', 300); return;
+  }
+
+  q.claimed = true;
+  const r = q.rewards;
+  if (r.xp)          gameState.xp           = (gameState.xp           || 0) + r.xp;
+  if (r.rubins)      gameState.rubins        = (gameState.rubins        || 0) + r.rubins;
+  if (r.passCredits) gameState.passCredits   = (gameState.passCredits   || 0) + r.passCredits;
+  if (r.fragments)   gameState.fragments     = (gameState.fragments     || 0) + r.fragments;
+  if (r.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints || 0) + r.trainingPoints;
+  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + r.ovrUpgradePoints;
+
+  saveState(); updateHeaderResources();
+
+  const iXP   = '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iRuby = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const parts = [];
+  if (r.xp)          parts.push(`${iXP} +${r.xp} XP`);
+  if (r.rubins)      parts.push(`${iRuby} +${r.rubins} сапф.`);
+  if (r.passCredits) parts.push(`🪙 +${r.passCredits}`);
+  await botReply(`✅ Квест <b>${q.title}</b> выполнен!<br>${parts.join(' · ')}`, 500, { html: true });
+  openQuestsModal();
+}
+
+// ── Забрать общую награду ─────────────────────────────────────────────────
+async function claimAllQuestsBonus() {
+  closeQuestsModal();
+  checkAndRefreshQuests();
+
+  const allDone = (gameState.quests || []).every(q => q.completed);
+  if (!allDone || gameState.allQuestsBonusClaimed) {
+    await botReply('❌ Бонус недоступен.', 300); return;
+  }
+
+  gameState.allQuestsBonusClaimed = true;
+  const b = ALL_QUESTS_BONUS;
+  gameState.xp               = (gameState.xp               || 0) + b.xp;
+  gameState.passCredits      = (gameState.passCredits      || 0) + b.passCredits;
+  gameState.rubins            = (gameState.rubins            || 0) + b.rubins;
+  gameState.fragments         = (gameState.fragments         || 0) + b.fragments;
+  gameState.ovrUpgradePoints  = (gameState.ovrUpgradePoints  || 0) + b.ovrUpgradePoints;
+  gameState.trainingPoints    = (gameState.trainingPoints    || 0) + b.trainingPoints;
+
+  saveState(); updateHeaderResources();
+
+  await botReply(
+    `🏆 <b>Все квесты выполнены!</b><br>` +
+    `<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.xp} XP · ` +
+    `<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.rubins} сапф. · ` +
+    `<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.fragments} фрагм. · ` +
+    `<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.ovrUpgradePoints} OVR · ` +
+    `<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.trainingPoints} трен.`,
+    600, { html: true }
+  );
+  openQuestsModal();
+}
+
+// ── Забрать ежедневную награду ─────────────────────────────────────────────
+async function claimDailyReward() {
+  closeQuestsModal();
+  checkAndRefreshQuests();
+
+  const today = getMoscowDateString();
+  if (gameState.dailyRewardDate === today) {
+    await botReply('ℹ️ Ежедневная награда уже получена сегодня.', 400); return;
+  }
+
+  const rolled = rollDailyReward();
+  gameState.dailyRewardDate = today;
+
+  let rewardMsg = '';
+
+  if (rolled.reward.coins) {
+    gameState.coins = (gameState.coins || 0) + rolled.reward.coins;
+    rewardMsg = `<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.coins.toLocaleString('ru-RU')} монет`;
+  } else if (rolled.reward.trainingPoints) {
+    gameState.trainingPoints = (gameState.trainingPoints || 0) + rolled.reward.trainingPoints;
+    rewardMsg = `<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.trainingPoints} очков тренировки`;
+  } else if (rolled.reward.ovrUpgradePoints) {
+    gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + rolled.reward.ovrUpgradePoints;
+    rewardMsg = `<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.ovrUpgradePoints} очков OVR`;
+  } else if (rolled.reward.rubins) {
+    gameState.rubins = (gameState.rubins || 0) + rolled.reward.rubins;
+    rewardMsg = `<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.rubins} сапфиров`;
+  } else if (rolled.reward.player85) {
+    // Выбираем случайного игрока с OVR >= 85
+    const pool85 = allPlayers.filter(p => p.ovr >= 85);
+    if (pool85.length > 0) {
+      const tpl = pool85[Math.floor(Math.random() * pool85.length)];
+      const newPlayer = JSON.parse(JSON.stringify(tpl));
+      newPlayer.trainingLevel = 0;
+      newPlayer.ovrUpgrade    = 0;
+      newPlayer.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      gameState.myPlayers.push(newPlayer);
+      rewardMsg = `👤 <b>${newPlayer.name}</b> (OVR ${newPlayer.ovr})`;
+    } else {
+      // Fallback — монеты
+      gameState.coins = (gameState.coins || 0) + 20000;
+      rewardMsg = `<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +20 000 монет`;
+    }
+  }
+
+  saveState(); updateHeaderResources();
+
+  // Обновляем квест "Забери ежедневную награду"
+  updateQuestProgress('daily', 1);
+
+  await botReply(`🎁 Ежедневная награда: ${rewardMsg}`, 500, { html: true });
+
+  if (rolled.reward.player85 && gameState.myPlayers.length > 0) {
+    const acquired = gameState.myPlayers[gameState.myPlayers.length - 1];
+    if (acquired) await botReply(null, 600, { card: buildPlayerCardHTML(acquired) });
+  }
+
+  openQuestsModal();
+}
+
+// === END MODULE: quests ===
+  
 // ========== INIT ==========
 function init() {
   loadState();
   checkCustomDataUpdate();
   gameState.inMatch = false;   // сбрасываем флаг матча при перезагрузке
+  if (gameState.registered) {
+    checkAndRefreshQuests();
+  }
   updateHeaderResources();
   const savedPlayers = localStorage.getItem('footballManager_allPlayers');
   if (savedPlayers) {
