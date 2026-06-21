@@ -292,10 +292,12 @@
   </div>
 
   <div id="header">
-    <img class="header-avatar" src="https://i.ibb.co/0pN8LQch/Offside-26-logo.png" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
-    <div class="header-info">
-        <div class="header-name">Тренер</div>
-        <div class="header-status">online</div>
+    <img id="header-avatar-img" class="header-avatar" src="https://i.ibb.co/0pN8LQch/Offside-26-logo.png"
+      style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer;"
+      onclick="if(gameState.registered){openProfileModal();}else{promptRegister();}" />
+    <div class="header-info" style="cursor:pointer;" onclick="if(gameState.registered){openProfileModal();}else{promptRegister();}">
+        <div class="header-name" id="header-nickname-el">Тренер</div>
+        <div class="header-status" id="header-xp-el" style="color:#7d8e9e;font-size:11px;">XP 0 · Ур. 0</div>
       </div>
       <button onclick="if(gameState.registered){handleNavQuests();}else{promptRegister();}" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#f0c040;padding:5px 10px;cursor:pointer;font-size:11px;flex-shrink:0;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;">
         <span style="font-size:18px;">🏅</span>
@@ -307,7 +309,7 @@
     <div class="resource-item"><img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-rubins">0</span></div>
     <div class="resource-item"><img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-offside">0</span></div>
   </div>
-  <div class="resources-row">
+  <div class="resources-row" style="display:none;">
     <div class="resource-item"><img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-xp">0</span></div>
     <div class="resource-item"><img src="https://i.ibb.co/twVpcSbk/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-level">0</span></div>
   </div>
@@ -379,6 +381,19 @@ function updateHeaderResources() {
   document.getElementById('hdr-coins').textContent = (gameState.coins ?? 0).toLocaleString('ru-RU');
   document.getElementById('hdr-xp').textContent = gameState.xp ?? 0;
   document.getElementById('hdr-level').textContent = gameState.level ?? 0;
+
+  // Обновляем шапку профиля
+  const xpEl = document.getElementById('header-xp-el');
+  if (xpEl) xpEl.textContent = `XP ${gameState.xp ?? 0} · Ур. ${gameState.level ?? 0}`;
+
+  const nickEl = document.getElementById('header-nickname-el');
+  if (nickEl && gameState.nickname) nickEl.textContent = gameState.nickname;
+
+  // Фото профиля в шапке
+  const avatarImg = document.getElementById('header-avatar-img');
+  if (avatarImg && gameState.profilePhoto) {
+    avatarImg.src = gameState.profilePhoto;
+  }
 }
 
 // === CHAT ===
@@ -501,7 +516,7 @@ function botReply(content, delay=600, options={}) {
 
 // === PROFILE CARD ===
 function buildProfileCardHTML(s) {
-  return `<div class="profile-card"><div class="profile-card-title">📊 Профиль менеджера</div>
+  return `<div class="profile-card"><div class="profile-card-title">📊 Профиль</div>
     <div class="profile-card-row"><span class="label">👤 Ник</span><span class="value">${escapeHtml(s.nickname)}</span></div>
     <div class="profile-card-row"><span class="label"><img src="https://i.ibb.co/twVpcSbk/image.png" style="width:16px;height:16px;vertical-align:middle;" /> Уровень</span><span class="value">${s.level}</span></div>
     <div class="profile-card-row"><span class="label"><img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:16px;height:16px;vertical-align:middle;" /> XP</span><span class="value">${s.xp}</span></div>
@@ -806,12 +821,25 @@ function processUserMessage(text) {
   else if (lower==='события'||lower==='/events') handleNavEvents();
   else if (lower==='дивизион'||lower==='/division') handleNavDivision();
   else if (lower==='квесты'||lower==='/quests') handleNavQuests();
+  else if (lower==='рынок'||lower==='/market') handleNavMarket();
+  else if (lower==='статистика'||lower==='/stats') openStatsModal();
   else botReply(`Не понял команду. Напиши «помощь».`, 600);
 }
 
 function showProfile() { botReply(null, 500, {card: buildProfileCardHTML(gameState)}); }
 function showHelp() {
-  botReply(`<div class="msg-text"><b>📖 Доступные команды:</b><br><br><b>профиль</b> — профиль<br><b>состав</b> — состав<br><b>игроки</b> — инвентарь<br><b>магазин</b> — магазин<br><b>события</b> — события<br><b>дивизион</b> — матчи<br><b>квесты</b> — квесты</div>`, 400, {html:true});
+  botReply(`<div class="msg-text">
+    <b>📖 Доступные команды:</b><br><br>
+    <b>профиль</b> — открыть профиль<br>
+    <b>состав</b> — управление составом<br>
+    <b>игроки</b> — инвентарь игроков<br>
+    <b>магазин</b> — магазин паков<br>
+    <b>рынок</b> — трансферный рынок<br>
+    <b>события</b> — активные события<br>
+    <b>дивизион</b> — дивизион и матчи<br>
+    <b>квесты</b> — ежедневные квесты<br>
+    <b>статистика</b> — твоя статистика
+  </div>`, 400, {html:true});
 }
 
 // === NAVIGATION ===
@@ -2334,6 +2362,15 @@ Object.assign(DEFAULT_STATE, {
   allQuestsBonusClaimed: false,  // получена ли общая награда сегодня
   dailyRewardDate: '',      // дата МСК последнего получения ежедневной награды
   winsForQuest: 0,          // победы для квестов
+  profilePhoto: 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png',  // текущее фото профиля
+  matchWins: 0,       // всего побед
+  matchDraws: 0,      // всего ничьих
+  matchLosses: 0,     // всего поражений
+  goalsConceded: 0,   // голов пропущено (всего)
+  bestDivisionIndex: 0,    // наивысший достигнутый дивизион (index)
+  bestStars: 0,            // наивысшее число звёзд
+  matchHistory: [],        // история матчей за сезон
+  matchStreak: [],         // последние 5 результатов: 'win'|'draw'|'loss'
 });
 
 let allPlayers = [];
@@ -5906,8 +5943,21 @@ function getSkillModifier(player) {
       }
       rubinsEarned = Math.max(0, rubinsEarned);
       gameState.rubins = (gameState.rubins || 0) + rubinsEarned; gameState.xp = (gameState.xp || 0) + xpEarned;
-      if (result === 'win') gameState.stars = (gameState.stars || 0) + 1;
-      else if (result === 'loss') gameState.stars = Math.max(0, (gameState.stars || 0) - 1);
+            if (result === 'win') {
+        gameState.stars = (gameState.stars || 0) + 1;
+        gameState.matchWins = (gameState.matchWins || 0) + 1;
+      } else if (result === 'draw') {
+        gameState.matchDraws = (gameState.matchDraws || 0) + 1;
+      } else {
+        gameState.stars = Math.max(0, (gameState.stars || 0) - 1);
+        gameState.matchLosses = (gameState.matchLosses || 0) + 1;
+      }
+      // Голы пропущенные
+      gameState.goalsConceded = (gameState.goalsConceded || 0) + (matchState.awayScore || 0);
+      // Наивысший дивизион и звёзды
+      const curDiv = getCurrentDivision();
+      if (curDiv.index > (gameState.bestDivisionIndex || 0)) gameState.bestDivisionIndex = curDiv.index;
+      if ((gameState.stars || 0) > (gameState.bestStars || 0)) gameState.bestStars = gameState.stars;
       saveState(); updateHeaderResources();
       // ── Обновляем квесты ──────────────────────────────────────────────────
       checkAndRefreshQuests();
@@ -5945,6 +5995,56 @@ function getSkillModifier(player) {
         botReply(`🏆 MVP: <b>${mvp.name}</b> (${matchState.homeClub})<br>⚽ Голы: ${mvp.matchStats.goals} | 🅰️ Ассисты: ${mvp.matchStats.assists}<br>🎯 Удары: ${mvp.matchStats.shots} (в створ: ${mvp.matchStats.shotsOnTarget}) | ⭐ Оценка: ${mvp.matchStats.rating.toFixed(1)}`, 500, { html: true });
       }
       botReply(`<div class="inline-btn-row"><button class="inline-btn" onclick="startMatch()">🔁 Сыграть снова</button><button class="inline-btn" onclick="handleNavSquad()">📋 Состав</button></div>`, 600, { html: true });
+            // ── Сохраняем в историю матчей ────────────────────────────────────
+      if (!gameState.matchHistory) gameState.matchHistory = [];
+      if (!gameState.matchStreak)  gameState.matchStreak  = [];
+
+      // Собираем авторов голов
+      const homeGoalScorers = matchState.events
+        .filter(e => e.type === 'goal' && e.team === 'home')
+        .map(e => `${e.player} ${e.minute}'${e.penalty ? ' (пен.)' : e.freekick ? ' (шт.)' : ''}${e.assist ? ` [acc. ${e.assist}]` : ''}`);
+
+      // Карточки
+      const homeYellowCards = matchState.homePlayers
+        .filter(p => p.matchStats && p.matchStats.yellow > 0)
+        .map(p => p.name);
+      const homeRedCards = matchState.homePlayers
+        .filter(p => p.matchStats && p.matchStats.red > 0)
+        .map(p => p.name);
+
+      // MVP
+      let matchMvp = null, matchMvpRating = -1;
+      for (const p of matchState.homePlayers) {
+        const r = p.matchStats ? p.matchStats.rating : 6.5;
+        if (r > matchMvpRating) { matchMvpRating = r; matchMvp = p.name; }
+      }
+
+      const matchRecord = {
+        id: Date.now(),
+        opponent: matchState.awayName,
+        homeScore: matchState.homeScore,
+        awayScore: matchState.awayScore,
+        result: result,
+        goals: homeGoalScorers,
+        yellowCards: homeYellowCards,
+        redCards: homeRedCards,
+        mvp: matchMvp,
+        mvpRating: matchMvpRating,
+        shots: matchState.homeShots,
+        shotsOnTarget: matchState.homeShotsOnTarget,
+        xg: matchState.homeXG.toFixed(2),
+        fouls: matchState.homeFouls,
+        corners: matchState.homeCorners,
+      };
+      gameState.matchHistory.push(matchRecord);
+      // Ограничиваем историю 50 матчами
+      if (gameState.matchHistory.length > 50) gameState.matchHistory = gameState.matchHistory.slice(-50);
+
+      // Серия
+      gameState.matchStreak.push(result);
+      if (gameState.matchStreak.length > 5) gameState.matchStreak = gameState.matchStreak.slice(-5);
+
+      saveState();
       if (typeof checkDivisionRewards === 'function') checkDivisionRewards();
     }
 
@@ -6082,6 +6182,26 @@ function renderDivisionModal() {
   html += `<div style="font-size:11px;color:#7d8e9e;margin-top:6px;">${timeLeft}</div>`;
   html += `</div>`;
 
+    // ── Серия матчей ──────────────────────────────────────────────────────
+  const streak = (gameState.matchStreak || []);
+  if (streak.length > 0) {
+    html += `<div style="margin-bottom:12px;">`;
+    html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:6px;">🔥 Серия (последние матчи)</div>`;
+    html += `<div style="display:flex;gap:5px;">`;
+    // Показываем последний слева
+    const displayStreak = [...streak].reverse();
+    for (const r of displayStreak) {
+      const col = r === 'win' ? '#4dc05a' : r === 'draw' ? '#f0c040' : '#e05050';
+      const letter = r === 'win' ? 'П' : r === 'draw' ? 'Н' : 'Пр';
+      html += `<div style="width:32px;height:32px;border-radius:6px;background:${col};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;">${letter}</div>`;
+    }
+    // Пустые ячейки до 5
+    for (let i = displayStreak.length; i < 5; i++) {
+      html += `<div style="width:32px;height:32px;border-radius:6px;background:rgba(255,255,255,0.07);border:1px dashed #2a3a4a;"></div>`;
+    }
+    html += `</div></div>`;
+  }
+  
   // ── Кнопки действий ──────────────────────────────────────────────────
   html += `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">`;
 
@@ -6092,6 +6212,9 @@ function renderDivisionModal() {
   } else {
     html += `<button class="inline-btn" onclick="closeDivisionModal();startMatch();" style="flex:1;text-align:center;padding:10px;">
       ⚽ Сыграть матч
+    </button>`;
+    html += `<button class="inline-btn" onclick="openMatchHistoryModal()" style="padding:10px;">
+      📋 История
     </button>`;
   }
 
@@ -6266,6 +6389,8 @@ function checkSeasonEnd() {
   const t = getSeasonTimeLeft();
   if (t === null) {
     gameState.seasonEndNotified = true;
+    gameState.matchHistory = [];   // сброс истории
+    gameState.matchStreak  = [];   // сброс серии
     saveState();
     const curDiv = getDivisionByStars(gameState.stars || 0);
     botReply(
@@ -6419,10 +6544,11 @@ function renderQuestsModal() {
 }
 
 function buildQuestRewardStr(rewards, iXP, iRuby) {
+  const iPass = '<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:12px;height:12px;vertical-align:middle;" />';
   const parts = [];
   if (rewards.xp)          parts.push(`${iXP} ${rewards.xp} XP`);
   if (rewards.rubins)      parts.push(`${iRuby} ${rewards.rubins} сапф.`);
-  if (rewards.passCredits) parts.push(`🪙 ${rewards.passCredits} прогр.`);
+  if (rewards.passCredits) parts.push(`${iPass} ${rewards.passCredits} прогр.`);
   return parts.join(' · ');
 }
 
@@ -6736,16 +6862,643 @@ function resetReserveFiltersFromModal() {
   const sc = fOverlay ? fOverlay.querySelector('div') : null;
   if (sc) sc.scrollTop = 0;
 }
+
+// ============================================
+// === MODULE: profile ===
+// ============================================
+
+// ── Каталог фото профиля ──────────────────────────────────────────────────
+// Добавляй новые фото сюда. 
+// type: 'free' — бесплатно, 'shop' — купить в магазине, 'event' — из события
+const PROFILE_PHOTOS = [
+  {
+    id: 'default',
+    name: 'По умолчанию',
+    url: 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png',
+    animated: false,
+    type: 'free'
+  },
+  // ── Добавляй свои фото ниже ────────────────────────────────────────────
+  // {
+  //   id: 'photo_gold',
+  //   name: 'Золотой тренер',
+  //   url: 'https://example.com/photo_gold.png',
+  //   animated: false,
+  //   type: 'free'   // 'free' | 'shop' | 'event'
+  // },
+  // {
+  //   id: 'photo_animated',
+  //   name: 'Анимированный огонь',
+  //   url: 'https://example.com/fire.gif',
+  //   animated: true,
+  //   type: 'shop'
+  // },
+];
+
+// Фото которые разблокированы у игрока
+// По умолчанию разблокировано только 'default'
+// Остальные добавляются через gameState.unlockedPhotos
+
+function getUnlockedPhotos() {
+  const unlocked = gameState.unlockedPhotos || ['default'];
+  return PROFILE_PHOTOS.filter(p => unlocked.includes(p.id));
+}
+
+function getCurrentProfilePhoto() {
+  return gameState.profilePhoto || 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png';
+}
+
+function updateHeaderAvatar() {
+  const img = document.querySelector('#header .header-avatar') ||
+              document.querySelector('#header img.header-avatar');
+  if (!img) return;
+  const src = getCurrentProfilePhoto();
+  // Если это <img> тег
+  if (img.tagName === 'IMG') {
+    img.src = src;
+  }
+}
+
+// ── Открыть модал профиля ─────────────────────────────────────────────────
+function openProfileModal() {
+  if (!gameState.registered) { promptRegister(); return; }
+  let overlay = document.getElementById('profile-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'profile-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeProfileModal(); });
+    overlay.innerHTML = `<div id="profile-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;"></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderProfileModal();
+}
+
+function closeProfileModal() {
+  const o = document.getElementById('profile-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderProfileModal() {
+  const box = document.getElementById('profile-modal-box');
+  if (!box) return;
+
+  const photoSrc = getCurrentProfilePhoto();
+  const iRuby = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:16px;">👤 Профиль</h3>
+      <button onclick="closeProfileModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Фото профиля -->
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px;">
+      <div style="position:relative;cursor:pointer;" onclick="openPhotoSelectModal()">
+        <img src="${photoSrc}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #5288c1;display:block;" />
+        <div style="position:absolute;bottom:2px;right:2px;background:#5288c1;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;">✏️</div>
+      </div>
+      <div style="font-size:11px;color:#7d8e9e;margin-top:6px;">Нажми на фото чтобы изменить</div>
+    </div>
+
+    <!-- Никнейм и клуб -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;color:#7d8e9e;">Никнейм</span>
+        <span style="font-size:14px;font-weight:700;">${escapeHtml(gameState.nickname || '—')}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;color:#7d8e9e;">Клуб</span>
+        <span style="font-size:13px;">${escapeHtml(gameState.clubName || '—')}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;color:#7d8e9e;">ID</span>
+        <span style="font-size:11px;color:#5288c1;word-break:break-all;text-align:right;max-width:60%;">${escapeHtml(gameState.playerId || '—')}</span>
+      </div>
+    </div>
+
+    <!-- Статистика -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#f0c040;">${gameState.level || 0}</div>
+          <div style="font-size:11px;color:#7d8e9e;">Уровень</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#5288c1;">${gameState.xp || 0}</div>
+          <div style="font-size:11px;color:#7d8e9e;">XP</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#4dc05a;">${gameState.matchesPlayed || 0}</div>
+          <div style="font-size:11px;color:#7d8e9e;">Матчей</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#f0a040;">${gameState.goalsScored || 0}</div>
+          <div style="font-size:11px;color:#7d8e9e;">Голов</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="openStatsModal()" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);border-radius:10px;padding:12px;color:#5288c1;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:8px;">
+        📊 Статистика
+      </button>
+      <button onclick="closeProfileModal();openStadiumsModal();" style="background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);border-radius:10px;padding:12px;color:#5288c1;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:8px;">
+        🏟️ Стадионы
+      </button>
+      <button onclick="openChangeNicknameModal()" style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between;">
+        <span>✏️ Изменить никнейм</span>
+        <span style="font-size:12px;color:#7d8e9e;">${iRuby} 2000 сапф.</span>
+      </button>
+      <button onclick="closeProfileModal();showCustomDataDialog();" style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;">
+        📦 Загрузить дата-пак
+      </button>
+    </div>`;
+}
+
+// ── Изменение никнейма ─────────────────────────────────────────────────────
+function openChangeNicknameModal() {
+  const overlay = document.getElementById('profile-modal');
+  const box = document.getElementById('profile-modal-box');
+  if (!box) return;
+
+  const iRuby = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const cost = 2000;
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <button onclick="renderProfileModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;">← Назад</button>
+      <h3 style="margin:0;font-size:16px;">✏️ Изменить никнейм</h3>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">Текущий никнейм</div>
+      <div style="font-size:15px;font-weight:700;">${escapeHtml(gameState.nickname || '—')}</div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;color:#7d8e9e;margin-bottom:6px;">Новый никнейм (2–20 символов)</div>
+      <input id="new-nickname-input" type="text" maxlength="20" placeholder="Введи новый никнейм..."
+        style="width:100%;background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+    </div>
+    <div style="background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:#f0c040;">
+      ⚠️ Стоимость изменения: ${iRuby} ${cost} сапфиров<br>
+      У вас: ${iRuby} ${gameState.rubins || 0} сапфиров
+    </div>
+    <button onclick="confirmChangeNickname()" style="width:100%;padding:12px;background:#5288c1;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+      Изменить за ${iRuby} ${cost}
+    </button>`;
+}
+
+async function confirmChangeNickname() {
+  const input = document.getElementById('new-nickname-input');
+  if (!input) return;
+  const newNick = input.value.trim();
+  const cost = 2000;
+
+  if (!newNick || newNick.length < 2) {
+    await botReply('❌ Никнейм должен содержать минимум 2 символа.', 300); return;
+  }
+  if (newNick.length > 20) {
+    await botReply('❌ Никнейм слишком длинный (макс. 20).', 300); return;
+  }
+  if ((gameState.rubins || 0) < cost) {
+    await botReply(`❌ Недостаточно сапфиров. Нужно: ${cost}, у вас: ${gameState.rubins || 0}.`, 400); return;
+  }
+
+  gameState.rubins = (gameState.rubins || 0) - cost;
+  gameState.nickname = newNick;
+  saveState();
+  updateHeaderResources();
+  updateHeaderNickname();
+  closeProfileModal();
+  await botReply(`✅ Никнейм изменён на <b>${escapeHtml(newNick)}</b>!`, 500, { html: true });
+}
+
+// ── Выбор фото профиля ────────────────────────────────────────────────────
+function openPhotoSelectModal() {
+  let overlay = document.getElementById('photo-select-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'photo-select-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePhotoSelectModal(); });
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderPhotoSelectModal();
+}
+
+function closePhotoSelectModal() {
+  const o = document.getElementById('photo-select-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderPhotoSelectModal() {
+  const overlay = document.getElementById('photo-select-modal');
+  if (!overlay) return;
+  const unlocked = gameState.unlockedPhotos || ['default'];
+  const current  = gameState.profilePhoto || PROFILE_PHOTOS[0].url;
+
+  let html = `
+    <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">🖼️ Фото профиля</h3>
+        <button onclick="closePhotoSelectModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>`;
+
+  // Разблокированные фото
+  const unlockedPhotos = PROFILE_PHOTOS.filter(p => unlocked.includes(p.id));
+  const lockedPhotos   = PROFILE_PHOTOS.filter(p => !unlocked.includes(p.id));
+
+  if (unlockedPhotos.length > 0) {
+    html += `<div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:8px;text-transform:uppercase;">Доступные фото</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">`;
+    for (const photo of unlockedPhotos) {
+      const isSelected = current === photo.url;
+      html += `<div onclick="selectProfilePhoto('${photo.id}')" style="cursor:pointer;text-align:center;">
+        <div style="position:relative;display:inline-block;">
+          <img src="${photo.url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid ${isSelected ? '#f0c040' : 'transparent'};display:block;" />
+          ${isSelected ? '<div style="position:absolute;top:-2px;right:-2px;background:#f0c040;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;">✓</div>' : ''}
+          ${photo.animated ? '<div style="position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);background:#5288c1;border-radius:4px;padding:0 4px;font-size:8px;color:#fff;white-space:nowrap;">GIF</div>' : ''}
+        </div>
+        <div style="font-size:9px;color:#7d8e9e;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${photo.name}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Заблокированные фото
+  if (lockedPhotos.length > 0) {
+    html += `<div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:8px;text-transform:uppercase;">Другие фото</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">`;
+    for (const photo of lockedPhotos) {
+      const typeLabel = photo.type === 'shop' ? '🏪 Магазин' : photo.type === 'event' ? '🏆 Событие' : '🔒';
+      html += `<div style="text-align:center;opacity:0.5;">
+        <div style="position:relative;display:inline-block;">
+          <img src="${photo.url}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #1e2d3d;filter:grayscale(1);display:block;" />
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;">🔒</div>
+        </div>
+        <div style="font-size:9px;color:#7d8e9e;margin-top:4px;">${typeLabel}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  overlay.innerHTML = html;
+}
+
+function selectProfilePhoto(photoId) {
+  const photo = PROFILE_PHOTOS.find(p => p.id === photoId);
+  if (!photo) return;
+  const unlocked = gameState.unlockedPhotos || ['default'];
+  if (!unlocked.includes(photoId)) return; // заблокировано
+
+  gameState.profilePhoto = photo.url;
+  saveState();
+  updateHeaderAvatar();
+  closePhotoSelectModal();
+  renderProfileModal(); // обновляем модал профиля
+}
+
+// ── Стадионы (заглушка) ───────────────────────────────────────────────────
+function openStadiumsModal() {
+  botReply('🏟️ <b>Стадионы</b> — в разработке.', 500, { html: true });
+}
+
+// ── Обновление никнейма в шапке ───────────────────────────────────────────
+function updateHeaderNickname() {
+  const nameEl = document.querySelector('#header .header-name');
+  if (nameEl && gameState.nickname) {
+    nameEl.textContent = gameState.nickname;
+  }
+}
+
+// === END MODULE: profile ===
+
+// ============================================
+// === MODULE: stats ===
+// ============================================
+
+function openStatsModal() {
+  closeProfileModal();
+  let overlay = document.getElementById('stats-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'stats-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeStatsModal(); });
+    overlay.innerHTML = `<div id="stats-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;"></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderStatsModal();
+}
+
+function closeStatsModal() {
+  const o = document.getElementById('stats-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderStatsModal() {
+  const box = document.getElementById('stats-modal-box');
+  if (!box) return;
+
+  const s = gameState;
+
+  // ── Вычисляем производные ──────────────────────────────────────────────
+  const total     = s.matchesPlayed || 0;
+  const wins      = s.matchWins     || 0;
+  const draws     = s.matchDraws    || 0;
+  const losses    = s.matchLosses   || 0;
+  const winPct    = total > 0 ? Math.round(wins / total * 100) : 0;
+  const scored    = s.goalsScored   || 0;
+  const conceded  = s.goalsConceded || 0;
+  const avgScored   = total > 0 ? (scored   / total).toFixed(2) : '0.00';
+  const avgConceded = total > 0 ? (conceded / total).toFixed(2) : '0.00';
+
+  // Наивысший дивизион
+  const bestDivIdx = s.bestDivisionIndex || 0;
+  const bestDiv = DIVISIONS.find(d => d.index === bestDivIdx) || DIVISIONS[0];
+  const bestStars = s.bestStars || 0;
+
+  // ── Иконки ────────────────────────────────────────────────────────────
+  const iRuby  = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iOff   = '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iTrain = '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iOvr   = '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iFrag  = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const iDraft = '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+
+  // ── Вспомогательная функция строки ────────────────────────────────────
+  function row(label, value, color) {
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <span style="font-size:13px;color:#7d8e9e;">${label}</span>
+      <span style="font-size:14px;font-weight:700;color:${color || '#e8e8e8'};">${value}</span>
+    </div>`;
+  }
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="closeStatsModal();openProfileModal();" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;">← Назад</button>
+        <h3 style="margin:0;font-size:16px;">📊 Статистика</h3>
+      </div>
+      <button onclick="closeStatsModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Ресурсы -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:12px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">💰 Ресурсы</div>
+      ${row(`${iRuby} Сапфиры`, s.rubins ?? 0, '#5288c1')}
+      ${row(`${iOff} Offside-токены`, s.offsideTokens ?? 0, '#5288c1')}
+      ${row(`${iTrain} Очки тренировки`, s.trainingPoints ?? 0, '#4dc05a')}
+      ${row(`${iOvr} Очки повышения OVR`, s.ovrUpgradePoints ?? 0, '#f0c040')}
+      ${row(`${iFrag} Фрагменты`, s.fragments ?? 0, '#f0a040')}
+      ${row(`${iDraft} Купоны открытия`, s.draftTokens ?? 0, '#5288c1')}
+    </div>
+
+    <!-- Матчи -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:12px;padding:12px;">
+      <div style="font-size:12px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚽ Матчи</div>
+      ${row(`🏆 Наивысший дивизион`, `<span style="color:${bestDiv.color};">${bestDiv.name}</span>`, '')}
+      ${row(`⭐ Наивысшее число звёзд`, bestStars, '#f0c040')}
+      <div style="border-bottom:1px solid rgba(255,255,255,0.05);"></div>
+      ${row('⚽ Матчей сыграно', total)}
+      ${row('✅ Побед', wins, '#4dc05a')}
+      ${row('🤝 Ничьих', draws, '#7d8e9e')}
+      ${row('❌ Поражений', losses, '#e05050')}
+      ${row('📈 Процент побед', winPct + '%', winPct >= 60 ? '#4dc05a' : winPct >= 40 ? '#f0c040' : '#e05050')}
+      <div style="border-bottom:1px solid rgba(255,255,255,0.05);"></div>
+      ${row('🥅 Голов забито', scored, '#4dc05a')}
+      ${row('🔴 Голов пропущено', conceded, '#e05050')}
+      ${row('📊 Ср. забитых за матч', avgScored, '#4dc05a')}
+      ${row('📊 Ср. пропущенных за матч', avgConceded, '#e05050')}
+    </div>`;
+}
+
+// === END MODULE: stats ===
+
+// ============================================
+// === MODULE: match history ===
+// ============================================
+
+function openMatchHistoryModal() {
+  let overlay = document.getElementById('match-history-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'match-history-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMatchHistoryModal(); });
+    overlay.innerHTML = `<div id="mh-modal-box" style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:16px;"></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderMatchHistoryModal(null);
+}
+
+function closeMatchHistoryModal() {
+  const o = document.getElementById('match-history-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderMatchHistoryModal(detailId) {
+  const box = document.getElementById('mh-modal-box');
+  if (!box) return;
+
+  const history = (gameState.matchHistory || []).slice().reverse(); // новые сверху
+
+  if (detailId !== null) {
+    // ── Детальный вид матча ──────────────────────────────────────────────
+    const match = history.find(m => m.id === detailId);
+    if (!match) { renderMatchHistoryModal(null); return; }
+
+    const resultColor = match.result === 'win' ? '#4dc05a' : match.result === 'draw' ? '#f0c040' : '#e05050';
+    const resultText = match.isTechLoss
+      ? 'Тех. поражение'
+      : match.result === 'win' ? 'Победа'
+      : match.result === 'draw' ? 'Ничья'
+      : 'Поражение';
+
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <button onclick="renderMatchHistoryModal(null)" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;">← Назад</button>
+        <h3 style="margin:0;font-size:16px;">📋 Детали матча</h3>
+      </div>
+
+      <!-- Счёт -->
+      <div style="background:linear-gradient(135deg,#1a2f45,#1e3550);border:2px solid ${resultColor};border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;">
+        <div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">
+          ${match.isTechLoss
+            ? '⚠️ Матч был прерван перезагрузкой страницы'
+            : `${escapeHtml(gameState.clubName || 'Вы')} vs ${escapeHtml(match.opponent)}`}
+        </div>
+        ${match.isTechLoss ? `<div style="font-size:12px;color:#e05050;margin-bottom:4px;font-weight:600;">Тех. поражение за выход из матча</div>` : ''}
+        <div style="font-size:36px;font-weight:900;color:#fff;margin:6px 0;">${match.homeScore} : ${match.awayScore}</div>
+        <div style="font-size:14px;font-weight:700;color:${resultColor};">${resultText}</div>
+      </div>
+
+      <!-- Голы -->
+      ${match.goals && match.goals.length > 0 ? `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:8px;text-transform:uppercase;">⚽ Голы</div>
+        ${match.goals.map(g => `<div style="font-size:13px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);">${escapeHtml(g)}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Карточки -->
+      ${(match.yellowCards && match.yellowCards.length > 0) || (match.redCards && match.redCards.length > 0) ? `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:8px;text-transform:uppercase;">🟨 Карточки</div>
+        ${(match.yellowCards || []).map(p => `<div style="font-size:13px;padding:3px 0;">🟨 ${escapeHtml(p)}</div>`).join('')}
+        ${(match.redCards || []).map(p => `<div style="font-size:13px;padding:3px 0;">🟥 ${escapeHtml(p)}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- MVP -->
+      ${match.mvp ? `
+      <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:6px;text-transform:uppercase;">🏆 MVP</div>
+        <div style="font-size:14px;font-weight:700;">${escapeHtml(match.mvp)}</div>
+        <div style="font-size:11px;color:#f0c040;">Оценка: ${match.mvpRating ? match.mvpRating.toFixed(1) : '—'}</div>
+      </div>` : ''}
+
+      <!-- Статистика -->
+      <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;">
+        <div style="font-size:12px;font-weight:700;color:#7d8e9e;margin-bottom:8px;text-transform:uppercase;">📊 Статистика</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          ${[
+            ['🎯 Удары', match.shots],
+            ['✅ В створ', match.shotsOnTarget],
+            ['📈 xG', match.xg],
+            ['⚠️ Фолы', match.fouls],
+            ['🚩 Угловые', match.corners],
+          ].map(([label, val]) => `
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px;text-align:center;">
+              <div style="font-size:10px;color:#7d8e9e;">${label}</div>
+              <div style="font-size:15px;font-weight:700;">${val ?? '—'}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Список матчей ────────────────────────────────────────────────────
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="margin:0;font-size:16px;">📋 История матчей</h3>
+      <button onclick="closeMatchHistoryModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+    </div>`;
+
+  if (history.length === 0) {
+    box.innerHTML += `<div style="text-align:center;color:#7d8e9e;padding:24px;">Матчей пока нет</div>`;
+    return;
+  }
+
+  let listHtml = '';
+  for (const match of history) {
+    const resultColor = match.result === 'win' ? '#4dc05a' : match.result === 'draw' ? '#f0c040' : '#e05050';
+    const resultText  = match.result === 'win' ? 'П' : match.result === 'draw' ? 'Н' : 'Пр';
+    listHtml += `
+      <div onclick="renderMatchHistoryModal(${match.id})" style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:6px;background:${resultColor};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">${resultText}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${match.isTechLoss ? '⚠️ Тех. поражение' : escapeHtml(match.opponent)}
+          </div>
+          <div style="font-size:11px;color:#7d8e9e;">
+            ${match.goals && match.goals.length > 0 ? `⚽ ${match.goals.slice(0,2).join(', ')}${match.goals.length > 2 ? '...' : ''}` : 'Нет голов'}
+          </div>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:#fff;flex-shrink:0;">${match.homeScore}:${match.awayScore}</div>
+        <div style="color:#7d8e9e;font-size:16px;">›</div>
+      </div>`;
+  }
+  box.innerHTML += listHtml;
+}
+
+// === END MODULE: match history ===
   
 // ========== INIT ==========
 function init() {
   loadState();
   checkCustomDataUpdate();
-  gameState.inMatch = false;   // сбрасываем флаг матча при перезагрузке
+    // ── Тех. поражение при перезагрузке во время матча ──
+    if (gameState.inMatch) {
+    gameState.inMatch = false;
+
+    // ── Статистика ────────────────────────────────────────────────────────
+    gameState.matchesPlayed   = (gameState.matchesPlayed   || 0) + 1;
+    gameState.matchesForQuest = (gameState.matchesForQuest || 0) + 1;
+    gameState.matchLosses     = (gameState.matchLosses     || 0) + 1;
+    gameState.stars           = Math.max(0, (gameState.stars || 0) - 1);
+    gameState.goalsConceded   = (gameState.goalsConceded   || 0) + 3; // счёт 0:3
+
+    // Наивысший дивизион обновляем если нужно
+    const curDiv = getDivisionByStars(gameState.stars || 0);
+    if (curDiv && curDiv.index > (gameState.bestDivisionIndex || 0)) {
+      gameState.bestDivisionIndex = curDiv.index;
+    }
+
+    // ── История матчей ────────────────────────────────────────────────────
+    if (!gameState.matchHistory) gameState.matchHistory = [];
+    if (!gameState.matchStreak)  gameState.matchStreak  = [];
+
+    const techLossRecord = {
+      id: Date.now(),
+      opponent: '— (тех. поражение)',
+      homeScore: 0,
+      awayScore: 3,
+      result: 'loss',
+      goals: [],
+      yellowCards: [],
+      redCards: [],
+      mvp: null,
+      mvpRating: null,
+      shots: 0,
+      shotsOnTarget: 0,
+      xg: '0.00',
+      fouls: 0,
+      corners: 0,
+      isTechLoss: true   // ← флаг тех. поражения
+    };
+    gameState.matchHistory.push(techLossRecord);
+    if (gameState.matchHistory.length > 50) {
+      gameState.matchHistory = gameState.matchHistory.slice(-50);
+    }
+
+    // ── Серия матчей ──────────────────────────────────────────────────────
+    gameState.matchStreak.push('loss');
+    if (gameState.matchStreak.length > 5) {
+      gameState.matchStreak = gameState.matchStreak.slice(-5);
+    }
+
+    saveState();
+
+    // ── Уведомление + обновление квестов (после загрузки чата) ───────────
+    setTimeout(() => {
+      if (gameState.registered) {
+        // Обновляем квест "Сыграй N матчей"
+        checkAndRefreshQuests();
+        updateQuestProgress('matches', 1);
+        botReply('⚠️ Матч был прерван перезагрузкой страницы. Засчитано техническое поражение (0:3).', 800);
+      }
+    }, 1500);
+  }
   if (gameState.registered) {
     checkAndRefreshQuests();
   }
   updateHeaderResources();
+  // Инициализируем поля профиля
+  if (!gameState.unlockedPhotos) {
+    gameState.unlockedPhotos = ['default'];
+    saveState();
+  }
+  if (!gameState.profilePhoto) {
+    gameState.profilePhoto = 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png';
+  }
+  if (gameState.registered) {
+    updateHeaderNickname();
+  }
   const savedPlayers = localStorage.getItem('footballManager_allPlayers');
   if (savedPlayers) {
     try {
@@ -6770,6 +7523,55 @@ function init() {
 }
 document.addEventListener('DOMContentLoaded', init);
 if (document.readyState !== 'loading') init();
+// ============================================
+// === MODULE: touch scroll (swipe) ===
+// ============================================
+(function() {
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let touchStartScrollTop = 0;
+  let activeScrollEl = null;
+
+  // Находим ближайший прокручиваемый родитель
+  function getScrollableParent(el) {
+    while (el && el !== document.body) {
+      const style = getComputedStyle(el);
+      const overflow = style.overflow + style.overflowY;
+      if (/auto|scroll/.test(overflow) && el.scrollHeight > el.clientHeight + 2) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    const touch = e.touches[0];
+    touchStartY = touch.clientY;
+    touchStartX = touch.clientX;
+    activeScrollEl = getScrollableParent(e.target) || chatEl;
+    touchStartScrollTop = activeScrollEl ? activeScrollEl.scrollTop : 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!activeScrollEl) return;
+    const touch = e.touches[0];
+    const deltaY = touchStartY - touch.clientY;
+    const deltaX = touchStartX - touch.clientX;
+
+    // Если горизонтальный свайп больше — не перехватываем
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) return;
+
+    activeScrollEl.scrollTop = touchStartScrollTop + deltaY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function() {
+    // Обновляем кнопку прокрутки вниз если скроллили чат
+    if (activeScrollEl === chatEl) updateScrollDownBtn();
+    activeScrollEl = null;
+  }, { passive: true });
+})();
+// === END MODULE: touch scroll ===
 </script>
 </body>
 </html>
