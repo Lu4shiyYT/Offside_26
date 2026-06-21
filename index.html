@@ -4341,9 +4341,9 @@ function applyFormation() {
 
       // Поле
       html += `<div class="formation-field" style="background:linear-gradient(180deg,#1a4a1a 0%,#2d7a2d 30%,#1a4a1a 100%);border-radius:12px;padding:12px;margin:6px 0;border:2px solid rgba(255,255,255,0.1);">`;
-      for (const row of rows) {
-        html += `<div class="field-row" style="display:flex;justify-content:center;gap:6px;margin:4px 0;">`;
-        for (const slotIndex of row) {
+      for (const row of [...rows].reverse()) {
+          html += `<div class="field-row" style="display:flex;justify-content:center;gap:6px;margin:4px 0;">`;
+          for (const slotIndex of row) {
           const pos    = positions[slotIndex];
           const pid    = gameState.squadSlots ? gameState.squadSlots[String(slotIndex)] : null;
           const player = pid ? findPlayerById(pid) : null;
