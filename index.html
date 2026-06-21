@@ -4169,6 +4169,21 @@ handleNavInventory = function() {
 
     let selectedReservePlayerId = null;
     let reserveFilter = '';
+    // Фильтры резерва (аналогичны invFilters)
+    let reserveFilters = {
+      name: '',
+      ovrMin: '', ovrMax: '',
+      programs: [],
+      positions: [],
+      trainMin: '', trainMax: '',
+      ovrUpgrades: [],
+      leagues: [],
+      clubs: [],
+      nations: [],
+      staminas: [],
+      weakFeets: [],
+      preferredFeet: []
+    };
 
     handleNavSquad = function() {
       if (!gameState.registered) { promptRegister(); return; }
@@ -4331,8 +4346,18 @@ function renderFormationModal() {
 }
 
 function selectFormation(key) {
+  // Запоминаем скролл правой панели со списком схем
+  const rightPanel = document.querySelector('#formation-modal div[style*="overflow-y:auto"]');
+  const savedScroll = rightPanel ? rightPanel.scrollTop : 0;
+
   pendingFormation = key;
   renderFormationModal();
+
+  // Восстанавливаем скролл после перерисовки
+  setTimeout(() => {
+    const rp = document.querySelector('#formation-modal div[style*="overflow-y:auto"]');
+    if (rp) rp.scrollTop = savedScroll;
+  }, 0);
 }
 
 function applyFormation() {
@@ -4547,28 +4572,50 @@ html += `<div style="display:flex;align-items:center;justify-content:center;gap:
       if (gameState.squadSlots) for (const k in gameState.squadSlots) if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
       if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
       let availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id));
-      if (reserveFilter.trim()) {
-        const q = reserveFilter.trim().toLowerCase();
-        availablePlayers = availablePlayers.filter(p =>
-          p.name.toLowerCase().includes(q) ||
-          p.position.toLowerCase().includes(q) ||
-          p.club.toLowerCase().includes(q)
-        );
-      }
+
+      // Применяем фильтры резерва
+      const rf = reserveFilters;
+      if (rf.name.trim()) { const q = rf.name.trim().toLowerCase(); availablePlayers = availablePlayers.filter(p => p.name.toLowerCase().includes(q) || p.position.toLowerCase().includes(q) || p.club.toLowerCase().includes(q)); }
+      if (rf.ovrMin !== '') availablePlayers = availablePlayers.filter(p => safeEffectiveOvr(p) >= Number(rf.ovrMin));
+      if (rf.ovrMax !== '') availablePlayers = availablePlayers.filter(p => safeEffectiveOvr(p) <= Number(rf.ovrMax));
+      if (rf.programs.length) availablePlayers = availablePlayers.filter(p => rf.programs.includes(p.program));
+      if (rf.positions.length) availablePlayers = availablePlayers.filter(p => rf.positions.includes(p.position));
+      if (rf.trainMin !== '') availablePlayers = availablePlayers.filter(p => (p.trainingLevel||0) >= Number(rf.trainMin));
+      if (rf.trainMax !== '') availablePlayers = availablePlayers.filter(p => (p.trainingLevel||0) <= Number(rf.trainMax));
+      if (rf.ovrUpgrades.length) availablePlayers = availablePlayers.filter(p => rf.ovrUpgrades.includes(p.ovrUpgrade||0));
+      if (rf.leagues.length) availablePlayers = availablePlayers.filter(p => rf.leagues.includes(p.league || 'Без лиги'));
+      if (rf.clubs.length) availablePlayers = availablePlayers.filter(p => rf.clubs.includes(p.club));
+      if (rf.nations.length) availablePlayers = availablePlayers.filter(p => rf.nations.includes(p.nation));
+      if (rf.staminas.length) availablePlayers = availablePlayers.filter(p => rf.staminas.includes(parseFloat((p.stamina||3.0).toFixed(1))));
+      if (rf.weakFeets.length) availablePlayers = availablePlayers.filter(p => rf.weakFeets.includes(p.weakFoot||1));
+      if (rf.preferredFeet.length) availablePlayers = availablePlayers.filter(p => rf.preferredFeet.includes(p.preferredFoot||'right'));
+      
       availablePlayers.sort((a,b) => safeEffectiveOvr(b) - safeEffectiveOvr(a));
 
+      // Считаем активные фильтры резерва
+      const resFilterCount = [
+        reserveFilters.name,
+        reserveFilters.ovrMin || reserveFilters.ovrMax,
+        reserveFilters.programs.length,
+        reserveFilters.positions.length,
+        reserveFilters.trainMin || reserveFilters.trainMax,
+        reserveFilters.ovrUpgrades.length,
+        reserveFilters.leagues.length,
+        reserveFilters.clubs.length,
+        reserveFilters.nations.length,
+        reserveFilters.staminas.length,
+        reserveFilters.weakFeets.length,
+        reserveFilters.preferredFeet.length
+      ].filter(Boolean).length;
+      
       html += `<div style="margin-top:8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-  <span style="font-size:12px;color:#7d8e9e;flex-shrink:0;">📦 Резерв</span>
-  <input
-    type="text"
-    placeholder="🔍 Поиск по имени..."
-    value="${escapeHtml(reserveFilter)}"
-    oninput="reserveFilter=this.value;renderSquadModal()"
-    style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-family:inherit;outline:none;min-width:0;"
-  />
-  ${reserveFilter ? `<button onclick="reserveFilter='';renderSquadModal()" style="background:rgba(255,255,255,0.1);border:none;color:#7d8e9e;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>` : ''}
-</div>`;
-html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
+        <span style="font-size:12px;color:#7d8e9e;flex-shrink:0;">📦 Резерв</span>
+        <button onclick="openReserveFilterModal()" style="flex:1;padding:6px 10px;background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);border-radius:8px;color:#5288c1;font-size:12px;cursor:pointer;font-family:inherit;text-align:left;">
+          🔍 Фильтр${resFilterCount > 0 ? ' (' + resFilterCount + ')' : ''}
+        </button>
+        ${resFilterCount > 0 ? `<button onclick="resetReserveFilters()" style="background:rgba(255,255,255,0.08);border:none;color:#7d8e9e;border-radius:6px;padding:6px 8px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>` : ''}
+      </div>`;
+      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
       if (availablePlayers.length === 0) {
         html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
       }
@@ -4622,8 +4669,19 @@ html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto
     // --- Ручное размещение ---
     function selectReservePlayer(event, playerId) {
       event.stopPropagation();
+    
+      // Запоминаем скролл блока резерва
+      const scrollEl = document.querySelector('.players-scroll');
+      const savedScroll = scrollEl ? scrollEl.scrollLeft : 0;
+    
       selectedReservePlayerId = playerId;
       renderSquadModal();
+    
+      // Восстанавливаем скролл
+      setTimeout(() => {
+        const el = document.querySelector('.players-scroll');
+        if (el) el.scrollLeft = savedScroll;
+      }, 0);
     }
 
     function handleSlotClick(slotIndex, slotPos) {
@@ -6493,6 +6551,191 @@ async function claimDailyReward() {
 }
 
 // === END MODULE: quests ===
+
+// ── Фильтры резерва ───────────────────────────────────────────────────────
+
+function resetReserveFilters() {
+  reserveFilters = { name:'', ovrMin:'', ovrMax:'', programs:[], positions:[], trainMin:'', trainMax:'', ovrUpgrades:[], leagues:[], clubs:[], nations:[], staminas:[], weakFeets:[], preferredFeet:[] };
+  // Сохраняем скролл резерва
+  const scrollEl = document.querySelector('.players-scroll');
+  const savedScroll = scrollEl ? scrollEl.scrollLeft : 0;
+  renderSquadModal();
+  setTimeout(() => {
+    const el = document.querySelector('.players-scroll');
+    if (el) el.scrollLeft = savedScroll;
+  }, 0);
+}
+
+function openReserveFilterModal() {
+  let fOverlay = document.getElementById('reserve-filter-modal');
+  if (!fOverlay) {
+    fOverlay = document.createElement('div');
+    fOverlay.id = 'reserve-filter-modal';
+    fOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:flex;align-items:flex-end;justify-content:center;';
+    fOverlay.addEventListener('click', function(e) { if (e.target === fOverlay) closeReserveFilterModal(); });
+    document.body.appendChild(fOverlay);
+  }
+  fOverlay.style.display = 'flex';
+  renderReserveFilterModal();
+}
+
+function closeReserveFilterModal() {
+  const f = document.getElementById('reserve-filter-modal');
+  if (f) f.style.display = 'none';
+}
+
+function renderReserveFilterModal() {
+  const fOverlay = document.getElementById('reserve-filter-modal');
+  if (!fOverlay) return;
+
+  const players = (gameState.myPlayers || []).filter(p => {
+    const usedIds = new Set();
+    if (gameState.squadSlots) for (const k in gameState.squadSlots) if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
+    if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
+    return !usedIds.has(p.id);
+  });
+
+  const rf = reserveFilters;
+  const allLeagues   = [...new Set(players.map(p => p.league || 'Без лиги'))].sort();
+  const allNations   = [...new Set(players.map(p => p.nation))].sort();
+  const allPrograms  = [...new Set(players.map(p => p.program).filter(Boolean))].sort();
+  const allPositions = ['GK','LB','CB','RB','CDM','CM','CAM','LM','RM','LW','RW','ST','CF'];
+  const leagueFilter = rf.leagues.length > 0 ? rf.leagues : null;
+  const allClubs = [...new Set(players.filter(p => !leagueFilter || leagueFilter.includes(p.league || 'Без лиги')).map(p => p.club))].sort();
+  const staminaValues  = [0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0];
+  const weakFootValues = [1,2,3,4,5];
+  const ovrUpgradeValues = [0,1,2,3,4,5];
+  const footValues = [{val:'right',label:'Правая'},{val:'left',label:'Левая'}];
+
+  function chips(items, filterKey, labelFn) {
+    return items.map(item => {
+      const val   = typeof item === 'object' ? item.val : item;
+      const label = labelFn ? labelFn(item) : String(item);
+      const active = rf[filterKey].includes(val) ? ' active' : '';
+      return `<button class="filter-chip${active}" onclick="toggleReserveFilter('${filterKey}','${val}')">${label}</button>`;
+    }).join('');
+  }
+
+  fOverlay.innerHTML = `
+    <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">🔍 Фильтр резерва</h3>
+        <button onclick="closeReserveFilterModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Имя / Позиция / Клуб</div>
+        <input class="filter-input" type="text" placeholder="Поиск..." value="${rf.name}" oninput="reserveFilters.name=this.value" />
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">OVR (диапазон)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." min="0" max="120" value="${rf.ovrMin}" oninput="reserveFilters.ovrMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." min="0" max="120" value="${rf.ovrMax}" oninput="reserveFilters.ovrMax=this.value" />
+        </div>
+      </div>
+
+      ${allPrograms.length > 0 ? `<div class="filter-section">
+        <div class="filter-section-title">Программа</div>
+        <div class="filter-chips">${chips(allPrograms, 'programs', null)}</div>
+      </div>` : ''}
+
+      <div class="filter-section">
+        <div class="filter-section-title">Позиция</div>
+        <div class="filter-chips">${chips(allPositions, 'positions', null)}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Уровень тренировки</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." min="0" max="50" value="${rf.trainMin}" oninput="reserveFilters.trainMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." min="0" max="50" value="${rf.trainMax}" oninput="reserveFilters.trainMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Повышение OVR</div>
+        <div class="filter-chips">${chips(ovrUpgradeValues, 'ovrUpgrades', v => '+'+v)}</div>
+      </div>
+
+      ${allLeagues.length > 0 ? `<div class="filter-section">
+        <div class="filter-section-title">Лига</div>
+        <div class="filter-chips">${chips(allLeagues, 'leagues', null)}</div>
+      </div>` : ''}
+
+      <div class="filter-section">
+        <div class="filter-section-title">Команда</div>
+        <div class="filter-chips">${chips(allClubs, 'clubs', null)}</div>
+      </div>
+
+      ${allNations.length > 0 ? `<div class="filter-section">
+        <div class="filter-section-title">Нация</div>
+        <div class="filter-chips">${chips(allNations, 'nations', null)}</div>
+      </div>` : ''}
+
+      <div class="filter-section">
+        <div class="filter-section-title">Выносливость</div>
+        <div class="filter-chips">${chips(staminaValues, 'staminas', v => String(v.toFixed(1)))}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Финты / нерабочая нога</div>
+        <div class="filter-chips">${chips(weakFootValues, 'weakFeets', v => '★'.repeat(v))}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Рабочая нога</div>
+        <div class="filter-chips">${chips(footValues, 'preferredFeet', item => item.label)}</div>
+      </div>
+
+      <button class="filter-apply-btn" onclick="applyReserveFilters()">✅ Применить</button>
+      <button class="filter-reset-btn" onclick="resetReserveFiltersFromModal()">🗑️ Сбросить</button>
+    </div>`;
+}
+
+function toggleReserveFilter(key, val) {
+  const fOverlay = document.getElementById('reserve-filter-modal');
+  const sc = fOverlay ? fOverlay.querySelector('div') : null;
+  const top = sc ? sc.scrollTop : 0;
+
+  let typedVal = val;
+  if (['ovrUpgrades','weakFeets'].includes(key)) typedVal = parseInt(val);
+  if (key === 'staminas') typedVal = parseFloat(val);
+
+  const arr = reserveFilters[key];
+  const idx = arr.indexOf(typedVal);
+  if (idx === -1) arr.push(typedVal);
+  else arr.splice(idx, 1);
+
+  if (key === 'leagues') reserveFilters.clubs = [];
+
+  renderReserveFilterModal();
+  const sc2 = fOverlay ? fOverlay.querySelector('div') : null;
+  if (sc2) sc2.scrollTop = top;
+}
+
+function applyReserveFilters() {
+  closeReserveFilterModal();
+  // Сохраняем скролл резерва
+  const scrollEl = document.querySelector('.players-scroll');
+  const savedScroll = scrollEl ? scrollEl.scrollLeft : 0;
+  renderSquadModal();
+  setTimeout(() => {
+    const el = document.querySelector('.players-scroll');
+    if (el) el.scrollLeft = savedScroll;
+  }, 0);
+}
+
+function resetReserveFiltersFromModal() {
+  reserveFilters = { name:'', ovrMin:'', ovrMax:'', programs:[], positions:[], trainMin:'', trainMax:'', ovrUpgrades:[], leagues:[], clubs:[], nations:[], staminas:[], weakFeets:[], preferredFeet:[] };
+  const fOverlay = document.getElementById('reserve-filter-modal');
+  renderReserveFilterModal();
+  const sc = fOverlay ? fOverlay.querySelector('div') : null;
+  if (sc) sc.scrollTop = 0;
+}
   
 // ========== INIT ==========
 function init() {
