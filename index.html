@@ -347,8 +347,9 @@ const DEFAULT_STATE = {
   customDataUrl: '',
   customDataETag: '',
   customDataLastModified: '',
-  claimedDivisionRewards: [],  // индексы дивизионов, за которые уже получена награда
-  seasonEndNotified: false      // флаг уведомления об окончании сезона
+  customDataVersion: null,
+  claimedDivisionRewards: [],
+  seasonEndNotified: false
 };
 
 let gameState = {};
@@ -542,29 +543,103 @@ async function showCustomDataDialog() {
 }
 
 // Применяет кастомные поля к существующему каталогу ALL_PLAYERS_TEMPLATE
-function applyCustomPlayerData(customPlayers) {
-  // Начинаем с оригинального шаблона (всегда)
-  const updated = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+function applyCustomPlayerData(data) {
+  // Поддерживаем два формата:
+  // 1) Старый: просто массив игроков [...players]
+  // 2) Новый: объект { version, players: [...], bots: [...] }
+  let customPlayers = [];
 
+  if (Array.isArray(data)) {
+    customPlayers = data;
+  } else if (data && typeof data === 'object') {
+    customPlayers = data.players || [];
+    if (Array.isArray(data.bots)) {
+      applyCustomBots(data.bots);
+    }
+  }
+
+  const updated = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
   for (const custom of customPlayers) {
     if (!custom || typeof custom.id === 'undefined') continue;
     const idx = updated.findIndex(p => p.id === custom.id);
-    if (idx === -1) continue; // игнорируем несуществующие ID
-
-    // Разрешённые поля
-    if (typeof custom.name === 'string') updated[idx].name = custom.name;
-    if (typeof custom.club === 'string') updated[idx].club = custom.club;
-    if (typeof custom.image === 'string') updated[idx].image = custom.image;
+    if (idx === -1) continue;
+    if (typeof custom.name === 'string')       updated[idx].name       = custom.name;
+    if (typeof custom.club === 'string')       updated[idx].club       = custom.club;
+    if (typeof custom.image === 'string')      updated[idx].image      = custom.image;
     if (typeof custom.squadImage === 'string') updated[idx].squadImage = custom.squadImage;
-    if (typeof custom.league === 'string') updated[idx].league = custom.league;
+    if (typeof custom.league === 'string')     updated[idx].league     = custom.league;
   }
-
   return updated;
 }
 
-function applyCustomDataToMyPlayers(customPlayers) {
-  if (!gameState.myPlayers || !customPlayers) return;
+function applyCustomBots(customBots) {
+  if (!Array.isArray(customBots) || customBots.length === 0) return;
 
+  for (const bot of customBots) {
+    if (!bot || typeof bot.name !== 'string') continue;
+
+    const oldName = bot.name;
+    const newName = (typeof bot.newName === 'string') ? bot.newName : oldName;
+
+    // Обновляем список BOTS (для матчмейкинга)
+    const botIdx = BOTS.findIndex(b => b.name === oldName);
+    if (botIdx !== -1) {
+      BOTS[botIdx].name = newName;
+      if (typeof bot.ovr === 'number')    BOTS[botIdx].ovr    = bot.ovr;
+      if (typeof bot.minDiv === 'number') BOTS[botIdx].minDiv = bot.minDiv;
+      if (typeof bot.maxDiv === 'number') BOTS[botIdx].maxDiv = bot.maxDiv;
+    }
+
+    // Обновляем/создаём состав бота в BOT_SQUADS
+    if (bot.squad) {
+      const newSquad = { starting: [], bench: [] };
+
+      if (Array.isArray(bot.squad.starting)) {
+        newSquad.starting = bot.squad.starting.map(p => ({
+          name:          p.name          || 'Игрок',
+          position:      p.position      || 'CM',
+          ovr:           p.ovr           != null ? p.ovr    : 60,
+          stamina:       p.stamina       != null ? p.stamina : 3.0,
+          preferredFoot: p.preferredFoot || 'right',
+          weakFoot:      p.weakFoot      != null ? p.weakFoot : 2,
+          height:        p.height        != null ? p.height  : 178,
+          weight:        p.weight        != null ? p.weight  : 75
+        }));
+      }
+
+      if (Array.isArray(bot.squad.bench)) {
+        newSquad.bench = bot.squad.bench.map(p => ({
+          name:          p.name          || 'Игрок',
+          position:      p.position      || 'CM',
+          ovr:           p.ovr           != null ? p.ovr    : 55,
+          stamina:       p.stamina       != null ? p.stamina : 3.0,
+          preferredFoot: p.preferredFoot || 'right',
+          weakFoot:      p.weakFoot      != null ? p.weakFoot : 2,
+          height:        p.height        != null ? p.height  : 178,
+          weight:        p.weight        != null ? p.weight  : 75
+        }));
+      }
+
+      // Сохраняем под новым именем
+      BOT_SQUADS[newName] = newSquad;
+
+      // Если имя изменилось — удаляем старый ключ
+      if (newName !== oldName && BOT_SQUADS[oldName]) {
+        delete BOT_SQUADS[oldName];
+      }
+    } else if (newName !== oldName) {
+      // Состав не задан, но имя изменилось — переименовываем ключ
+      if (BOT_SQUADS[oldName]) {
+        BOT_SQUADS[newName] = BOT_SQUADS[oldName];
+        delete BOT_SQUADS[oldName];
+      }
+    }
+  }
+}
+
+function applyCustomDataToMyPlayers(data) {
+  if (!gameState.myPlayers || !data) return;
+  const customPlayers = Array.isArray(data) ? data : (data.players || []);
   for (const custom of customPlayers) {
     if (!custom || typeof custom.id === 'undefined') continue;
 
@@ -628,30 +703,41 @@ async function loadCustomDataPack() {
   }
 }
 
+let _dataPackCheckInProgress = false;
+
 async function checkCustomDataUpdate() {
   if (!gameState.customDataUrl) return;
-  try {
-    const response = await fetch(gameState.customDataUrl, { method: 'HEAD' });
-    const etag = response.headers.get('ETag') || '';
-    const lastModified = response.headers.get('Last-Modified') || '';
+  if (_dataPackCheckInProgress) return;
+  _dataPackCheckInProgress = true;
 
-    if (
-      (etag && etag !== gameState.customDataETag) ||
-      (lastModified && lastModified !== gameState.customDataLastModified)
-    ) {
-      const dataResponse = await fetch(gameState.customDataUrl);
-      const players = await dataResponse.json();
-      if (Array.isArray(players) && players.length > 0) {
-        allPlayers = applyCustomPlayerData(players);
-        localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
-        gameState.customDataETag = etag;
-        gameState.customDataLastModified = lastModified;
-        saveState();
-        botReply('🔄 Кастомный дата-пак автоматически обновлён (только имена/клубы/изображения/лиги).', 400);
-      }
+  try {
+    const dataResponse = await fetch(
+      gameState.customDataUrl + '?_t=' + Date.now(),
+      { cache: 'no-store' }
+    );
+    if (!dataResponse.ok) return;
+
+    const data = await dataResponse.json();
+
+    // Если в файле есть поле version — сравниваем
+    const newVersion = (data && data.version != null) ? data.version : null;
+    if (newVersion !== null) {
+      if (newVersion === gameState.customDataVersion) return; // не изменился
+      gameState.customDataVersion = newVersion;
     }
+
+    // Применяем данные
+    allPlayers = applyCustomPlayerData(data);
+    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+    applyCustomDataToMyPlayers(data);
+    saveState();
+
+    console.log('🔄 Дата-пак обновлён, версия:', newVersion);
+
   } catch (err) {
     console.warn('Ошибка проверки обновлений дата-пака:', err);
+  } finally {
+    _dataPackCheckInProgress = false;
   }
 }
 
@@ -1173,34 +1259,69 @@ function buyFromMarket(playerId) {
 }
 
 function sellToMarket(playerId) {
-  const usedInSquad = Object.values(gameState.squadSlots || {}).includes(playerId) ||
-                      Object.values(gameState.benchSlots || {}).includes(playerId);
-  if (usedInSquad) {
-    closeMarketModal();
-    botReply('❌ Нельзя продать игрока из состава. Сначала убери его из состава или скамейки.', 400);
-    return;
+  // Собираем cardId игроков которые стоят в составе/скамейке
+  const squadCardIds = new Set();
+
+  // Получаем id-шники из слотов (числовые id)
+  const slotPlayerIds = [
+    ...Object.values(gameState.squadSlots || {}),
+    ...Object.values(gameState.benchSlots || {})
+  ];
+
+  // Для каждого числового id из слотов ищем ОДИН экземпляр
+  // Но нам нужно найти именно тот экземпляр что "реально стоит" в составе.
+  // Поскольку squadSlots хранит числовые id, а у дубликатов одинаковый id,
+  // нам нужно пометить ровно столько экземпляров сколько стоит в составе.
+
+  // Считаем сколько раз каждый id встречается в слотах
+  const idCountInSquad = {};
+  for (const pid of slotPlayerIds) {
+    if (pid == null) continue;
+    idCountInSquad[pid] = (idCountInSquad[pid] || 0) + 1;
   }
 
-  const idx = (gameState.myPlayers || []).findIndex(p => p.id === playerId && p.tradeable !== false);
+  // Для каждого id помечаем соответствующее количество cardId как "занятых"
+  for (const [pid, count] of Object.entries(idCountInSquad)) {
+    const numId = parseInt(pid);
+    let marked = 0;
+    for (const player of (gameState.myPlayers || [])) {
+      if (player.id === numId && player.cardId) {
+        squadCardIds.add(player.cardId);
+        marked++;
+        if (marked >= count) break;
+      }
+    }
+  }
+
+  // Ищем игрока с нужным id, который НЕ в составе (по cardId)
+  const idx = (gameState.myPlayers || []).findIndex(p =>
+    p.id === playerId &&
+    p.tradeable !== false &&
+    !squadCardIds.has(p.cardId)
+  );
+
   if (idx === -1) {
+    const anyInSquad = slotPlayerIds.includes(playerId);
     closeMarketModal();
-    botReply('❌ Игрок не найден или непродаваемый.', 400);
+    if (anyInSquad) {
+      botReply('❌ Все копии этого игрока стоят в составе или на скамейке. Убери из состава перед продажей.', 400);
+    } else {
+      botReply('❌ Игрок не найден или непродаваемый.', 400);
+    }
     return;
   }
 
   const player = gameState.myPlayers[idx];
   const price = getPlayerMarketPrice(player);
   const sellPrice = Math.floor(price * 0.85);
-  
-  // Предупреждение если есть тренировка или OVR апгрейд
+
   const hasUpgrades = (player.trainingLevel > 0) || (player.ovrUpgrade > 0);
-  
+
   if (hasUpgrades) {
     let warnings = [];
     if (player.trainingLevel > 0) warnings.push(`уровень тренировки +${player.trainingLevel}`);
     if (player.ovrUpgrade > 0) warnings.push(`повышение OVR +${player.ovrUpgrade}`);
-    
-    // Показываем предупреждение внутри панели деталей
+
     const detailPanel = document.querySelector('#market-modal div[style*="width:155px"]');
     if (detailPanel) {
       const warningHtml = `
@@ -1208,27 +1329,51 @@ function sellToMarket(playerId) {
           <div style="font-size:11px;color:#f0a040;font-weight:700;margin-bottom:6px;">⚠️ Внимание!</div>
           <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Вы продаёте игрока с улучшениями:<br><b style="color:#fff;">${warnings.join(', ')}</b></div>
           <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Цена продажи: <b style="color:#f0c040;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</b></div>
-          <button onclick="confirmSellToMarket(${playerId})" style="width:100%;padding:8px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.4);border-radius:8px;color:#e05050;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:4px;">Всё равно продать</button>
+          <button onclick="confirmSellToMarketByIdx(${idx})" style="width:100%;padding:8px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.4);border-radius:8px;color:#e05050;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:4px;">Всё равно продать</button>
           <button onclick="renderMarketModal()" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid #1e2d3d;border-radius:8px;color:#7d8e9e;font-size:12px;cursor:pointer;font-family:inherit;">Отмена</button>
         </div>`;
       detailPanel.innerHTML = warningHtml;
     }
     return;
   }
-  
-  // Продажа без предупреждения
-  doSellToMarket(playerId);
+
+  doSellToMarketByIdx(idx);
 }
 
 function confirmSellToMarket(playerId) {
-  doSellToMarket(playerId);
+  // Обратная совместимость — ищем по id
+  const squadIds = new Set([
+    ...Object.values(gameState.squadSlots || {}),
+    ...Object.values(gameState.benchSlots || {})
+  ]);
+  const idx = (gameState.myPlayers || []).findIndex(p =>
+    p.id === playerId && p.tradeable !== false && !squadIds.has(p.id)
+  );
+  if (idx !== -1) doSellToMarketByIdx(idx);
+  else { closeMarketModal(); botReply('❌ Подходящий игрок не найден.', 400); }
+}
+
+function confirmSellToMarketByIdx(idx) {
+  doSellToMarketByIdx(idx);
 }
 
 function doSellToMarket(playerId) {
-  const idx = (gameState.myPlayers || []).findIndex(p => p.id === playerId && p.tradeable !== false);
-  if (idx === -1) {
+  // Обратная совместимость
+  const squadIds = new Set([
+    ...Object.values(gameState.squadSlots || {}),
+    ...Object.values(gameState.benchSlots || {})
+  ]);
+  const idx = (gameState.myPlayers || []).findIndex(p =>
+    p.id === playerId && p.tradeable !== false && !squadIds.has(p.id)
+  );
+  if (idx !== -1) doSellToMarketByIdx(idx);
+  else { closeMarketModal(); botReply('❌ Игрок не найден или все копии в составе.', 400); }
+}
+
+function doSellToMarketByIdx(idx) {
+  if (idx < 0 || idx >= (gameState.myPlayers || []).length) {
     closeMarketModal();
-    botReply('❌ Игрок не найден или непродаваемый.', 400);
+    botReply('❌ Игрок не найден.', 400);
     return;
   }
 
@@ -4219,9 +4364,12 @@ function applyFormation() {
             }
           }
 
-          const bgStyle = getSlotBgStyle(player);
+                    const bgStyle = getSlotBgStyle(player);
           const hasImage = !!(player && (player.squadImage || player.image));
           const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
+
+          // ← НОВАЯ СТРОКА: проверяем выбран ли этот игрок
+          const isSelectedInSquad = player && (player.id === selectedReservePlayerId);
 
           const playerName = player ? player.name : '';
           const posText = player
@@ -4239,7 +4387,7 @@ function applyFormation() {
             + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
             + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
             + `onclick="handleSlotClick(${slotIndex}, '${pos}')" `
-            + `style="width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;transition:border-color 0.2s;position:relative;overflow:hidden;">`
+            + `style="width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;transition:border-color 0.2s;position:relative;overflow:hidden;${isSelectedInSquad ? 'outline:2px solid #f0c040;outline-offset:-2px;' : ''}">`
             + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
             + (hasImage ? '' : posText)
             + `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${playerName}</div>`
@@ -4264,9 +4412,13 @@ function applyFormation() {
       for (let i = 0; i < 7; i++) {
         const pid    = gameState.benchSlots ? gameState.benchSlots[String(i)] : null;
         const player = pid ? findPlayerById(pid) : null;
-        const bgStyle = getSlotBgStyle(player);
+                const bgStyle = getSlotBgStyle(player);
         const hasImage = !!(player && (player.squadImage || player.image));
         const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
+
+        // ← НОВАЯ СТРОКА: проверяем выбран ли этот игрок на скамейке
+        const isSelectedOnBench = player && (player.id === selectedReservePlayerId);
+
         const playerName = player ? player.name : '';
         const posText = player
           ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`
@@ -4283,7 +4435,7 @@ function applyFormation() {
           + (player ? `draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" ` : ``)
           + `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" `
           + `onclick="handleBenchClick(${i})" `
-          + `style="flex-shrink:0;width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);text-align:center;position:relative;overflow:hidden;">`
+          + `style="flex-shrink:0;width:54px;min-height:64px;${bgStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:rgba(255,255,255,0.4);text-align:center;position:relative;overflow:hidden;${isSelectedOnBench ? 'outline:2px solid #f0c040;outline-offset:-2px;' : ''}">`
           + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">`
           + (hasImage ? '' : posText)
           + `<div style="font-size:9px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48px;">${playerName}</div>`
@@ -4361,18 +4513,151 @@ function applyFormation() {
     }
 
     function handleSlotClick(slotIndex, slotPos) {
-      if (selectedReservePlayerId === null) return;
-      assignToSlot(selectedReservePlayerId, slotIndex, slotPos);
-      selectedReservePlayerId = null;
-      renderSquadModal();
+  const currentPid = gameState.squadSlots ? gameState.squadSlots[String(slotIndex)] : null;
+
+  // ── Нет выбранного игрока ──────────────────────────────────────────────
+  if (selectedReservePlayerId === null) {
+    if (currentPid != null) {
+      // Просто запоминаем кто выбран — НЕ удаляем из слота!
+      selectedReservePlayerId = currentPid;
+      renderSquadModal(); // перерисовываем с подсветкой
+    }
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на того же — снимаем выделение ───────────
+  if (currentPid === selectedReservePlayerId) {
+    selectedReservePlayerId = null;
+    renderSquadModal();
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на занятый слот — меняем местами ─────────
+  if (currentPid != null) {
+    // Найдём откуда пришёл выбранный игрок
+    let originType = 'reserve';
+    let originIndex = null;
+
+    for (const k in gameState.squadSlots) {
+      if (gameState.squadSlots[k] === selectedReservePlayerId) {
+        originType = 'squad';
+        originIndex = parseInt(k);
+        break;
+      }
+    }
+    if (originType === 'reserve') {
+      for (const k in gameState.benchSlots) {
+        if (gameState.benchSlots[k] === selectedReservePlayerId) {
+          originType = 'bench';
+          originIndex = parseInt(k);
+          break;
+        }
+      }
     }
 
-    function handleBenchClick(benchIndex) {
-      if (selectedReservePlayerId === null) return;
-      assignToBench(selectedReservePlayerId, benchIndex);
+    // Проверяем совместимость позиций (GK нельзя на поле и наоборот)
+    const selectedPlayer = findPlayerById(selectedReservePlayerId);
+    const penalty = getPositionPenalty(selectedPlayer, slotPos);
+    if (penalty >= 999) {
+      botReply('❌ Вратаря нельзя поставить на позицию полевого игрока и наоборот.', 400);
       selectedReservePlayerId = null;
       renderSquadModal();
+      return;
     }
+
+    // Убираем выбранного с его старого места
+    if (originType === 'squad')       delete gameState.squadSlots[String(originIndex)];
+    else if (originType === 'bench')  delete gameState.benchSlots[String(originIndex)];
+
+    // Убираем целевого с его места
+    delete gameState.squadSlots[String(slotIndex)];
+
+    // Ставим выбранного на целевой слот
+    gameState.squadSlots[String(slotIndex)] = selectedReservePlayerId;
+
+    // Ставим целевого на место выбранного
+    if (originType === 'squad')       gameState.squadSlots[String(originIndex)] = currentPid;
+    else if (originType === 'bench')  gameState.benchSlots[String(originIndex)] = currentPid;
+
+    saveState();
+    selectedReservePlayerId = null;
+    renderSquadModal();
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на пустой слот — ставим туда ─────────────
+  assignToSlot(selectedReservePlayerId, slotIndex, slotPos);
+  selectedReservePlayerId = null;
+  renderSquadModal();
+}
+
+function handleBenchClick(benchIndex) {
+  const currentPid = gameState.benchSlots ? gameState.benchSlots[String(benchIndex)] : null;
+
+  // ── Нет выбранного игрока ──────────────────────────────────────────────
+  if (selectedReservePlayerId === null) {
+    if (currentPid != null) {
+      // Просто запоминаем кто выбран — НЕ удаляем со скамейки!
+      selectedReservePlayerId = currentPid;
+      renderSquadModal();
+    }
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на того же — снимаем выделение ───────────
+  if (currentPid === selectedReservePlayerId) {
+    selectedReservePlayerId = null;
+    renderSquadModal();
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на занятое место скамейки — меняем ───────
+  if (currentPid != null) {
+    let originType = 'reserve';
+    let originIndex = null;
+
+    for (const k in gameState.squadSlots) {
+      if (gameState.squadSlots[k] === selectedReservePlayerId) {
+        originType = 'squad';
+        originIndex = parseInt(k);
+        break;
+      }
+    }
+    if (originType === 'reserve') {
+      for (const k in gameState.benchSlots) {
+        if (gameState.benchSlots[k] === selectedReservePlayerId) {
+          originType = 'bench';
+          originIndex = parseInt(k);
+          break;
+        }
+      }
+    }
+
+    // Убираем выбранного с его старого места
+    if (originType === 'squad')       delete gameState.squadSlots[String(originIndex)];
+    else if (originType === 'bench')  delete gameState.benchSlots[String(originIndex)];
+
+    // Убираем целевого с его места на скамейке
+    delete gameState.benchSlots[String(benchIndex)];
+
+    // Ставим выбранного на скамейку
+    gameState.benchSlots[String(benchIndex)] = selectedReservePlayerId;
+
+    // Ставим целевого на место выбранного
+    if (originType === 'squad')       gameState.squadSlots[String(originIndex)] = currentPid;
+    else if (originType === 'bench')  gameState.benchSlots[String(originIndex)] = currentPid;
+
+    saveState();
+    selectedReservePlayerId = null;
+    renderSquadModal();
+    return;
+  }
+
+  // ── Есть выбранный, кликнули на пустое место — ставим туда ───────────
+  assignToBench(selectedReservePlayerId, benchIndex);
+  selectedReservePlayerId = null;
+  renderSquadModal();
+}
 
     // ── DRAG AND DROP ──────────────────────────────────────────────────────
     let dragPlayerId = null;
@@ -5827,6 +6112,11 @@ handleNavDivision = function() {
 setInterval(() => {
   if (gameState.registered) checkSeasonEnd();
 }, 60000);
+
+// ── Периодическая проверка обновлений дата-пака (каждые 10 секунд) ───────
+setInterval(() => {
+  if (gameState.customDataUrl) checkCustomDataUpdate();
+}, 10 * 1000);
 
 // === END MODULE: division ===
 
