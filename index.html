@@ -253,15 +253,41 @@
     .filter-apply-btn:active { background: #4a7ab0; }
     .filter-reset-btn { width: 100%; padding: 9px; background: rgba(255,255,255,0.06); border: 1px solid #1e2d3d; border-radius: 10px; color: #7d8e9e; font-size: 13px; cursor: pointer; margin-top: 6px; font-family: inherit; }
     .filter-reset-btn:hover { background: rgba(255,255,255,0.1); }
+
+    /* === MARKET === */
+.market-tab { flex:1; padding:8px 4px; background:none; border:none; border-bottom:2px solid transparent; color:#7d8e9e; font-size:12px; cursor:pointer; font-family:inherit; transition:all 0.2s; }
+.market-tab.active { color:#5288c1; border-bottom-color:#5288c1; font-weight:600; }
+.market-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.market-card { background:rgba(255,255,255,0.04); border:1px solid #1e2d3d; border-radius:10px; overflow:hidden; cursor:pointer; position:relative; transition:border-color 0.2s; }
+.market-card:hover { border-color:#5288c1; }
+.market-card.selected { border-color:#f0c040; border-width:2px; }
+.market-card-img { width:100%; aspect-ratio:1; background:linear-gradient(135deg,#1a2f45,#1e3550); background-size:cover; background-position:center; position:relative; }
+.market-card-info { padding:6px 8px; }
+.market-card-name { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.market-card-pos { font-size:10px; color:#7d8e9e; }
+.market-card-price { display:flex; align-items:center; gap:4px; font-size:11px; color:#f0c040; font-weight:700; margin-top:3px; }
+.market-card-ovr { position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.7); border-radius:6px; padding:2px 5px; font-size:11px; font-weight:700; color:#f0c040; }
+.market-card-fav { position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; }
+.market-detail { background:linear-gradient(135deg,#1a2f45,#1e3550); border-radius:12px; padding:14px; margin-bottom:12px; }
+.market-qty-row { display:flex; align-items:center; gap:10px; justify-content:center; margin:10px 0; }
+.market-qty-btn { width:34px; height:34px; border-radius:50%; background:rgba(82,136,193,0.3); border:1px solid rgba(82,136,193,0.5); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.market-buy-btn { width:100%; padding:13px; background:linear-gradient(135deg,#4dc05a,#38a046); border:none; border-radius:10px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; font-family:inherit; letter-spacing:0.3px; }
+.market-buy-btn:active { background:linear-gradient(135deg,#38a046,#2d8a39); }
+.market-sell-btn { width:100%; padding:11px; background:rgba(224,80,80,0.2); border:1px solid rgba(224,80,80,0.4); border-radius:10px; color:#e05050; font-size:14px; font-weight:600; cursor:pointer; margin-top:6px; font-family:inherit; }
   </style>
 </head>
 <body>
 <div id="app">
   <div id="start-overlay">
-    <!-- Логотип игры -->
     <img src="https://i.ibb.co/0pN8LQch/Offside-26-logo.png" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 24px rgba(82,136,193,0.4);" />
     <div class="start-title">Offside 26</div>
     <div class="start-subtitle">Собирай лучших игроков, выигрывай турниры<br>и стань легендой футбола!</div>
+    
+    <!-- ✅ ДОБАВЬ ЭТО ПЕРЕД КНОПКОЙ -->
+    <div style="font-size:11px;color:#7d8e9e;max-width:320px;text-align:center;line-height:1.6;padding:10px;background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;">
+      ⚠️ Пользователь самостоятельно несёт ответственность за содержимое загружаемых дата-паков. Разработчик не несёт ответственности за использование сторонних данных, изображений и имён.
+    </div>
+  
     <button id="btn-start">▶ НАЧАТЬ ИГРУ</button>
   </div>
 
@@ -276,15 +302,16 @@
         <span>Квесты</span>
       </button>
     <div class="header-resources">
-      <div class="resources-row">
-        <div class="resource-item"><img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-rubins">0</span></div>
-        <div class="resource-item"><img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-offside">0</span></div>
-      </div>
-      <div class="resources-row">
-        <div class="resource-item"><img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-xp">0</span></div>
-        <div class="resource-item"><img src="https://i.ibb.co/twVpcSbk/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-level">0</span></div>
-      </div>
-    </div>
+  <div class="resources-row">
+    <div class="resource-item"><img src="https://i.ibb.co/JRnypxvR/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-coins">0</span></div>
+    <div class="resource-item"><img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-rubins">0</span></div>
+    <div class="resource-item"><img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-offside">0</span></div>
+  </div>
+  <div class="resources-row">
+    <div class="resource-item"><img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-xp">0</span></div>
+    <div class="resource-item"><img src="https://i.ibb.co/twVpcSbk/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-level">0</span></div>
+  </div>
+</div>
   </div>
 
   <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
@@ -314,7 +341,7 @@ const STORAGE_KEY = 'footballManager_gameState';
 // === DEFAULT STATE ===
 const DEFAULT_STATE = {
   rubins: 1500, offsideTokens: 0, trainingPoints: 1000, ovrUpgradePoints: 500,
-  passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0,
+  passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0, coins: 50000,
   nickname: '', playerId: '', stars: 0, matchesPlayed: 0, goalsScored: 0,
   registered: false, awaitingNickname: false, awaitingClubName: false, clubName: '',
   customDataUrl: '',
@@ -348,6 +375,7 @@ function escapeHtml(t) { const m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'
 function updateHeaderResources() {
   document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
   document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
+  document.getElementById('hdr-coins').textContent = (gameState.coins ?? 0).toLocaleString('ru-RU');
   document.getElementById('hdr-xp').textContent = gameState.xp ?? 0;
   document.getElementById('hdr-level').textContent = gameState.level ?? 0;
 }
@@ -495,22 +523,21 @@ function buildProfileCardHTML(s) {
 }
 
 async function showCustomDataDialog() {
-  const msg = '⚠️ Вы загружаете собственный набор данных. Убедитесь, что вы имеете право использовать эти имена и изображения. Разработчик не несёт ответственности за содержимое пользовательских дата-паков.<br><br>Введите ссылку на JSON-файл с игроками:';
+  const msg = `⚠️ <b>Пользовательский дата-пак</b><br><br>
+    Загружая дата-пак, вы подтверждаете что:<br>
+    • Имеете право использовать эти данные<br>
+    • Берёте на себя всю ответственность за содержимое<br>
+    • Разработчик игры не несёт никакой ответственности<br><br>
+    Введите ссылку на JSON-файл:`;
+    
   const inputHtml = `
     <div style="display:flex;gap:6px;margin-top:4px;">
-      <input id="custom-url-input" type="text" placeholder="https://example.com/players.json" style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;" />
+      <input id="custom-url-input" type="text" 
+        placeholder="https://example.com/players.json" 
+        style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;" />
       <button class="inline-btn" onclick="loadCustomDataPack()">Загрузить</button>
     </div>`;
-  await botReply(msg + inputHtml, 400, { html: true });
-}
-
-async function showCustomDataDialog() {
-  const msg = '⚠️ Вы загружаете собственный набор данных. Убедитесь, что вы имеете право использовать эти имена и изображения. Разработчик не несёт ответственности за содержимое пользовательских дата-паков.<br><br>Введите ссылку на JSON-файл с игроками:';
-  const inputHtml = `
-    <div style="display:flex;gap:6px;margin-top:4px;">
-      <input id="custom-url-input" type="text" placeholder="https://example.com/players.json" style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;" />
-      <button class="inline-btn" onclick="loadCustomDataPack()">Загрузить</button>
-    </div>`;
+    
   await botReply(msg + inputHtml, 400, { html: true });
 }
 
@@ -533,6 +560,26 @@ function applyCustomPlayerData(customPlayers) {
   }
 
   return updated;
+}
+
+function applyCustomDataToMyPlayers(customPlayers) {
+  if (!gameState.myPlayers || !customPlayers) return;
+
+  for (const custom of customPlayers) {
+    if (!custom || typeof custom.id === 'undefined') continue;
+
+    // Находим всех игроков с таким id в коллекции
+    for (const player of gameState.myPlayers) {
+      if (player.id !== custom.id) continue;
+
+      // Обновляем только разрешённые поля
+      if (typeof custom.name === 'string')       player.name       = custom.name;
+      if (typeof custom.club === 'string')       player.club       = custom.club;
+      if (typeof custom.image === 'string')      player.image      = custom.image;
+      if (typeof custom.squadImage === 'string') player.squadImage = custom.squadImage;
+      if (typeof custom.league === 'string')     player.league     = custom.league;
+    }
+  }
 }
 
 async function loadCustomDataPack() {
@@ -559,16 +606,20 @@ async function loadCustomDataPack() {
       throw new Error('Файл должен содержать массив игроков');
     }
 
-    // Применяем только разрешённые поля
+    // Применяем к каталогу
     allPlayers = applyCustomPlayerData(players);
     localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+
+    // ✅ НОВОЕ: обновляем уже имеющихся игроков у пользователя
+    applyCustomDataToMyPlayers(players);
+
     gameState.customDataUrl = url;
     gameState.customDataETag = etag;
     gameState.customDataLastModified = lastModified;
     saveState();
 
     await botReply(
-      '✅ Дата-пак загружен! Изменены только имена, клубы, изображения и лиги. Характеристики игроков не изменились.',
+      '✅ Дата-пак загружен! Изменены имена, клубы, изображения и лиги — в каталоге и у ваших игроков.',
       500
     );
   } catch (err) {
@@ -693,7 +744,733 @@ handleNavDivision = function() {
   openDivisionModal();
 };
 function handleNavQuests() { if(!gameState.registered){promptRegister();return;} botReply('🏅 <b>Квесты</b> — в разработке.', 500, {html:true}); }
-function handleNavMarket() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-market'); botReply('💹 <b>Рынок</b> — в разработке.', 500, {html:true}); }
+// ============================================
+// === MODULE: MARKET ===
+// ============================================
+
+const COIN_ICON = '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+const COIN_ICON_SM = '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:12px;height:12px;vertical-align:middle;" />';
+
+function injectMarketCSS() {
+  if (document.getElementById('market-css')) return;
+  const s = document.createElement('style');
+  s.id = 'market-css';
+  s.textContent = `
+    .market-tab { flex:1; padding:9px 4px; background:none; border:none; border-bottom:2px solid transparent; color:#7d8e9e; font-size:11px; cursor:pointer; font-family:inherit; transition:all 0.2s; white-space:nowrap; }
+    .market-tab.active { color:#5288c1; border-bottom-color:#5288c1; font-weight:600; }
+    .market-card { background:rgba(255,255,255,0.04); border:1px solid #1e2d3d; border-radius:10px; overflow:hidden; cursor:pointer; position:relative; transition:border-color 0.2s; }
+    .market-card:active { border-color:#5288c1; }
+    .market-card.selected { border-color:#f0c040 !important; border-width:2px; }
+    .market-card-img { width:100%; aspect-ratio:1/1; background:linear-gradient(135deg,#1a2f45,#1e3550); background-size:cover; background-position:center; position:relative; }
+    .market-card-info { padding:5px 7px 7px; }
+    .market-card-name { font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .market-card-sub { font-size:9px; color:#7d8e9e; }
+    .market-card-price { display:flex; align-items:center; gap:3px; font-size:10px; color:#f0c040; font-weight:700; margin-top:2px; }
+    .market-card-ovr { position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.75); border-radius:5px; padding:1px 5px; font-size:11px; font-weight:700; color:#f0c040; }
+    .market-card-fav { position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.6); border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; line-height:1; }
+    .market-card-lock { position:absolute; bottom:4px; left:4px; background:rgba(224,80,80,0.85); border-radius:4px; padding:1px 4px; font-size:9px; color:#fff; }
+    .market-qty-btn { width:32px; height:32px; border-radius:50%; background:rgba(82,136,193,0.25); border:1px solid rgba(82,136,193,0.5); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; font-family:inherit; }
+    .market-buy-btn { width:100%; padding:12px; background:linear-gradient(135deg,#4dc05a,#38a046); border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:700; cursor:pointer; margin-top:8px; font-family:inherit; }
+    .market-buy-btn:disabled { background:rgba(255,255,255,0.1); color:#7d8e9e; cursor:not-allowed; }
+    .market-sell-btn { width:100%; padding:10px; background:rgba(224,80,80,0.15); border:1px solid rgba(224,80,80,0.35); border-radius:10px; color:#e05050; font-size:13px; font-weight:600; cursor:pointer; margin-top:6px; font-family:inherit; }
+  `;
+  document.head.appendChild(s);
+}
+
+function getPlayerMarketPrice(player) {
+  if (player.coins_price && player.coins_price > 0) return player.coins_price;
+  const ovr = getEffectiveOvr(player);
+  if (ovr >= 95) return 5000000 + (ovr - 95) * 2000000;
+  if (ovr >= 90) return 1000000 + (ovr - 90) * 800000;
+  if (ovr >= 85) return  300000 + (ovr - 85) * 140000;
+  if (ovr >= 80) return   80000 + (ovr - 80) *  44000;
+  if (ovr >= 75) return   20000 + (ovr - 75) *  12000;
+  if (ovr >= 70) return    5000 + (ovr - 70) *   3000;
+  return Math.max(500, ovr * 50);
+}
+
+function formatCoins(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + ' млн';
+  if (n >= 1000)    return Math.round(n / 1000) + ' тыс';
+  return String(n);
+}
+
+let marketState = {
+  tab: 'all',
+  selectedId: null,
+  qty: 1,
+  watchlist: [],
+  filters: {
+    name: '', ovrMin: '', ovrMax: '', priceMin: '', priceMax: '',
+    positions: [], nations: [], clubs: [], leagues: []
+  },
+  myFilters: {
+    name: '', ovrMin: '', ovrMax: '',
+    trainMin: '', trainMax: '',
+    ovrUpgrades: [],
+    positions: [], nations: [], clubs: []
+  }
+};
+
+function openMarketModal() {
+  if (!allPlayers || allPlayers.length === 0) {
+    botReply('⚠️ Данные игроков ещё не загружены. Попробуй ещё раз.', 400);
+    return;
+  }
+  
+  injectMarketCSS();
+  let overlay = document.getElementById('market-modal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'market-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:#0e1621;display:flex;flex-direction:column;max-width:600px;width:100%;margin:0 auto;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderMarketModal();
+}
+
+function closeMarketModal() {
+  const o = document.getElementById('market-modal');
+  if (o) o.style.display = 'none';
+}
+
+function renderMarketModal() {
+  const overlay = document.getElementById('market-modal');
+  if (!overlay) return;
+
+  const f = marketState.filters;
+
+  let catalogPlayers = [...allPlayers];
+  if (f.name.trim()) {
+    const q = f.name.trim().toLowerCase();
+    catalogPlayers = catalogPlayers.filter(p => p.name.toLowerCase().includes(q) || p.club.toLowerCase().includes(q));
+  }
+  if (f.ovrMin !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr >= Number(f.ovrMin));
+  if (f.ovrMax !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr <= Number(f.ovrMax));
+  if (f.priceMin !== '') catalogPlayers = catalogPlayers.filter(p => getPlayerMarketPrice(p) >= Number(f.priceMin));
+  if (f.priceMax !== '') catalogPlayers = catalogPlayers.filter(p => getPlayerMarketPrice(p) <= Number(f.priceMax));
+  if (f.positions.length) catalogPlayers = catalogPlayers.filter(p => f.positions.includes(p.position));
+  if (f.nations.length) catalogPlayers = catalogPlayers.filter(p => f.nations.includes(p.nation));
+  if (f.clubs.length) catalogPlayers = catalogPlayers.filter(p => f.clubs.includes(p.club));
+  if (f.leagues.length) catalogPlayers = catalogPlayers.filter(p => f.leagues.includes(p.league || ''));
+  catalogPlayers.sort((a, b) => b.ovr - a.ovr);
+
+  let myTradeable = (gameState.myPlayers || []).filter(p => p.tradeable !== false);
+const mf = marketState.myFilters;
+if (mf.name.trim()) { const q = mf.name.trim().toLowerCase(); myTradeable = myTradeable.filter(p => p.name.toLowerCase().includes(q)); }
+if (mf.ovrMin !== '') myTradeable = myTradeable.filter(p => getEffectiveOvr(p) >= Number(mf.ovrMin));
+if (mf.ovrMax !== '') myTradeable = myTradeable.filter(p => getEffectiveOvr(p) <= Number(mf.ovrMax));
+if (mf.trainMin !== '') myTradeable = myTradeable.filter(p => (p.trainingLevel||0) >= Number(mf.trainMin));
+if (mf.trainMax !== '') myTradeable = myTradeable.filter(p => (p.trainingLevel||0) <= Number(mf.trainMax));
+if (mf.ovrUpgrades && mf.ovrUpgrades.length) myTradeable = myTradeable.filter(p => mf.ovrUpgrades.includes(p.ovrUpgrade||0));
+if (mf.positions && mf.positions.length) myTradeable = myTradeable.filter(p => mf.positions.includes(p.position));
+if (mf.nations && mf.nations.length) myTradeable = myTradeable.filter(p => mf.nations.includes(p.nation));
+if (mf.clubs && mf.clubs.length) myTradeable = myTradeable.filter(p => mf.clubs.includes(p.club));
+myTradeable.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
+  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id));
+
+  const currentList = marketState.tab === 'all' ? catalogPlayers
+    : marketState.tab === 'my' ? myTradeable
+    : watchlistPlayers;
+
+  const sel = marketState.selectedId !== null
+    ? allPlayers.find(p => p.id === marketState.selectedId) || null
+    : null;
+
+  const filterCount = [
+    f.ovrMin||f.ovrMax, f.priceMin||f.priceMax,
+    f.positions.length, f.nations.length, f.clubs.length, f.leagues.length
+  ].filter(Boolean).length;
+
+  overlay.innerHTML = `
+    <div style="background:#17212b;padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+      <button onclick="closeMarketModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;">←</button>
+      <div style="font-size:15px;font-weight:700;flex:1;">💹 Трансф. Рынок</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:#f0c040;font-weight:700;">
+        <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:16px;height:16px;" />
+        ${(gameState.coins || 0).toLocaleString('ru-RU')}
+      </div>
+    </div>
+
+    <div style="display:flex;background:#17212b;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+      <button class="market-tab${marketState.tab==='all'?' active':''}" onclick="marketState.tab='all';marketState.selectedId=null;renderMarketModal()">Все игроки</button>
+      <button class="market-tab${marketState.tab==='my'?' active':''}" onclick="marketState.tab='my';marketState.selectedId=null;renderMarketModal()">Мои игроки</button>
+      <button class="market-tab${marketState.tab==='watchlist'?' active':''}" onclick="marketState.tab='watchlist';marketState.selectedId=null;renderMarketModal()">⭐ Избранное</button>
+    </div>
+
+    <div style="padding:8px 10px;background:#17212b;border-bottom:1px solid #1e2d3d;flex-shrink:0;display:flex;gap:7px;">
+      <button onclick="openMarketFilterModal()" style="flex:1;background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap;text-align:left;">
+        🔍 Поиск и фильтры${filterCount > 0 ? ' ('+filterCount+')' : (f.name ? ' (1)' : '')}
+      </button>
+    </div>
+
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:10px;" id="market-grid-container">
+        ${buildMarketGrid(currentList)}
+      </div>
+      <div style="width:155px;flex-shrink:0;border-left:1px solid #1e2d3d;overflow-y:auto;">
+        ${sel ? buildMarketDetail(sel) : '<div style="padding:16px 10px;text-align:center;color:#7d8e9e;font-size:11px;margin-top:30px;">Выберите<br>игрока</div>'}
+      </div>
+    </div>`;
+}
+
+function renderMarketGridOnly() {
+  const overlay = document.getElementById('market-modal');
+  if (!overlay) return;
+  const f = marketState.filters;
+
+  let catalogPlayers = [...allPlayers];
+  if (f.name.trim()) {
+    const q = f.name.trim().toLowerCase();
+    catalogPlayers = catalogPlayers.filter(p => p.name.toLowerCase().includes(q) || p.club.toLowerCase().includes(q));
+  }
+  if (f.ovrMin !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr >= Number(f.ovrMin));
+  if (f.ovrMax !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr <= Number(f.ovrMax));
+  if (f.priceMin !== '') catalogPlayers = catalogPlayers.filter(p => getPlayerMarketPrice(p) >= Number(f.priceMin));
+  if (f.priceMax !== '') catalogPlayers = catalogPlayers.filter(p => getPlayerMarketPrice(p) <= Number(f.priceMax));
+  if (f.positions.length) catalogPlayers = catalogPlayers.filter(p => f.positions.includes(p.position));
+  if (f.nations.length) catalogPlayers = catalogPlayers.filter(p => f.nations.includes(p.nation));
+  if (f.clubs.length) catalogPlayers = catalogPlayers.filter(p => f.clubs.includes(p.club));
+  if (f.leagues.length) catalogPlayers = catalogPlayers.filter(p => f.leagues.includes(p.league || ''));
+  catalogPlayers.sort((a, b) => b.ovr - a.ovr);
+
+  const myTradeable = (gameState.myPlayers || []).filter(p => p.tradeable !== false);
+  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id));
+
+  const currentList = marketState.tab === 'all' ? catalogPlayers
+    : marketState.tab === 'my' ? myTradeable
+    : watchlistPlayers;
+
+  // Обновляем только грид, не трогая input
+  const gridContainer = overlay.querySelector('#market-grid-container');
+  if (gridContainer) gridContainer.innerHTML = buildMarketGrid(currentList);
+}
+
+function buildMarketGrid(players) {
+  if (!players.length) return '<div style="text-align:center;color:#7d8e9e;padding:30px 10px;font-size:13px;">Нет игроков</div>';
+
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+  for (const p of players) {
+    const price = getPlayerMarketPrice(p);
+    const isSel = marketState.selectedId === p.id;
+    const inFav = marketState.watchlist.includes(p.id);
+    const effOvr = getEffectiveOvr(p);
+    const color = getPositionColor(p.position);
+    const stats = p.stats || {};
+    const keys = p.position === 'GK' ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
+    
+    let statsHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;">';
+    for (const k of keys) {
+      statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:4px;padding:2px 5px;text-align:center;min-width:34px;"><div style="font-size:8px;color:#7d8e9e;">${k}</div><div style="font-size:11px;font-weight:700;">${stats[k]||0}</div></div>`;
+    }
+    statsHtml += '</div>';
+
+    const trainingBadge = (p.trainingLevel > 0)
+      ? `<span style="font-size:9px;background:#4dc05a;color:#fff;padding:1px 5px;border-radius:8px;">+${p.trainingLevel} тр.</span>` : '';
+    const ovrUpBadge = (p.ovrUpgrade > 0)
+      ? `<span style="font-size:9px;background:#f0c040;color:#000;padding:1px 5px;border-radius:8px;">+${p.ovrUpgrade} OVR</span>` : '';
+    
+    let cardStyle = p.image ? `background-image:url(${p.image});background-size:cover;background-position:center;` : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+    const overlayStyle = p.image ? 'background:rgba(0,0,0,0.55);border-radius:8px;padding:6px;' : '';
+    const borderColor = isSel ? '#f0c040' : color;
+    const borderWidth = isSel ? '2px' : '1px';
+
+    html += `<div style="${cardStyle}border:${borderWidth} solid ${borderColor};border-radius:10px;padding:8px 10px;cursor:pointer;position:relative;" onclick="selectMarketPlayer(${p.id})">
+      <div style="${overlayStyle}">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">${p.position}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:10px;color:#7d8e9e;">${p.club} • ${p.nation}</div>
+            <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;">
+              ${trainingBadge}${ovrUpBadge}
+              ${p.tradeable===false?'<span style="font-size:9px;background:#e05050;color:#fff;padding:1px 5px;border-radius:8px;">🔒</span>':''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+            <div style="font-size:20px;font-weight:900;color:#f0c040;">${effOvr}</div>
+            <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#f0c040;font-weight:700;">
+              <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:10px;height:10px;"/> ${formatCoins(price)}
+            </div>
+          </div>
+        </div>
+        ${statsHtml}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
+          <span style="font-size:8px;color:#7d8e9e;">⚡${(p.stamina||3.0).toFixed(1)}</span>
+          <span style="font-size:8px;color:#7d8e9e;">👟${p.preferredFoot==='right'?'П':'Л'}/${p.weakFoot||1}</span>
+          <span style="font-size:8px;color:#7d8e9e;">🌀${((p.skill!=null)?p.skill:2.5).toFixed(1)}</span>
+        </div>
+      </div>
+      <button style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;" onclick="event.stopPropagation();toggleMarketFav(${p.id})">${inFav?'⭐':'☆'}</button>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function buildMarketDetail(p) {
+  const price = getPlayerMarketPrice(p);
+  const sellPrice = Math.floor(price * 0.85);
+  const total = price * marketState.qty;
+  const color = getPositionColor(p.position);
+  const imgStyle = p.image
+    ? `background-image:url(${p.image});background-size:cover;background-position:center;`
+    : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+
+  const myVersions = (gameState.myPlayers || []).filter(mp => mp.id === p.id && mp.tradeable !== false);
+  const usedInSquad = Object.values(gameState.squadSlots || {}).includes(p.id) ||
+                      Object.values(gameState.benchSlots || {}).includes(p.id);
+  const canSell = myVersions.length > 0;
+  const canBuy = (gameState.coins || 0) >= total;
+
+  // Вкладка "Мои игроки" — показываем только продажу
+  if (marketState.tab === 'my') {
+    return `<div style="padding:10px;">
+      <div style="width:100%;aspect-ratio:1/1;${imgStyle}border-radius:10px;position:relative;margin-bottom:8px;">
+        <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.75);border-radius:5px;padding:1px 6px;font-size:12px;font-weight:700;color:#f0c040;">${p.ovr}</div>
+        <div style="position:absolute;bottom:4px;left:4px;background:${color};border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#fff;">${p.position}</div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;margin-bottom:1px;word-break:break-word;line-height:1.3;">${p.name}</div>
+      <div style="font-size:9px;color:#7d8e9e;margin-bottom:8px;">${p.club}</div>
+
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:7px 8px;margin-bottom:8px;">
+        <div style="font-size:9px;color:#7d8e9e;margin-bottom:3px;">Цена продажи (−15%)</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:#f0c040;">
+          <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;" />
+          ${formatCoins(sellPrice)}
+        </div>
+      </div>
+
+      ${usedInSquad
+        ? `<div style="text-align:center;font-size:9px;color:#f0a040;margin-top:6px;margin-bottom:8px;">⚠️ В составе — убери из состава перед продажей</div>`
+        : ''}
+
+      ${canSell
+        ? `<button class="market-sell-btn" onclick="sellToMarket(${p.id})" ${usedInSquad ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
+            Продать<br><span style="font-size:10px;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</span>
+           </button>`
+        : '<div style="text-align:center;font-size:9px;color:#7d8e9e;margin-top:6px;">Нет в коллекции</div>'
+      }
+
+      ${p.tradeable===false ? '<div style="text-align:center;font-size:9px;color:#e05050;margin-top:6px;">🔒 Непродаваемый</div>' : ''}
+    </div>`;
+  }
+
+  // Вкладки "Все игроки" и "Избранное" — только покупка
+  return `<div style="padding:10px;">
+    <div style="width:100%;aspect-ratio:1/1;${imgStyle}border-radius:10px;position:relative;margin-bottom:8px;">
+      <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.75);border-radius:5px;padding:1px 6px;font-size:12px;font-weight:700;color:#f0c040;">${p.ovr}</div>
+      <div style="position:absolute;bottom:4px;left:4px;background:${color};border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:#fff;">${p.position}</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;margin-bottom:1px;word-break:break-word;line-height:1.3;">${p.name}</div>
+    <div style="font-size:9px;color:#7d8e9e;margin-bottom:8px;">${p.club}</div>
+
+    <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:7px 8px;margin-bottom:8px;">
+      <div style="font-size:9px;color:#7d8e9e;margin-bottom:3px;">Цена</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:#f0c040;">
+        <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;" />
+        ${formatCoins(price)}
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:4px;">
+      <button class="market-qty-btn" onclick="changeMarketQty(-1)">−</button>
+      <input type="number" min="1" max="100" value="${marketState.qty}"
+        onchange="setMarketQtyDirect(this.value)"
+        oninput="setMarketQtyDirect(this.value)"
+        style="width:46px;height:32px;background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;color:#fff;font-size:15px;font-weight:700;text-align:center;font-family:inherit;outline:none;" />
+      <button class="market-qty-btn" onclick="changeMarketQty(1)">+</button>
+    </div>
+
+    ${marketState.qty > 1 ? `<div style="text-align:center;font-size:9px;color:#7d8e9e;margin-bottom:4px;">Итого: ${COIN_ICON_SM} ${formatCoins(total)}</div>` : ''}
+
+    <button class="market-buy-btn" ${canBuy?'':'disabled'} onclick="buyFromMarket(${p.id})">
+      КУПИТЬ
+    </button>
+    ${!canBuy ? `<div style="text-align:center;font-size:9px;color:#e05050;margin-top:3px;">Недостаточно монет</div>` : ''}
+
+    ${p.tradeable===false ? '<div style="text-align:center;font-size:9px;color:#e05050;margin-top:6px;">🔒 Непродаваемый</div>' : ''}
+  </div>`;
+}
+
+function selectMarketPlayer(playerId) {
+  const gridEl = document.getElementById('market-grid-container');
+  const scrollTop = gridEl ? gridEl.scrollTop : 0;
+  
+  marketState.selectedId = playerId;
+  marketState.qty = 1;
+  renderMarketModal();
+  
+  // Восстанавливаем скролл грида
+  setTimeout(() => {
+    const gridEl2 = document.getElementById('market-grid-container');
+    if (gridEl2) gridEl2.scrollTop = scrollTop;
+  }, 0);
+}
+
+function toggleMarketFav(playerId) {
+  const gridEl = document.getElementById('market-grid-container');
+  const scrollTop = gridEl ? gridEl.scrollTop : 0;
+  
+  const idx = marketState.watchlist.indexOf(playerId);
+  if (idx === -1) marketState.watchlist.push(playerId);
+  else marketState.watchlist.splice(idx, 1);
+  renderMarketModal();
+  
+  setTimeout(() => {
+    const gridEl2 = document.getElementById('market-grid-container');
+    if (gridEl2) gridEl2.scrollTop = scrollTop;
+  }, 0);
+}
+
+function changeMarketQty(delta) {
+  marketState.qty = Math.max(1, Math.min(99, marketState.qty + delta));
+  renderMarketModal();
+}
+
+function setMarketQtyDirect(val) {
+  const n = parseInt(val);
+  if (!isNaN(n)) {
+    marketState.qty = Math.max(1, Math.min(100, n));
+  }
+  // Обновляем значение в поле ввода, если оно отличается
+  const inputEl = document.querySelector('#market-modal input[type="number"]');
+  if (inputEl && parseInt(inputEl.value) !== marketState.qty) {
+    inputEl.value = marketState.qty;
+  }
+}
+
+function buyFromMarket(playerId) {
+  const template = allPlayers.find(p => p.id === playerId);
+  if (!template) return;
+  const price = getPlayerMarketPrice(template);
+  const total = price * marketState.qty;
+
+  if ((gameState.coins || 0) < total) {
+    closeMarketModal();
+    botReply(`❌ Недостаточно монет. Нужно: ${COIN_ICON} ${formatCoins(total)}`, 400, { html: true });
+    return;
+  }
+
+  gameState.coins = (gameState.coins || 0) - total;
+  for (let i = 0; i < marketState.qty; i++) {
+    const np = JSON.parse(JSON.stringify(template));
+    np.trainingLevel = 0;
+    np.ovrUpgrade = 0;
+    np.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+    gameState.myPlayers.push(np);
+  }
+
+  const qty = marketState.qty;
+  marketState.qty = 1;
+  saveState();
+  updateHeaderResources();
+  closeMarketModal();
+  botReply(`✅ Куплено: <b>${template.name}</b> × ${qty}<br>${COIN_ICON} −${formatCoins(total)} монет`, 500, { html: true });
+}
+
+function sellToMarket(playerId) {
+  const usedInSquad = Object.values(gameState.squadSlots || {}).includes(playerId) ||
+                      Object.values(gameState.benchSlots || {}).includes(playerId);
+  if (usedInSquad) {
+    closeMarketModal();
+    botReply('❌ Нельзя продать игрока из состава. Сначала убери его из состава или скамейки.', 400);
+    return;
+  }
+
+  const idx = (gameState.myPlayers || []).findIndex(p => p.id === playerId && p.tradeable !== false);
+  if (idx === -1) {
+    closeMarketModal();
+    botReply('❌ Игрок не найден или непродаваемый.', 400);
+    return;
+  }
+
+  const player = gameState.myPlayers[idx];
+  const price = getPlayerMarketPrice(player);
+  const sellPrice = Math.floor(price * 0.85);
+  
+  // Предупреждение если есть тренировка или OVR апгрейд
+  const hasUpgrades = (player.trainingLevel > 0) || (player.ovrUpgrade > 0);
+  
+  if (hasUpgrades) {
+    let warnings = [];
+    if (player.trainingLevel > 0) warnings.push(`уровень тренировки +${player.trainingLevel}`);
+    if (player.ovrUpgrade > 0) warnings.push(`повышение OVR +${player.ovrUpgrade}`);
+    
+    // Показываем предупреждение внутри панели деталей
+    const detailPanel = document.querySelector('#market-modal div[style*="width:155px"]');
+    if (detailPanel) {
+      const warningHtml = `
+        <div style="padding:10px;background:#17212b;border-radius:8px;margin-top:6px;">
+          <div style="font-size:11px;color:#f0a040;font-weight:700;margin-bottom:6px;">⚠️ Внимание!</div>
+          <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Вы продаёте игрока с улучшениями:<br><b style="color:#fff;">${warnings.join(', ')}</b></div>
+          <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Цена продажи: <b style="color:#f0c040;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</b></div>
+          <button onclick="confirmSellToMarket(${playerId})" style="width:100%;padding:8px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.4);border-radius:8px;color:#e05050;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:4px;">Всё равно продать</button>
+          <button onclick="renderMarketModal()" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid #1e2d3d;border-radius:8px;color:#7d8e9e;font-size:12px;cursor:pointer;font-family:inherit;">Отмена</button>
+        </div>`;
+      detailPanel.innerHTML = warningHtml;
+    }
+    return;
+  }
+  
+  // Продажа без предупреждения
+  doSellToMarket(playerId);
+}
+
+function confirmSellToMarket(playerId) {
+  doSellToMarket(playerId);
+}
+
+function doSellToMarket(playerId) {
+  const idx = (gameState.myPlayers || []).findIndex(p => p.id === playerId && p.tradeable !== false);
+  if (idx === -1) {
+    closeMarketModal();
+    botReply('❌ Игрок не найден или непродаваемый.', 400);
+    return;
+  }
+
+  const player = gameState.myPlayers[idx];
+  const price = getPlayerMarketPrice(player);
+  const sellPrice = Math.floor(price * 0.85);
+
+  gameState.myPlayers.splice(idx, 1);
+  gameState.coins = (gameState.coins || 0) + sellPrice;
+  saveState();
+  updateHeaderResources();
+  closeMarketModal();
+  botReply(`💰 Продан: <b>${player.name}</b><br>${COIN_ICON} +${formatCoins(sellPrice)} монет (−15% комиссия)`, 500, { html: true });
+}
+
+function openMarketFilterModal() {
+  let fModal = document.getElementById('market-filter-modal');
+  if (!fModal) {
+    fModal = document.createElement('div');
+    fModal.id = 'market-filter-modal';
+    fModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:400;display:flex;align-items:flex-end;justify-content:center;';
+    fModal.addEventListener('click', e => { if (e.target === fModal) closeMarketFilterModal(); });
+    document.body.appendChild(fModal);
+  }
+  fModal.style.display = 'flex';
+  renderMarketFilterModal();
+}
+
+function closeMarketFilterModal() {
+  const m = document.getElementById('market-filter-modal');
+  if (m) m.style.display = 'none';
+}
+
+function renderMarketFilterModal() {
+  const fModal = document.getElementById('market-filter-modal');
+  if (!fModal) return;
+
+  if (marketState.tab === 'my') {
+    renderMyPlayersFilterModal();
+    return;
+  }
+  
+  const f = marketState.filters;
+
+  const allPositions = ['GK','LB','CB','RB','CDM','CM','CAM','LM','RM','LW','RW','ST','CF'];
+  const allNations   = [...new Set(allPlayers.map(p => p.nation))].sort();
+  const allLeagues   = [...new Set(allPlayers.map(p => p.league || '').filter(Boolean))].sort();
+  const allClubs     = [...new Set(allPlayers.map(p => p.club))].sort();
+
+  function chip(val, key) {
+    const active = f[key].includes(val);
+    return `<button class="filter-chip${active?' active':''}" onclick="toggleMarketFilter('${key}','${val}')">${val}</button>`;
+  }
+
+  fModal.innerHTML = `
+    <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">⚙️ Фильтры рынка</h3>
+        <button onclick="closeMarketFilterModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Поиск по имени</div>
+        <input class="filter-input" type="text" placeholder="Имя игрока или клуб..."
+          value="${f.name}" oninput="marketState.filters.name=this.value" />
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">OVR (диапазон)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." value="${f.ovrMin}" oninput="marketState.filters.ovrMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." value="${f.ovrMax}" oninput="marketState.filters.ovrMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Цена (монеты)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." value="${f.priceMin}" oninput="marketState.filters.priceMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." value="${f.priceMax}" oninput="marketState.filters.priceMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Позиция</div>
+        <div class="filter-chips">${allPositions.map(v=>chip(v,'positions')).join('')}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Нация</div>
+        <div class="filter-chips">${allNations.map(v=>chip(v,'nations')).join('')}</div>
+      </div>
+
+      ${allLeagues.length ? `<div class="filter-section">
+        <div class="filter-section-title">Лига</div>
+        <div class="filter-chips">${allLeagues.map(v=>chip(v,'leagues')).join('')}</div>
+      </div>` : ''}
+
+      <div class="filter-section">
+        <div class="filter-section-title">Клуб</div>
+        <div class="filter-chips">${allClubs.map(v=>chip(v,'clubs')).join('')}</div>
+      </div>
+
+      <button class="filter-apply-btn" onclick="applyMarketFilters()">✅ Применить</button>
+      <button class="filter-reset-btn" onclick="resetMarketFilters()">🗑️ Сбросить</button>
+    </div>`;
+}
+
+function renderMyPlayersFilterModal() {
+  const fModal = document.getElementById('market-filter-modal');
+  if (!fModal) return;
+  const f = marketState.myFilters;
+  const players = gameState.myPlayers || [];
+  const allPositions = ['GK','LB','CB','RB','CDM','CM','CAM','LM','RM','LW','RW','ST','CF'];
+  const allNations = [...new Set(players.map(p => p.nation))].sort();
+  const allClubs = [...new Set(players.map(p => p.club))].sort();
+  const ovrUpgradeValues = [0,1,2,3,4,5];
+
+  function chip(val, key) {
+    const arr = f[key] || [];
+    const active = arr.includes(val);
+    return `<button class="filter-chip${active?' active':''}" onclick="toggleMyMarketFilter('${key}','${val}')">${val}</button>`;
+  }
+
+  fModal.innerHTML = `
+    <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">🔍 Фильтры — Мои игроки</h3>
+        <button onclick="closeMarketFilterModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Поиск по имени</div>
+        <input class="filter-input" type="text" placeholder="Имя игрока..." value="${f.name}"
+          oninput="marketState.myFilters.name=this.value" />
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">OVR (диапазон)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." value="${f.ovrMin}" oninput="marketState.myFilters.ovrMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." value="${f.ovrMax}" oninput="marketState.myFilters.ovrMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Уровень тренировки (диапазон)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." min="0" max="50" value="${f.trainMin}" oninput="marketState.myFilters.trainMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." min="0" max="50" value="${f.trainMax}" oninput="marketState.myFilters.trainMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Повышение OVR</div>
+        <div class="filter-chips">${ovrUpgradeValues.map(v=>chip(v,'ovrUpgrades')).join('')}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Позиция</div>
+        <div class="filter-chips">${allPositions.map(v=>chip(v,'positions')).join('')}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Нация</div>
+        <div class="filter-chips">${allNations.map(v=>chip(v,'nations')).join('')}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Клуб</div>
+        <div class="filter-chips">${allClubs.map(v=>chip(v,'clubs')).join('')}</div>
+      </div>
+
+      <button class="filter-apply-btn" onclick="applyMyMarketFilters()">✅ Применить</button>
+      <button class="filter-reset-btn" onclick="resetMyMarketFilters()">🗑️ Сбросить</button>
+    </div>`;
+}
+
+function toggleMyMarketFilter(key, val) {
+  const fModal = document.getElementById('market-filter-modal');
+  const sc = fModal ? fModal.querySelector('div') : null;
+  const top = sc ? sc.scrollTop : 0;
+  
+  let typedVal = val;
+  if (key === 'ovrUpgrades') typedVal = parseInt(val);
+  
+  const arr = marketState.myFilters[key] || [];
+  const idx = arr.indexOf(typedVal);
+  if (idx === -1) arr.push(typedVal);
+  else arr.splice(idx, 1);
+  marketState.myFilters[key] = arr;
+  
+  renderMyPlayersFilterModal();
+  const sc2 = fModal ? fModal.querySelector('div') : null;
+  if (sc2) sc2.scrollTop = top;
+}
+
+function applyMyMarketFilters() {
+  closeMarketFilterModal();
+  renderMarketModal();
+}
+
+function resetMyMarketFilters() {
+  marketState.myFilters = { name:'', ovrMin:'', ovrMax:'', trainMin:'', trainMax:'', ovrUpgrades:[], positions:[], nations:[], clubs:[] };
+  renderMyPlayersFilterModal();
+}
+
+function toggleMarketFilter(key, val) {
+  const fModal = document.getElementById('market-filter-modal');
+  const sc = fModal ? fModal.querySelector('div') : null;
+  const top = sc ? sc.scrollTop : 0;
+  const arr = marketState.filters[key];
+  const idx = arr.indexOf(val);
+  if (idx === -1) arr.push(val);
+  else arr.splice(idx, 1);
+  renderMarketFilterModal();
+  const sc2 = fModal ? fModal.querySelector('div') : null;
+  if (sc2) sc2.scrollTop = top;
+}
+
+function applyMarketFilters() {
+  closeMarketFilterModal();
+  marketState.selectedId = null;
+  renderMarketModal();
+}
+
+function resetMarketFilters() {
+  marketState.filters = { name:'', ovrMin:'', ovrMax:'', priceMin:'', priceMax:'', positions:[], nations:[], clubs:[], leagues:[] };
+  renderMarketFilterModal();
+}
+
+handleNavMarket = function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-market');
+  openMarketModal();
+};
+
+// === END MODULE: MARKET ===
 function handleNavFragMarket() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-fragmarket'); botReply('🧩 <b>Ярмарка фрагментов</b> — в разработке.', 500, {html:true}); }
 
 // ============================================
@@ -1180,7 +1957,11 @@ handleNavShop = function() {
 };
 
 document.getElementById('nav-squad').addEventListener('click', function() { handleNavSquad(); });
-document.getElementById('nav-market').addEventListener('click', function() { handleNavMarket(); });
+document.getElementById('nav-market').addEventListener('click', function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-market');
+  openMarketModal();
+});
 document.getElementById('nav-fragmarket').addEventListener('click', function() { handleNavFragMarket(); });
 document.getElementById('nav-shop').addEventListener('click', function() { handleNavShop(); });
 document.getElementById('nav-events').addEventListener('click', function() { handleNavEvents(); });
@@ -1268,7 +2049,7 @@ const ALL_PLAYERS_TEMPLATE = [
     { id: 74, name: 'South Korea 22', club: 'South Korea', nation: 'South Korea', position: 'CM', altPositions: ['CAM'], ovr: 79, stats: { PAC:76, PAS:80, DRB:78, SHO:74, DEF:70, STR:72 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 180, weight: 72, league: 'International' },
     { id: 75, name: 'South Korea 23', club: 'South Korea', nation: 'South Korea', position: 'CAM', altPositions: ['RW'], ovr: 84, stats: { PAC:78, PAS:86, DRB:87, SHO:82, DEF:55, STR:68 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 4, height: 173, weight: 68, league: 'International' },
     { id: 76, name: 'South Korea 24', club: 'South Korea', nation: 'South Korea', position: 'ST', altPositions: [], ovr: 76, stats: { PAC:75, PAS:70, DRB:73, SHO:78, DEF:45, STR:74 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 78, league: 'International' },
-    { id: 77, name: 'South Korea 25', club: 'South Korea', nation: 'South Korea', position: 'LW', altPositions: ['ST', 'RW'], ovr: 89, stats: { PAC:88, PAS:86, DRB:89, SHO:90, DEF:55, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 5, height: 183, weight: 78, league: 'International' },
+    { id: 77, name: 'South Korea 25', club: 'South Korea', nation: 'South Korea', position: 'LW', altPositions: ['ST', 'RW'], ovr: 89, stats: { PAC:88, PAS:86, DRB:89, SHO:90, DEF:55, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 5, height: 183, weight: 78, league: 'International', coins_price: 1000000 },
     { id: 78, name: 'South Korea 26', club: 'South Korea', nation: 'South Korea', position: 'ST', altPositions: [], ovr: 78, stats: { PAC:74, PAS:70, DRB:72, SHO:80, DEF:40, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/cS9RFXpR/South-Korea.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 188, weight: 83, league: 'International' },
     // Чехия
     { id: 79, name: 'Czech Republic 1', club: 'Czech Republic', nation: 'Czech Republic', position: 'GK', altPositions: [], ovr: 75, stats: { REF:77, KIC:73, PAS:70, SPE:72, DIV:76, HAN:78 }, program: 'World Tournament', image: 'https://i.ibb.co/x8q65tM0/Czech-Republic.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 82, league: 'International' },
@@ -1380,6 +2161,11 @@ const ALL_PLAYERS_TEMPLATE = [
     { id: 182, name: 'Switzerland 26', club: 'Switzerland', nation: 'Switzerland', position: 'ST', altPositions: ['CAM'], ovr: 80, stats: { PAC:82, PAS:78, DRB:80, SHO:82, DEF:55, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 78, league: 'International' }
 
 ];
+
+// Простановка tradeable по умолчанию (если не задано явно)
+ALL_PLAYERS_TEMPLATE.forEach(p => {
+  if (p.tradeable === undefined) p.tradeable = true;
+});
 
 const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
 const FRAGMENT_EXCHANGE_RATES = [[0,93,10],[94,97,100],[98,98,200],[99,99,400],[100,100,900],[101,101,1800],[102,102,5000],[103,103,15000]];
