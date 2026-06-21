@@ -2370,13 +2370,13 @@ const FORMATIONS = {
   '4-1-4-1':             { name:'4-1-4-1',             positions:['GK','LB','CB','CB','RB','CDM','LM','CM','CM','RM','ST'],            rows:[[0],[1,2,3,4],[5],[6,7,8,9],[10]] },
   '5-2-2-1':             { name:'5-2-2-1',             positions:['GK','LB','CB','CB','CB','RB','CM','CM','LW','ST','RW'],             rows:[[0],[1,2,3,4,5],[6,7],[8,9,10]] },
   '4-1-2-1-2 (Узкая)':   { name:'4-1-2-1-2 (Узкая)',   positions:['GK','LB','CB','CB','RB','CDM','CM','CM','CAM','ST','ST'],           rows:[[0],[1,2,3,4],[5],[6,7],[8],[9,10]] },
-  '4-5-1 (Атака)':       { name:'4-5-1 (Атака)',       positions:['GK','LB','CB','CB','RB','LM','CM','RM','CAM','CAM','ST'],           rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '4-5-1 (Атака)':       { name:'4-5-1 (Атака)',       positions:['GK','LB','CB','CB','RB','LM','CM','RM','CAM','CAM','ST'],           rows:[[0],[1,2,3,4],[5,8,6,9,7],[10]] },
   '4-2-2-2':             { name:'4-2-2-2',             positions:['GK','LB','CB','CB','RB','CDM','CDM','CAM','CAM','ST','ST'],         rows:[[0],[1,2,3,4],[5,6],[7,8],[9,10]] },
   '4-3-3':               { name:'4-3-3',               positions:['GK','LB','CB','CB','RB','CM','CM','CM','LW','ST','RW'],             rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
   '5-4-1 (Удержание)':   { name:'5-4-1 (Удержание)',   positions:['GK','LB','CB','CB','CB','RB','LM','CDM','CAM','RM','ST'],           rows:[[0],[1,2,3,4,5],[6,7,8,9],[10]] },
   '5-2-1-2':             { name:'5-2-1-2',             positions:['GK','LB','CB','CB','CB','RB','CM','CAM','CM','ST','ST'],            rows:[[0],[1,2,3,4,5],[6,8],[7],[9,10]] },
   '4-5-1 (Линия)':       { name:'4-5-1 (Линия)',       positions:['GK','LB','CB','CB','RB','LM','CM','CM','CM','RM','ST'],             rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
-  '3-5-1-1':             { name:'3-5-1-1',             positions:['GK','CB','CB','CB','LM','CDM','CM','CDM','RM','ST','CF'],           rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]] },
+  '3-5-1-1':             { name:'3-5-1-1',             positions:['GK','CB','CB','CB','LM','CDM','CM','CDM','RM','ST','CF'],           rows:[[0],[1,2,3],[4,5,6,7,8],[10],[9]] },
   '4-1-2-1-2 (Широкая)': { name:'4-1-2-1-2 (Широкая)', positions:['GK','LB','CB','CB','RB','CDM','LM','CAM','RM','ST','ST'],           rows:[[0],[1,2,3,4],[5],[6,7,8],[9,10]] },  // wait actually rows need rethink
   '4-3-3 (Удержание)':   { name:'4-3-3 (Удержание)',   positions:['GK','LB','CB','CB','RB','CM','CDM','CM','LW','ST','RW'],            rows:[[0],[1,2,3,4],[5,6,7],[8,9,10]] },
   '3-5-2':               { name:'3-5-2',               positions:['GK','CB','CB','CB','LM','CDM','CDM','RM','CAM','ST','ST'],          rows:[[0],[1,2,3],[4,5,6,7],[8],[9,10]] },
@@ -2385,7 +2385,7 @@ const FORMATIONS = {
   '4-2-3-1 (Широкая)':   { name:'4-2-3-1 (Широкая)',   positions:['GK','LB','CB','CB','RB','LM','CDM','CAM','CDM','RM','ST'],          rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
   '4-4-2 (Удержание)':   { name:'4-4-2 (Удержание)',   positions:['GK','LB','CB','CB','RB','LM','CDM','CDM','RM','ST','ST'],           rows:[[0],[1,2,3,4],[5,6,7,8],[9,10]] },
   '4-3-1-2':             { name:'4-3-1-2',             positions:['GK','LB','CB','CB','RB','CM','CM','CM','CAM','ST','ST'],            rows:[[0],[1,2,3,4],[5,6,7],[8],[9,10]] },
-  '4-4-1-1 (Линия)':     { name:'4-4-1-1 (Линия)',     positions:['GK','LB','CB','CB','RB','LM','CM','CF','CM','RM','ST'],             rows:[[0],[1,2,3,4],[5,6,7,8,9],[10]] },
+  '4-4-1-1 (Линия)':     { name:'4-4-1-1 (Линия)',     positions:['GK','LB','CB','CB','RB','LM','CM','CF','CM','RM','ST'],             rows:[[0],[1,2,3,4],[5,6,8,9],[7],[10]] },
   '3-4-1-2':             { name:'3-4-1-2',             positions:['GK','CB','CB','CB','LM','CM','CAM','CM','RM','ST','ST'],            rows:[[0],[1,2,3],[4,5,6,7,8],[9,10]] },
 };
 const DEFAULT_FORMATION = '4-3-3';
@@ -4168,6 +4168,7 @@ handleNavInventory = function() {
 // ============================================
 
     let selectedReservePlayerId = null;
+    let reserveFilter = '';
 
     handleNavSquad = function() {
       if (!gameState.registered) { promptRegister(); return; }
@@ -4470,7 +4471,35 @@ function applyFormation() {
 
       // Средний OVR команды (с защитой от NaN)
       const teamOvr = getSquadAverageOvr();
-      html += `<div style="text-align:center;padding:4px;font-size:13px;color:#7d8e9e;margin-bottom:6px;">Средний OVR состава: <b style="color:#f0c040;">${isNaN(teamOvr) ? '—' : teamOvr}</b></div>`;
+      // ── Считаем стоимость всего состава (основа + скамейка) ──────────────
+let squadTotalValue = 0;
+if (gameState.squadSlots) {
+  for (const k in gameState.squadSlots) {
+    const pid = gameState.squadSlots[k];
+    if (pid != null) {
+      const p = findPlayerById(pid);
+      if (p) squadTotalValue += getPlayerMarketPrice(p);
+    }
+  }
+}
+if (gameState.benchSlots) {
+  for (const k in gameState.benchSlots) {
+    const pid = gameState.benchSlots[k];
+    if (pid != null) {
+      const p = findPlayerById(pid);
+      if (p) squadTotalValue += getPlayerMarketPrice(p);
+    }
+  }
+}
+
+html += `<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:4px;margin-bottom:6px;">
+  <span style="font-size:13px;color:#7d8e9e;">Средний OVR: <b style="color:#f0c040;">${isNaN(teamOvr) ? '—' : teamOvr}</b></span>
+  <span style="font-size:11px;color:#7d8e9e;">|</span>
+  <span style="font-size:12px;color:#7d8e9e;display:flex;align-items:center;gap:3px;">
+    <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:13px;height:13px;vertical-align:middle;" />
+    <b style="color:#f0c040;">${formatCoins(squadTotalValue)}</b>
+  </span>
+</div>`;
 
       // Скамейка
       html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:4px;">📋 Скамейка запасных (7 мест)</div>`;
@@ -4517,10 +4546,29 @@ function applyFormation() {
       const usedIds = new Set();
       if (gameState.squadSlots) for (const k in gameState.squadSlots) if (gameState.squadSlots[k]) usedIds.add(gameState.squadSlots[k]);
       if (gameState.benchSlots) for (const k in gameState.benchSlots) if (gameState.benchSlots[k]) usedIds.add(gameState.benchSlots[k]);
-      const availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id)).sort((a,b) => safeEffectiveOvr(b) - safeEffectiveOvr(a));
+      let availablePlayers = (gameState.myPlayers || []).filter(p => !usedIds.has(p.id));
+      if (reserveFilter.trim()) {
+        const q = reserveFilter.trim().toLowerCase();
+        availablePlayers = availablePlayers.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.position.toLowerCase().includes(q) ||
+          p.club.toLowerCase().includes(q)
+        );
+      }
+      availablePlayers.sort((a,b) => safeEffectiveOvr(b) - safeEffectiveOvr(a));
 
-      html += `<div style="font-size:12px;color:#7d8e9e;margin-top:8px;margin-bottom:4px;">📦 Доступные игроки (нажми для выбора, затем нажми на слот)</div>`;
-      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
+      html += `<div style="margin-top:8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+  <span style="font-size:12px;color:#7d8e9e;flex-shrink:0;">📦 Резерв</span>
+  <input
+    type="text"
+    placeholder="🔍 Поиск по имени..."
+    value="${escapeHtml(reserveFilter)}"
+    oninput="reserveFilter=this.value;renderSquadModal()"
+    style="flex:1;background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;padding:5px 10px;color:#fff;font-size:12px;font-family:inherit;outline:none;min-width:0;"
+  />
+  ${reserveFilter ? `<button onclick="reserveFilter='';renderSquadModal()" style="background:rgba(255,255,255,0.1);border:none;color:#7d8e9e;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>` : ''}
+</div>`;
+html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
       if (availablePlayers.length === 0) {
         html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
       }
