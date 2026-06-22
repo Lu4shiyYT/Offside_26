@@ -189,11 +189,12 @@
     button, .inline-btn, .nav-btn, .filter-chip,
     .filter-apply-btn, .filter-reset-btn,
     .shop-nav-btn, .market-qty-btn {
-      min-height: 44px;
       touch-action: manipulation;
     }
     .nav-btn { min-height: 50px; }
-    .inline-btn { min-height: 36px; padding: 8px 14px; }
+    /* НЕ задаём min-height для обычных кнопок — пусть размер задаётся контентом */
+    .filter-apply-btn { min-height: 48px; }
+    .filter-reset-btn { min-height: 44px; }
     .filter-chip { min-height: 36px; padding: 6px 12px; }
     .filter-apply-btn { min-height: 48px; }
     .filter-reset-btn { min-height: 44px; }
@@ -7654,59 +7655,28 @@ if (document.readyState !== 'loading') init();
 // ============================================
 // === MODULE: touch scroll (swipe) ===
 // ============================================
+// ── Плавный скролл чата при свайпе ──────────────────────────────────────
 (function() {
+  // Только для чата — не трогаем модалы
   let touchStartY = 0;
-  let touchStartX = 0;
   let touchStartScrollTop = 0;
-  let activeScrollEl = null;
+  let isChatScroll = false;
 
-  // Находим ближайший прокручиваемый родитель
-  function getScrollableParent(el) {
-    while (el && el !== document.body) {
-      const style = getComputedStyle(el);
-      const overflow = style.overflow + style.overflowY;
-      if (/auto|scroll/.test(overflow) && el.scrollHeight > el.clientHeight + 2) {
-        return el;
-      }
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  document.addEventListener('touchstart', function(e) {
-    const touch = e.touches[0];
-    touchStartY = touch.clientY;
-    touchStartX = touch.clientX;
-    activeScrollEl = getScrollableParent(e.target) || chatEl;
-    touchStartScrollTop = activeScrollEl ? activeScrollEl.scrollTop : 0;
+  chatEl.addEventListener('touchstart', function(e) {
+    touchStartY = e.touches[0].clientY;
+    touchStartScrollTop = chatEl.scrollTop;
+    isChatScroll = true;
   }, { passive: true });
 
-  document.addEventListener('touchmove', function(e) {
-    if (!activeScrollEl) return;
-    const touch = e.touches[0];
-    const deltaY = touchStartY - touch.clientY;
-    const deltaX = touchStartX - touch.clientX;
-
-    // Если горизонтальный свайп больше — не перехватываем (горизонтальный скролл)
-    if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) return;
-
-    // Проверяем, можно ли скроллить
-    const el = activeScrollEl;
-    const canScrollDown = el.scrollTop < el.scrollHeight - el.clientHeight - 1;
-    const canScrollUp   = el.scrollTop > 0;
-
-    if ((deltaY > 0 && !canScrollDown) || (deltaY < 0 && !canScrollUp)) {
-      // Достигли края — не мешаем браузеру
-      return;
-    }
-
-    el.scrollTop = touchStartScrollTop + deltaY;
+  chatEl.addEventListener('touchmove', function(e) {
+    if (!isChatScroll) return;
+    const deltaY = touchStartY - e.touches[0].clientY;
+    chatEl.scrollTop = touchStartScrollTop + deltaY;
   }, { passive: true });
 
-  document.addEventListener('touchend', function() {
-    // Обновляем кнопку прокрутки вниз если скроллили чат
-    if (activeScrollEl === chatEl) updateScrollDownBtn();
-    activeScrollEl = null;
+  chatEl.addEventListener('touchend', function() {
+    isChatScroll = false;
+    updateScrollDownBtn();
   }, { passive: true });
 })();
 // === END MODULE: touch scroll ===
