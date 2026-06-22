@@ -2,11 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#17212b" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Offside 26 — Футбольный Симмулятор</title>
   <style>
     /* === RESET & BASE === */
@@ -183,117 +179,6 @@
       .resource-item { font-size: 11px; }
     }
 
-    /* ── Мобильная оптимизация ── */
-
-    /* Минимальный размер кнопок для пальца (44×44px) */
-    button, .inline-btn, .nav-btn, .filter-chip,
-    .filter-apply-btn, .filter-reset-btn,
-    .shop-nav-btn, .market-qty-btn {
-      min-height: 44px;
-      touch-action: manipulation;
-    }
-    .nav-btn { min-height: 50px; }
-    .inline-btn { min-height: 36px; padding: 8px 14px; }
-    .filter-chip { min-height: 36px; padding: 6px 12px; }
-    .filter-apply-btn { min-height: 48px; }
-    .filter-reset-btn { min-height: 44px; }
-
-    /* Убираем задержку 300ms на тач */
-    * { touch-action: manipulation; }
-    input, textarea, select { touch-action: auto; }
-
-    /* Предотвращаем зум при фокусе на input */
-    input, textarea, select {
-      font-size: 16px !important;
-    }
-
-    /* Улучшаем скролл в модалах */
-    [id$="-modal-box"],
-    [id$="-modal"] > div,
-    #inv-modal-box,
-    #squad-modal-box,
-    #div-modal-box,
-    #quests-modal-box,
-    #mh-modal-box,
-    #stats-modal-box,
-    #profile-modal-box {
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-    }
-
-    /* Чат */
-    #chat {
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-    }
-
-    /* Горизонтальный скролл резерва */
-    .players-scroll, .bench-row {
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    .players-scroll::-webkit-scrollbar,
-    .bench-row::-webkit-scrollbar { display: none; }
-
-    /* Убираем подсветку при тапе на всех интерактивных элементах */
-    button, a, [onclick] {
-      -webkit-tap-highlight-color: transparent;
-      outline: none;
-    }
-
-    /* Поле ввода — комфортная зона */
-    #msg-input {
-      font-size: 16px !important;
-      min-height: 44px;
-    }
-    #btn-send { min-width: 44px; min-height: 44px; }
-
-    /* Слоты на поле — чуть крупнее для пальца */
-    @media (max-width: 480px) {
-      .slot, .bench-slot { min-height: 56px !important; }
-    }
-
-    /* Кнопка квестов в шапке */
-    #header button {
-      min-height: 44px;
-      min-width: 44px;
-    }
-
-    /* Шапка на малых экранах */
-    @media (max-width: 360px) {
-      #header { padding: 6px 8px; gap: 6px; }
-      .resource-item img { width: 13px !important; height: 13px !important; }
-      .val { font-size: 10px !important; }
-    }
-
-    /* Тактические кнопки в матче */
-    #match-controls .tactic-btn {
-      min-height: 36px;
-      padding: 6px 12px;
-      font-size: 11px;
-    }
-    #match-controls .sub-btn {
-      min-height: 36px;
-    }
-
-    /* Модальные панели — отступ снизу для безопасной зоны (notch) */
-    [id$="-modal-box"],
-    #div-modal-box,
-    #quests-modal-box,
-    #mh-modal-box {
-      padding-bottom: calc(16px + env(safe-area-inset-bottom));
-    }
-
-    /* Нижняя навигация — тоже учитываем safe area */
-    #bottom-nav {
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-
-    /* Input area */
-    #input-area {
-      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    }
     .hidden { display: none !important; }
         /* Фиксированная панель управления матчем */
     #match-controls {
@@ -441,13 +326,13 @@
     <button id="btn-send" title="Отправить">➤</button>
   </div>
 
-  <nav id="bottom-nav" style="padding-bottom:env(safe-area-inset-bottom,0px);">
-    <button class="nav-btn" id="nav-squad" style="min-height:50px;"><span class="nav-emoji">👥</span><span class="nav-label">Состав</span></button>
-    <button class="nav-btn" id="nav-market" style="min-height:50px;"><span class="nav-emoji">💹</span><span class="nav-label">Рынок</span></button>
-    <button class="nav-btn" id="nav-fragmarket" style="min-height:50px;"><span class="nav-emoji">🧩</span><span class="nav-label">Ярмарка</span></button>
-    <button class="nav-btn" id="nav-shop" style="min-height:50px;"><span class="nav-emoji">🏪</span><span class="nav-label">Магазин</span></button>
-    <button class="nav-btn" id="nav-events" style="min-height:50px;"><span class="nav-emoji">📋</span><span class="nav-label">События</span></button>
-    <button class="nav-btn" id="nav-division" style="min-height:50px;"><span class="nav-emoji">⚽</span><span class="nav-label">Дивизион</span></button>
+  <nav id="bottom-nav">
+    <button class="nav-btn" id="nav-squad"><span class="nav-emoji">👥</span><span class="nav-label">Состав</span></button>
+    <button class="nav-btn" id="nav-market"><span class="nav-emoji">💹</span><span class="nav-label">Рынок</span></button>
+    <button class="nav-btn" id="nav-fragmarket"><span class="nav-emoji">🧩</span><span class="nav-label">Ярмарка</span></button>
+    <button class="nav-btn" id="nav-shop"><span class="nav-emoji">🏪</span><span class="nav-label">Магазин</span></button>
+    <button class="nav-btn" id="nav-events"><span class="nav-emoji">📋</span><span class="nav-label">События</span></button>
+    <button class="nav-btn" id="nav-division"><span class="nav-emoji">⚽</span><span class="nav-label">Дивизион</span></button>
   </nav>
 </div>
 
@@ -7632,19 +7517,6 @@ function init() {
 });
     saveState();
   }
-    // ── Мобильные фиксы ──────────────────────────────────────────────────────
-  // Предотвращаем зум на iOS при фокусе на input
-  document.querySelectorAll('input, textarea, select').forEach(el => {
-    el.style.fontSize = '16px';
-  });
-
-  // Блокируем двойной тап для зума
-  let lastTap = 0;
-  document.addEventListener('touchend', function(e) {
-    const now = Date.now();
-    if (now - lastTap < 300) e.preventDefault();
-    lastTap = now;
-  }, { passive: false });
   if (gameState.registered) { hideStartOverlay(); botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true}); }
   else if (gameState.awaitingNickname) { hideStartOverlay(); botReply('Введи никнейм для продолжения регистрации:', 400); }
   else { startOverlay.classList.remove('hidden'); }
@@ -7687,20 +7559,10 @@ if (document.readyState !== 'loading') init();
     const deltaY = touchStartY - touch.clientY;
     const deltaX = touchStartX - touch.clientX;
 
-    // Если горизонтальный свайп больше — не перехватываем (горизонтальный скролл)
+    // Если горизонтальный свайп больше — не перехватываем
     if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) return;
 
-    // Проверяем, можно ли скроллить
-    const el = activeScrollEl;
-    const canScrollDown = el.scrollTop < el.scrollHeight - el.clientHeight - 1;
-    const canScrollUp   = el.scrollTop > 0;
-
-    if ((deltaY > 0 && !canScrollDown) || (deltaY < 0 && !canScrollUp)) {
-      // Достигли края — не мешаем браузеру
-      return;
-    }
-
-    el.scrollTop = touchStartScrollTop + deltaY;
+    activeScrollEl.scrollTop = touchStartScrollTop + deltaY;
   }, { passive: true });
 
   document.addEventListener('touchend', function() {
