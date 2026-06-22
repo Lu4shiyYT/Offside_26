@@ -95,6 +95,8 @@
       display: flex; align-items: center; gap: 10px;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
       min-height: 56px; z-index: 10;
+      /* Компенсация высоты браузерной шапки на мобильных */
+      padding-top: max(8px, env(safe-area-inset-top, 8px));
     }
     .header-avatar {
       width: 40px; height: 40px; border-radius: 50%;
@@ -227,6 +229,26 @@
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
+
+    /* Запрет отпружинивания страницы (iOS bounce effect) */
+html {
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#app {
+  overscroll-behavior: none;
+}
 
     /* Горизонтальный скролл резерва */
     .players-scroll, .bench-row {
@@ -375,6 +397,16 @@
     #market-modal {
       padding-top: env(safe-area-inset-top, 0px);
     }
+
+    <link rel="manifest" href="data:application/manifest+json,{
+      %22name%22:%22Offside%2026%22,
+      %22short_name%22:%22Offside26%22,
+      %22display%22:%22standalone%22,
+      %22background_color%22:%22%230e1621%22,
+      %22theme_color%22:%2217212b%22,
+      %22start_url%22:%22.%22,
+      %22icons%22:[{%22src%22:%22https://i.ibb.co/0pN8LQch/Offside-26-logo.png%22,%22sizes%22:%22192x192%22,%22type%22:%22image/png%22}]
+    }" />
 
     /* Стили для фильтр-модала инвентаря */
     .filter-section { margin-bottom: 14px; }
@@ -7702,6 +7734,34 @@ if (document.readyState !== 'loading') init();
   }, { passive: true });
 })();
 // === END MODULE: touch scroll ===
+</script>
+<!-- Баннер: добавить на домашний экран -->
+<div id="add-to-home-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#17212b;border-top:1px solid #2a4060;padding:12px 16px;max-width:600px;margin:0 auto;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <img src="https://i.ibb.co/0pN8LQch/Offside-26-logo.png" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;" />
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:700;color:#fff;">Установи как приложение</div>
+      <div style="font-size:11px;color:#7d8e9e;">Нажми <b style="color:#5288c1;">Поделиться → На экран Домой</b> для полноэкранного режима</div>
+    </div>
+    <button onclick="document.getElementById('add-to-home-banner').style.display='none';localStorage.setItem('ath_dismissed','1');" style="background:none;border:none;color:#7d8e9e;font-size:20px;cursor:pointer;flex-shrink:0;">✕</button>
+  </div>
+</div>
+
+<script>
+// Показываем баннер только в Safari на iOS, если не добавлено на домашний экран
+(function() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('ath_dismissed');
+  
+  if (isIOS && isSafari && !isStandalone && !dismissed) {
+    setTimeout(() => {
+      const banner = document.getElementById('add-to-home-banner');
+      if (banner) banner.style.display = 'flex';
+    }, 3000);
+  }
+})();
 </script>
 </body>
 </html>
