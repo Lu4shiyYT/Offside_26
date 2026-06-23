@@ -903,37 +903,35 @@ async function loadCustomDataPack() {
   if (!url) { await botReply('❌ Введите ссылку.', 300); return; }
 
   try {
-    const response = await fetch(url, { method: 'HEAD' });
-    const etag = response.headers.get('ETag') || '';
-    const lastModified = response.headers.get('Last-Modified') || '';
-
-    if (etag && etag === gameState.customDataETag && lastModified && lastModified === gameState.customDataLastModified) {
-      await botReply('✅ Дата-пак уже актуален.', 400);
-      return;
-    }
-
     const dataResponse = await fetch(url);
     if (!dataResponse.ok) throw new Error('Ошибка загрузки');
-    const players = await dataResponse.json();
+    const data = await dataResponse.json();
 
-    if (!Array.isArray(players) || players.length === 0) {
-      throw new Error('Файл должен содержать массив игроков');
+    // Поддерживаем оба формата: массив [...] и объект { version, players: [...] }
+    const players = Array.isArray(data) ? data : (data.players || []);
+
+    if (!players.length) {
+      throw new Error('Файл не содержит игроков');
     }
 
     // Применяем к каталогу
-    allPlayers = applyCustomPlayerData(players);
+    allPlayers = applyCustomPlayerData(data);
     localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
 
-    // ✅ НОВОЕ: обновляем уже имеющихся игроков у пользователя
-    applyCustomDataToMyPlayers(players);
+    // Обновляем уже имеющихся игроков у пользователя
+    applyCustomDataToMyPlayers(data);
+
+    // Сохраняем версию дата-пака
+    if (data && data.version != null) {
+      gameState.customDataVersion = data.version;
+    }
 
     gameState.customDataUrl = url;
-    gameState.customDataETag = etag;
-    gameState.customDataLastModified = lastModified;
     saveState();
 
     await botReply(
-      '✅ Дата-пак загружен! Изменены имена, клубы, изображения и лиги — в каталоге и у ваших игроков.',
+      `✅ Дата-пак загружен! Версия: ${data.version ?? 'нет'}. Изменены имена, клубы, изображения и лиги — в каталоге и у ваших игроков.`,
       500
     );
   } catch (err) {
@@ -2655,7 +2653,7 @@ document.getElementById('nav-events').addEventListener('click', function() { han
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
-const ALL_PLAYERS_TEMPLATE_VERSION = 1;
+const ALL_PLAYERS_TEMPLATE_VERSION = 2;
 const ALL_PLAYERS_TEMPLATE = [
     // Событие World Tournament 
     // Мексика
