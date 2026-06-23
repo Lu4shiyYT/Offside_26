@@ -903,39 +903,64 @@ async function loadCustomDataPack() {
   if (!url) { await botReply('❌ Введите ссылку.', 300); return; }
 
   try {
-    const dataResponse = await fetch(url);
-    if (!dataResponse.ok) throw new Error('Ошибка загрузки');
-    const data = await dataResponse.json();
-
-    // Поддерживаем оба формата: массив [...] и объект { version, players: [...] }
-    const players = Array.isArray(data) ? data : (data.players || []);
-
-    if (!players.length) {
-      throw new Error('Файл не содержит игроков');
+    let response;
+    try {
+      response = await fetch(url + '?_t=' + Date.now(), {
+        cache: 'no-store',
+        mode: 'cors'
+      });
+    } catch(e) {
+      response = await fetch(
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+        { cache: 'no-store' }
+      );
     }
 
-    // Применяем к каталогу
+    if (!response || !response.ok) {
+      throw new Error('Не удалось загрузить файл. Код: ' + (response ? response.status : 'нет ответа'));
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch(e) {
+      throw new Error('Файл не является валидным JSON');
+    }
+
+    const players = Array.isArray(data) ? data : (data.players || []);
+    if (!players.length) throw new Error('Файл не содержит игроков');
+
+    // Сохраняем версию как строку
+    const version = (data.version != null) ? String(data.version) : null;
+    gameState.customDataVersion = version;
+
+    // Применяем поверх чистого шаблона
     allPlayers = applyCustomPlayerData(data);
+
+    // Кэшируем
+    try {
+      localStorage.setItem('footballManager_customDataPack', JSON.stringify(data));
+    } catch(e) {}
+
     localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
     localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
 
-    // Обновляем уже имеющихся игроков у пользователя
+    // Обновляем коллекцию игрока
     applyCustomDataToMyPlayers(data);
-
-    // Сохраняем версию дата-пака
-    if (data && data.version != null) {
-      gameState.customDataVersion = data.version;
-    }
 
     gameState.customDataUrl = url;
     saveState();
+    updateHeaderResources();
 
     await botReply(
-      `✅ Дата-пак загружен! Версия: ${data.version ?? 'нет'}. Изменены имена, клубы, изображения и лиги — в каталоге и у ваших игроков.`,
-      500
+      `✅ Дата-пак загружен!<br>Версия: <b>${version ?? 'нет'}</b><br>Игроков в паке: <b>${players.length}</b>`,
+      500, { html: true }
     );
+
+    console.log('✅ Дата-пак загружен вручную, версия:', version, ', игроков:', players.length);
+
   } catch (err) {
-    console.error(err);
+    console.error('Ошибка загрузки дата-пака:', err);
     await botReply(`❌ Ошибка: ${err.message}`, 400);
   }
 }
@@ -948,29 +973,61 @@ async function checkCustomDataUpdate() {
   _dataPackCheckInProgress = true;
 
   try {
-    const dataResponse = await fetch(
-      gameState.customDataUrl + '?_t=' + Date.now(),
-      { cache: 'no-store' }
-    );
-    if (!dataResponse.ok) return;
+    let response;
+    try {
+      response = await fetch(
+        gameState.customDataUrl + '?_t=' + Date.now(),
+        { cache: 'no-store', mode: 'cors' }
+      );
+    } catch(e) {
+      response = await fetch(
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(gameState.customDataUrl),
+        { cache: 'no-store' }
+      );
+    }
 
-    const data = await dataResponse.json();
+    if (!response || !response.ok) return;
 
-    const newVersion = (data && data.version != null) ? data.version : null;
-    if (newVersion !== null && newVersion === gameState.customDataVersion) return;
-    if (newVersion !== null) gameState.customDataVersion = newVersion;
+    let data;
+    try { data = await response.json(); } catch(e) { return; }
 
-    // Применяем дата-пак поверх АКТУАЛЬНОГО шаблона (не старого кэша)
+    // Читаем версию — поддерживаем number и string
+    const newVersion = (data && data.version != null) ? String(data.version) : null;
+    const savedVersion = gameState.customDataVersion != null ? String(gameState.customDataVersion) : null;
+
+    console.log('Дата-пак: новая версия =', newVersion, ', сохранённая =', savedVersion);
+
+    // Если версии совпадают — не обновляем
+    if (newVersion !== null && savedVersion !== null && newVersion === savedVersion) {
+      console.log('Дата-пак актуален, обновление не нужно');
+      return;
+    }
+
+    // Сохраняем новую версию
+    if (newVersion !== null) {
+      gameState.customDataVersion = newVersion;
+    }
+
+    // Применяем поверх чистого шаблона
     allPlayers = applyCustomPlayerData(data);
+
+    // Кэшируем дата-пак
+    try {
+      localStorage.setItem('footballManager_customDataPack', JSON.stringify(data));
+    } catch(e) {}
+
     localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
     localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
+
+    // Обновляем уже имеющихся игроков в коллекции
     applyCustomDataToMyPlayers(data);
+
     saveState();
 
-    console.log('🔄 Дата-пак обновлён, версия:', newVersion);
+    console.log('🔄 Дата-пак применён, версия:', newVersion);
 
   } catch (err) {
-    console.warn('Ошибка проверки обновлений дата-пака:', err);
+    console.warn('Ошибка проверки дата-пака:', err);
   } finally {
     _dataPackCheckInProgress = false;
   }
@@ -2653,7 +2710,7 @@ document.getElementById('nav-events').addEventListener('click', function() { han
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
-const ALL_PLAYERS_TEMPLATE_VERSION = 2;
+const ALL_PLAYERS_TEMPLATE_VERSION = 4;
 const ALL_PLAYERS_TEMPLATE = [
     // Событие World Tournament 
     // Мексика
@@ -10664,22 +10721,15 @@ function init() {
   if (gameState.registered) {
     updateHeaderNickname();
   }
-  const savedPlayers = localStorage.getItem('footballManager_allPlayers');
-  const savedTemplateVersion = parseInt(localStorage.getItem('footballManager_template_version') || '0');
+// Всегда начинаем с чистого шаблона
+allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+
+// Если есть сохранённый дата-пак — сразу пробуем загрузить и применить
+if (gameState.customDataUrl) {
+  // Применяем немедленно через fetch (асинхронно)
+  // checkCustomDataUpdate() уже вызван выше и сделает это
+  // Но чтобы игроки были видны сразу — применяем синхронно из кэша если есть
   
-  if (savedPlayers && savedTemplateVersion >= ALL_PLAYERS_TEMPLATE_VERSION && !gameState.customDataUrl) {
-    try {
-      allPlayers = JSON.parse(savedPlayers);
-    } catch (e) {
-      allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
-      localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
-      localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
-    }
-  } else {
-    allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
-    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
-    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
-  }
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
     gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>{
   const copy = JSON.parse(JSON.stringify(p));
