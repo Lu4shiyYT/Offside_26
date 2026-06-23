@@ -2676,21 +2676,21 @@ function getSquadAverageOvr() {
 
 // ========== BOTS & DIVISIONS ==========
 const BOTS = [
-  {name:'FC Краснодар Б',  ovr:45, minDiv:0, maxDiv:2,  kitColor:'#e05050', kitColorGK:'#50c050'},
-  {name:'Спартак-2',       ovr:50, minDiv:0, maxDiv:3,  kitColor:'#cc0000', kitColorGK:'#ffcc00'},
-  {name:'Динамо Резерв',   ovr:52, minDiv:1, maxDiv:4,  kitColor:'#0055aa', kitColorGK:'#00aa55'},
-  {name:'Локо Молодёжь',   ovr:55, minDiv:2, maxDiv:5,  kitColor:'#cc0000', kitColorGK:'#006600'},
-  {name:'Зенит-2',         ovr:58, minDiv:3, maxDiv:6,  kitColor:'#0077cc', kitColorGK:'#ffffff'},
-  {name:'ЦСКА Резерв',     ovr:60, minDiv:4, maxDiv:7,  kitColor:'#cc0000', kitColorGK:'#002266'},
-  {name:'Ростов-на-Дону',  ovr:63, minDiv:5, maxDiv:8,  kitColor:'#ffcc00', kitColorGK:'#003399'},
-  {name:'Рубин Казань',    ovr:66, minDiv:6, maxDiv:9,  kitColor:'#660066', kitColorGK:'#ff6600'},
-  {name:'Крылья Советов',  ovr:69, minDiv:7, maxDiv:10, kitColor:'#0044cc', kitColorGK:'#ff0000'},
-  {name:'Урал FC',         ovr:72, minDiv:8, maxDiv:11, kitColor:'#ff6600', kitColorGK:'#003366'},
-  {name:'Торпедо Москва',  ovr:75, minDiv:9, maxDiv:12, kitColor:'#000000', kitColorGK:'#00aa00'},
-  {name:'Спартак Москва',  ovr:78, minDiv:10,maxDiv:13, kitColor:'#cc0000', kitColorGK:'#ff8800'},
-  {name:'Зенит СПб',       ovr:81, minDiv:11,maxDiv:13, kitColor:'#0099cc', kitColorGK:'#ffdd00'},
-  {name:'Легион Элит',     ovr:85, minDiv:12,maxDiv:14, kitColor:'#660099', kitColorGK:'#ff99cc'},
-  {name:'FC Мечта',        ovr:90, minDiv:13,maxDiv:14, kitColor:'#cc9900', kitColorGK:'#006688'}
+  {name:'Black and Green Bulls',  ovr:45, minDiv:0, maxDiv:2,  kitColor:'#0b470f', kitColorGK:'#000500'},
+  {name:'Army Club',       ovr:50, minDiv:0, maxDiv:3,  kitColor:'#001f75', kitColorGK:'#75000e'},
+  {name:'Red and White Gladiators',   ovr:52, minDiv:1, maxDiv:4,  kitColor:'#54171e', kitColorGK:'#9c8688'},
+  {name:'Saint-Petersburg',   ovr:55, minDiv:2, maxDiv:5,  kitColor:'#44abdb', kitColorGK:'#4c575c'},
+  {name:'Villa Submarine',         ovr:58, minDiv:3, maxDiv:6,  kitColor:'#e0b002', kitColorGK:'#2a2e00'},
+  {name:'Blue and Black Milan',     ovr:60, minDiv:4, maxDiv:7,  kitColor:'#02173b', kitColorGK:'#000103'},
+  {name:'Red and Black Milan',  ovr:63, minDiv:5, maxDiv:8,  kitColor:'#bf0000', kitColorGK:'#05070a'},
+  {name:'Red London',    ovr:66, minDiv:6, maxDiv:9,  kitColor:'#c91e1e', kitColorGK:'#9c7906'},
+  {name:'Dortmund Bumblbee',  ovr:69, minDiv:7, maxDiv:10, kitColor:'#ffc400', kitColorGK:'#000000'},
+  {name:'Red Manchester',         ovr:72, minDiv:8, maxDiv:11, kitColor:'#5c0101', kitColorGK:'#3c6121'},
+  {name:'Blue Manchester',  ovr:75, minDiv:9, maxDiv:12, kitColor:'#7784f7', kitColorGK:'#6bfc03'},
+  {name:'Munich Reds',  ovr:78, minDiv:10,maxDiv:13, kitColor:'#8c0d0d', kitColorGK:'#558c03'},
+  {name:'Blue London',       ovr:81, minDiv:11,maxDiv:13, kitColor:'#030e6b', kitColorGK:'#656994'},
+  {name:'Blue and Red Catalonia',     ovr:85, minDiv:12,maxDiv:14, kitColor:'#001aff', kitColorGK:'#ff0015'},
+  {name:'Royal Club Madrid',        ovr:90, minDiv:13,maxDiv:14, kitColor:'#d4d2d2', kitColorGK:'#a6851b'}
 ];
 const DIVISIONS = [
   {index:0,name:'Bronze III',minStars:0,maxStars:3,color:'#cd7f32',rewards:{rubins:0,passCredits:0,ovrPoints:0,draftTokens:0}},
@@ -6757,15 +6757,38 @@ function randomizePlayerPositions() {
     }
   }
 
-  // ── Обновляем целевые позиции игроков ────────────────────────────────
+    // ── Обновляем целевые позиции игроков ────────────────────────────────
   matchState.homePositions.forEach((posObj) => {
     const zone = getZone(posObj.pos, homeHasBall, true, isSecond);
-    posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
-    posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
+
+    // ── Если мяч у нас и владелец находится близко к воротам соперника ──
+    // Атакующие должны двигаться К воротам, а не от них
+    const ownerIsHome = matchState.ballOwner && matchState.ballOwner.team === 'home';
+    const ballNearOpponentGoal = isSecond ? matchState.ballX < 25 : matchState.ballX > 75;
+    const isAttacker = ['ST','CF','LW','RW','CAM'].includes(posObj.pos);
+    const isDefender = ['CB','LB','RB','CDM'].includes(posObj.pos);
+
+    if (ownerIsHome && ballNearOpponentGoal && isAttacker) {
+      // Атакующие тянутся к воротам соперника
+      const goalX = isSecond ? 3 : 97;
+      posObj.targetX = Math.max(3, Math.min(97, goalX + (Math.random()-0.5)*20));
+      posObj.targetY = 20 + Math.random() * 60;
+    } else if (!ownerIsHome && isDefender) {
+      // Защитники тянутся к мячу для отбора
+      posObj.targetX = Math.max(3, Math.min(97,
+        matchState.ballX * 0.6 + zone.xMin * 0.4 + (Math.random()-0.5)*8
+      ));
+      posObj.targetY = Math.max(5, Math.min(95,
+        matchState.ballY * 0.5 + (zone.yMin + zone.yMax)/2 * 0.5 + (Math.random()-0.5)*10
+      ));
+    } else {
+      posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
+      posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
+    }
 
     // Небольшое притяжение к мячу
-    if (matchState.ballX > 0) {
-      const ballPull = homeHasBall ? 0.15 : 0.08;
+    if (matchState.ballX > 0 && !ballNearOpponentGoal) {
+      const ballPull = homeHasBall ? 0.12 : 0.07;
       posObj.targetX = posObj.targetX * (1 - ballPull) + matchState.ballX * ballPull;
       posObj.targetY = posObj.targetY * (1 - ballPull) + matchState.ballY * ballPull;
     }
@@ -6782,12 +6805,33 @@ function randomizePlayerPositions() {
 
   matchState.awayPositions.forEach((posObj) => {
     const zone = getZone(posObj.pos, awayHasBall, false, isSecond);
-    posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
-    posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
+
+    const ownerIsAway = matchState.ballOwner && matchState.ballOwner.team === 'away';
+    const ballNearHomeGoal = isSecond ? matchState.ballX > 75 : matchState.ballX < 25;
+    const isAttacker = ['ST','CF','LW','RW','CAM'].includes(posObj.pos);
+    const isDefender = ['CB','LB','RB','CDM'].includes(posObj.pos);
+
+    if (ownerIsAway && ballNearHomeGoal && isAttacker) {
+      // Атакующие гостей тянутся к нашим воротам
+      const goalX = isSecond ? 97 : 3;
+      posObj.targetX = Math.max(3, Math.min(97, goalX + (Math.random()-0.5)*20));
+      posObj.targetY = 20 + Math.random() * 60;
+    } else if (!ownerIsAway && isDefender) {
+      // Защитники гостей тянутся к мячу
+      posObj.targetX = Math.max(3, Math.min(97,
+        matchState.ballX * 0.6 + zone.xMin * 0.4 + (Math.random()-0.5)*8
+      ));
+      posObj.targetY = Math.max(5, Math.min(95,
+        matchState.ballY * 0.5 + (zone.yMin + zone.yMax)/2 * 0.5 + (Math.random()-0.5)*10
+      ));
+    } else {
+      posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
+      posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
+    }
 
     // Небольшое притяжение к мячу
-    if (matchState.ballX > 0) {
-      const ballPull = awayHasBall ? 0.15 : 0.08;
+    if (matchState.ballX > 0 && !ballNearHomeGoal) {
+      const ballPull = awayHasBall ? 0.12 : 0.07;
       posObj.targetX = posObj.targetX * (1 - ballPull) + matchState.ballX * ballPull;
       posObj.targetY = posObj.targetY * (1 - ballPull) + matchState.ballY * ballPull;
     }
@@ -6801,7 +6845,6 @@ function randomizePlayerPositions() {
     posObj.targetX = Math.max(3, Math.min(97, posObj.targetX));
     posObj.targetY = Math.max(3, Math.min(97, posObj.targetY));
   });
-}
 
 // ── Запуск специальной фазы (гол, угловой, штрафной, пенальти, от ворот) ──
 function _startSpecialPhase(phase, isHomeTeam, duration, callback) {
@@ -7636,14 +7679,18 @@ function doSubstitution(fieldIdx, benchIdx) {
   matchState.subCount++;
   saveState();
 
-  showMatchEventOverlay(`🔄 ${fieldPlayer.name} ↓\n${benchPlayer.name} ↑`, '#5288c1', 2500);
+  // Закрываем панель замен ДО показа оверлея
+  const modal = document.getElementById('subs-modal');
+  if (modal) modal.remove();
+  
+  // Небольшая задержка чтобы модал успел закрыться
+  setTimeout(() => {
+    showMatchEventOverlay(`🔄 ЗАМЕНА\n↓ ${fieldPlayer.name}\n↑ ${benchPlayer.name}`, '#5288c1', 3000);
+  }, 50);
   matchState.commentary.push(`${matchState.minute}' 🔄 ${fieldPlayer.name} → ${benchPlayer.name}`);
 
   window._subOutIdx = null;
   window._subBenchIdx = null;
-
-  const modal = document.getElementById('subs-modal');
-  if (modal) modal.remove();
 
   renderMatchModal();
   setTimeout(() => { initMatchCanvas(); animatePlayerMovement(); }, 50);
