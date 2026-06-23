@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -562,7 +563,10 @@ function loadState() {
     gameState = raw ? Object.assign({}, DEFAULT_STATE, JSON.parse(raw)) : Object.assign({}, DEFAULT_STATE);
   } catch (e) { gameState = Object.assign({}, DEFAULT_STATE); }
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState)); }
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+  checkInventoryLimit();
+}
 
 // === UTILS ===
 function getTimestamp() { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
@@ -954,16 +958,14 @@ async function checkCustomDataUpdate() {
 
     const data = await dataResponse.json();
 
-    // Если в файле есть поле version — сравниваем
     const newVersion = (data && data.version != null) ? data.version : null;
-    if (newVersion !== null) {
-      if (newVersion === gameState.customDataVersion) return; // не изменился
-      gameState.customDataVersion = newVersion;
-    }
+    if (newVersion !== null && newVersion === gameState.customDataVersion) return;
+    if (newVersion !== null) gameState.customDataVersion = newVersion;
 
-    // Применяем данные
+    // Применяем дата-пак поверх АКТУАЛЬНОГО шаблона (не старого кэша)
     allPlayers = applyCustomPlayerData(data);
     localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
     applyCustomDataToMyPlayers(data);
     saveState();
 
@@ -1150,6 +1152,32 @@ let marketState = {
   }
 };
 
+function showMarketToast(msg) {
+  let toast = document.getElementById('market-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'market-toast';
+    toast.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+      background:rgba(23,33,43,0.97);border:1px solid #2a4060;
+      border-radius:10px;padding:10px 18px;font-size:13px;color:#fff;
+      z-index:9999;text-align:center;max-width:90%;
+      box-shadow:0 4px 16px rgba(0,0,0,0.5);
+      transition:opacity 0.3s;
+      pointer-events:none;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = msg;
+  toast.style.opacity = '1';
+  toast.style.display = 'block';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.style.display = 'none'; }, 300);
+  }, 2500);
+}
+  
 function openMarketModal() {
   if (!allPlayers || allPlayers.length === 0) {
     botReply('⚠️ Данные игроков ещё не загружены. Попробуй ещё раз.', 400);
@@ -1193,8 +1221,37 @@ function renderMarketModal() {
   if (f.clubs.length) catalogPlayers = catalogPlayers.filter(p => f.clubs.includes(p.club));
   if (f.leagues.length) catalogPlayers = catalogPlayers.filter(p => f.leagues.includes(p.league || ''));
   catalogPlayers.sort((a, b) => b.ovr - a.ovr);
+  // ── Лимит 100 игроков для производительности ──────────────────────────
+  catalogPlayers = catalogPlayers.slice(0, 100);
 
-  let myTradeable = (gameState.myPlayers || []).filter(p => p.tradeable !== false);
+// Собираем занятые cardId (те что стоят в составе/скамейке)
+const _slotIds = [
+  ...Object.values(gameState.squadSlots || {}),
+  ...Object.values(gameState.benchSlots || {})
+];
+const _idCountInSquad = {};
+for (const pid of _slotIds) {
+  if (pid == null) continue;
+  _idCountInSquad[pid] = (_idCountInSquad[pid] || 0) + 1;
+}
+const _squadCardIds = new Set();
+for (const [pid, count] of Object.entries(_idCountInSquad)) {
+  const numId = parseInt(pid);
+  let marked = 0;
+  for (const player of (gameState.myPlayers || [])) {
+    if (player.id === numId && player.cardId) {
+      _squadCardIds.add(player.cardId);
+      marked++;
+      if (marked >= count) break;
+    }
+  }
+}
+
+// Показываем только те карточки, чей cardId НЕ занят в составе
+let myTradeable = (gameState.myPlayers || []).filter(p =>
+  !_squadCardIds.has(p.cardId)
+);
+
 const mf = marketState.myFilters;
 if (mf.name.trim()) { const q = mf.name.trim().toLowerCase(); myTradeable = myTradeable.filter(p => p.name.toLowerCase().includes(q)); }
 if (mf.ovrMin !== '') myTradeable = myTradeable.filter(p => getEffectiveOvr(p) >= Number(mf.ovrMin));
@@ -1206,15 +1263,37 @@ if (mf.positions && mf.positions.length) myTradeable = myTradeable.filter(p => m
 if (mf.nations && mf.nations.length) myTradeable = myTradeable.filter(p => mf.nations.includes(p.nation));
 if (mf.clubs && mf.clubs.length) myTradeable = myTradeable.filter(p => mf.clubs.includes(p.club));
 myTradeable.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
-  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id));
+  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id)).slice(0, 100);
 
   const currentList = marketState.tab === 'all' ? catalogPlayers
     : marketState.tab === 'my' ? myTradeable
     : watchlistPlayers;
 
-  const sel = marketState.selectedId !== null
-    ? allPlayers.find(p => p.id === marketState.selectedId) || null
-    : null;
+// На вкладке 'my' ищем игрока из коллекции (чтобы у него был cardId)
+let sel = null;
+if (marketState.selectedId !== null) {
+  if (marketState.tab === 'my') {
+    // Ищем первую карточку с таким id, которая НЕ в составе
+    const _slotIds2 = [
+      ...Object.values(gameState.squadSlots || {}),
+      ...Object.values(gameState.benchSlots || {})
+    ];
+    const _ic2 = {};
+    for (const pid of _slotIds2) { if (pid == null) continue; _ic2[pid] = (_ic2[pid]||0)+1; }
+    const _sc2 = new Set();
+    for (const [pid, cnt] of Object.entries(_ic2)) {
+      const nid = parseInt(pid); let mk = 0;
+      for (const pp of (gameState.myPlayers||[])) {
+        if (pp.id === nid && pp.cardId) { _sc2.add(pp.cardId); mk++; if (mk >= cnt) break; }
+      }
+    }
+    sel = (gameState.myPlayers||[]).find(p => p.id === marketState.selectedId && !_sc2.has(p.cardId))
+       || (gameState.myPlayers||[]).find(p => p.id === marketState.selectedId)
+       || null;
+  } else {
+    sel = allPlayers.find(p => p.id === marketState.selectedId) || null;
+  }
+}
 
   const filterCount = [
     f.ovrMin||f.ovrMax, f.priceMin||f.priceMax,
@@ -1294,6 +1373,37 @@ function buildMarketGrid(players) {
     const isSel = marketState.selectedId === p.id;
     const inFav = marketState.watchlist.includes(p.id);
     const effOvr = getEffectiveOvr(p);
+    const isNonTradeable = p.tradeable === false;
+    
+    // Значок футболки только для вкладки "мои игроки"
+    // и только если именно ЭТА карточка (по cardId) стоит в составе
+    let isInSquad = false;
+    if (marketState.tab === 'my') {
+      // Собираем cardId игроков в составе/скамейке
+      const squadCardIds = new Set();
+      const slotPlayerIds = [
+        ...Object.values(gameState.squadSlots || {}),
+        ...Object.values(gameState.benchSlots || {})
+      ];
+      const idCountInSquad = {};
+      for (const pid of slotPlayerIds) {
+        if (pid == null) continue;
+        idCountInSquad[pid] = (idCountInSquad[pid] || 0) + 1;
+      }
+      for (const [pid, count] of Object.entries(idCountInSquad)) {
+        const numId = parseInt(pid);
+        let marked = 0;
+        for (const player of (gameState.myPlayers || [])) {
+          if (player.id === numId && player.cardId) {
+            squadCardIds.add(player.cardId);
+            marked++;
+            if (marked >= count) break;
+          }
+        }
+      }
+      // Проверяем именно эту карточку по cardId
+      isInSquad = p.cardId ? squadCardIds.has(p.cardId) : false;
+    }
     const color = getPositionColor(p.position);
     const stats = p.stats || {};
     const keys = p.position === 'GK' ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
@@ -1321,13 +1431,18 @@ function buildMarketGrid(players) {
           <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
             <div style="font-size:10px;color:#7d8e9e;">${p.club} • ${p.nation}</div>
-            <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;align-items:center;">
               ${trainingBadge}${ovrUpBadge}
-              ${p.tradeable===false?'<span style="font-size:9px;background:#e05050;color:#fff;padding:1px 5px;border-radius:8px;">🔒</span>':''}
+              ${isNonTradeable ? '<span style="font-size:12px;" title="Непродаваемый">🚫</span>' : ''}
+              ${isInSquad ? '<span style="font-size:12px;" title="В составе">👕</span>' : ''}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-            <div style="font-size:20px;font-weight:900;color:#f0c040;">${effOvr}</div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              ${isInSquad ? '<span style="font-size:14px;line-height:1;">👕</span>' : ''}
+              ${isNonTradeable ? '<span style="font-size:14px;line-height:1;">🚫</span>' : ''}
+              <div style="font-size:20px;font-weight:900;color:#f0c040;">${effOvr}</div>
+            </div>
             <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#f0c040;font-weight:700;">
               <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:10px;height:10px;"/> ${formatCoins(price)}
             </div>
@@ -1352,14 +1467,49 @@ function buildMarketDetail(p) {
   const sellPrice = Math.floor(price * 0.85);
   const total = price * marketState.qty;
   const color = getPositionColor(p.position);
+  const isInSquad = [...Object.values(gameState.squadSlots || {}), ...Object.values(gameState.benchSlots || {})].includes(p.id);
+    const isNonTradeable = p.tradeable === false;
   const imgStyle = p.image
     ? `background-image:url(${p.image});background-size:cover;background-position:center;`
     : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
 
-  const myVersions = (gameState.myPlayers || []).filter(mp => mp.id === p.id && mp.tradeable !== false);
-  const usedInSquad = Object.values(gameState.squadSlots || {}).includes(p.id) ||
-                      Object.values(gameState.benchSlots || {}).includes(p.id);
-  const canSell = myVersions.length > 0;
+const allVersions = (gameState.myPlayers || []).filter(mp => mp.id === p.id);
+const tradeableVersions = allVersions.filter(mp => mp.tradeable !== false);
+
+// Считаем сколько стоит в составе/скамейке
+const slotPlayerIds = [
+  ...Object.values(gameState.squadSlots || {}),
+  ...Object.values(gameState.benchSlots || {})
+];
+const countInSquad = slotPlayerIds.filter(sid => sid === p.id).length;
+const totalOwned = tradeableVersions.length;
+
+// Определяем — стоит ли именно ЭТА карточка (по cardId) в составе
+const squadCardIds = new Set();
+const idCountInSquad2 = {};
+for (const pid of slotPlayerIds) {
+  if (pid == null) continue;
+  idCountInSquad2[pid] = (idCountInSquad2[pid] || 0) + 1;
+}
+for (const [pid, count] of Object.entries(idCountInSquad2)) {
+  const numId = parseInt(pid);
+  let marked = 0;
+  for (const player of (gameState.myPlayers || [])) {
+    if (player.id === numId && player.cardId) {
+      squadCardIds.add(player.cardId);
+      marked++;
+      if (marked >= count) break;
+    }
+  }
+}
+// Эта конкретная карточка стоит в составе — показываем 👕 и блокируем продажу
+const thisCardInSquad = p.cardId ? squadCardIds.has(p.cardId) : false;
+
+// Можно продать если есть версии НЕ в составе
+const availableToSell = totalOwned - countInSquad;
+const usedInSquad = countInSquad > 0 && availableToSell <= 0;
+const canSell = availableToSell > 0 && !thisCardInSquad;
+const isPartiallyInSquad = countInSquad > 0 && availableToSell > 0 && !thisCardInSquad;
   const canBuy = (gameState.coins || 0) >= total;
 
   // Вкладка "Мои игроки" — показываем только продажу
@@ -1386,10 +1536,14 @@ function buildMarketDetail(p) {
         : ''}
 
       ${canSell
-        ? `<button class="market-sell-btn" onclick="sellToMarket(${p.id})" ${usedInSquad ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>
-            Продать<br><span style="font-size:10px;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</span>
-           </button>`
-        : '<div style="text-align:center;font-size:9px;color:#7d8e9e;margin-top:6px;">Нет в коллекции</div>'
+        ? `<button class="market-sell-btn" onclick="sellToMarketByCardId('${p.cardId}')">
+            Продать${isPartiallyInSquad ? ` (дубл.)` : ''}<br>
+            <span style="font-size:10px;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</span>
+           </button>
+           ${isPartiallyInSquad ? `<div style="font-size:9px;color:#f0c040;margin-top:4px;text-align:center;">⚽ ${countInSquad} в составе, продаётся дубликат</div>` : ''}`
+        : usedInSquad
+          ? `<div style="text-align:center;font-size:9px;color:#f0a040;margin-top:6px;">⚠️ Все копии в составе</div>`
+          : '<div style="text-align:center;font-size:9px;color:#7d8e9e;margin-top:6px;">Нет в коллекции</div>'
       }
 
       ${p.tradeable===false ? '<div style="text-align:center;font-size:9px;color:#e05050;margin-top:6px;">🔒 Непродаваемый</div>' : ''}
@@ -1484,6 +1638,15 @@ function setMarketQtyDirect(val) {
 function buyFromMarket(playerId) {
   const template = allPlayers.find(p => p.id === playerId);
   if (!template) return;
+  // ── ЛИМИТ ИНВЕНТАРЯ ──────────────────────────────────────────────────
+  const PLAYER_LIMIT = 1000;
+  const currentCount = (gameState.myPlayers || []).length;
+  if (currentCount + marketState.qty > PLAYER_LIMIT) {
+    closeMarketModal();
+    botReply(`❌ Инвентарь переполнен! Максимум ${PLAYER_LIMIT} игроков. У вас: ${currentCount}.`, 400);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────
   const price = getPlayerMarketPrice(template);
   const total = price * marketState.qty;
 
@@ -1506,8 +1669,10 @@ function buyFromMarket(playerId) {
   marketState.qty = 1;
   saveState();
   updateHeaderResources();
-  closeMarketModal();
-  botReply(`✅ Куплено: <b>${template.name}</b> × ${qty}<br>${COIN_ICON} −${formatCoins(total)} монет`, 500, { html: true });
+  marketState.selectedId = null;
+  marketState.qty = 1;
+  showMarketToast(`✅ Куплено: ${template.name} ×${qty} — ${COIN_ICON_SM}−${formatCoins(total)}`);
+  renderMarketModal();
 }
 
 function sellToMarket(playerId) {
@@ -1592,6 +1757,97 @@ function sellToMarket(playerId) {
   doSellToMarketByIdx(idx);
 }
 
+function sellToMarketByCardId(cardId) {
+  // Проверяем — стоит ли именно эта карточка в составе/скамейке
+  const slotPlayerIds = [
+    ...Object.values(gameState.squadSlots || {}),
+    ...Object.values(gameState.benchSlots || {})
+  ];
+  
+  // Собираем занятые cardId
+  const idCountInSquad = {};
+  for (const pid of slotPlayerIds) {
+    if (pid == null) continue;
+    idCountInSquad[pid] = (idCountInSquad[pid] || 0) + 1;
+  }
+  const squadCardIds = new Set();
+  for (const [pid, count] of Object.entries(idCountInSquad)) {
+    const numId = parseInt(pid);
+    let marked = 0;
+    for (const player of (gameState.myPlayers || [])) {
+      if (player.id === numId && player.cardId) {
+        squadCardIds.add(player.cardId);
+        marked++;
+        if (marked >= count) break;
+      }
+    }
+  }
+
+  // Если именно эта карточка в составе — запрещаем
+  if (squadCardIds.has(cardId)) {
+    const detailPanel = document.querySelector('#market-modal div[style*="width:155px"]');
+    if (detailPanel) {
+      const errHtml = `<div style="padding:10px;text-align:center;font-size:11px;color:#e05050;margin-top:8px;">
+        ❌ Эта карточка стоит в составе.<br>Убери её из состава перед продажей.
+      </div>`;
+      detailPanel.insertAdjacentHTML('beforeend', errHtml);
+      setTimeout(() => renderMarketModal(), 2000);
+    }
+    return;
+  }
+
+  // Ищем именно эту карточку
+// Ищем по cardId — точное совпадение
+let idx = (gameState.myPlayers || []).findIndex(p =>
+  p.cardId === cardId && p.tradeable !== false
+);
+
+// Фолбэк: если cardId не найден (старые карточки без cardId)
+if (idx === -1 && cardId) {
+  // Пробуем найти по строковому сравнению
+  idx = (gameState.myPlayers || []).findIndex(p =>
+    String(p.cardId) === String(cardId) && p.tradeable !== false
+  );
+}
+
+  if (idx === -1) {
+    // Ошибки — показываем в детальной панели, не закрываем рынок
+    const detailPanel = document.querySelector('#market-modal div[style*="width:155px"]');
+    if (detailPanel) {
+      detailPanel.innerHTML = `<div style="padding:12px;text-align:center;font-size:11px;color:#e05050;">❌ Игрок не найден или непродаваемый.</div>`;
+      setTimeout(() => renderMarketModal(), 1500);
+    }
+    return;
+  }
+
+  const player = gameState.myPlayers[idx];
+  const price = getPlayerMarketPrice(player);
+  const sellPrice = Math.floor(price * 0.85);
+
+  const hasUpgrades = (player.trainingLevel > 0) || (player.ovrUpgrade > 0);
+
+  if (hasUpgrades) {
+    let warnings = [];
+    if (player.trainingLevel > 0) warnings.push(`тренировка +${player.trainingLevel}`);
+    if (player.ovrUpgrade > 0) warnings.push(`OVR +${player.ovrUpgrade}`);
+
+    const detailPanel = document.querySelector('#market-modal div[style*="width:155px"]');
+    if (detailPanel) {
+      detailPanel.innerHTML = `
+        <div style="padding:10px;background:#17212b;border-radius:8px;margin-top:6px;">
+          <div style="font-size:11px;color:#f0a040;font-weight:700;margin-bottom:6px;">⚠️ Внимание!</div>
+          <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Улучшения: <b style="color:#fff;">${warnings.join(', ')}</b></div>
+          <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">Цена: <b style="color:#f0c040;">${COIN_ICON_SM} ${formatCoins(sellPrice)}</b></div>
+          <button onclick="confirmSellToMarketByIdx(${idx})" style="width:100%;padding:8px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.4);border-radius:8px;color:#e05050;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:4px;">Всё равно продать</button>
+          <button onclick="renderMarketModal()" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid #1e2d3d;border-radius:8px;color:#7d8e9e;font-size:12px;cursor:pointer;font-family:inherit;">Отмена</button>
+        </div>`;
+    }
+    return;
+  }
+
+  doSellToMarketByIdx(idx);
+}
+
 function confirmSellToMarket(playerId) {
   // Обратная совместимость — ищем по id
   const squadIds = new Set([
@@ -1637,8 +1893,9 @@ function doSellToMarketByIdx(idx) {
   gameState.coins = (gameState.coins || 0) + sellPrice;
   saveState();
   updateHeaderResources();
-  closeMarketModal();
-  botReply(`💰 Продан: <b>${player.name}</b><br>${COIN_ICON} +${formatCoins(sellPrice)} монет (−15% комиссия)`, 500, { html: true });
+  marketState.selectedId = null;
+  showMarketToast(`💰 Продан: ${player.name} — +${formatCoins(sellPrice)} монет`);
+  renderMarketModal();
 }
 
 function openMarketFilterModal() {
@@ -2015,6 +2272,30 @@ async function purchasePack(packId) {
     return;
   }
 
+  // ── Проверка лимита инвентаря ─────────────────────────────────────────
+  const INVENTORY_LIMIT = 1000;
+  const currentCount = (gameState.myPlayers || []).length;
+  const packCount = pack.type === 'players' ? (pack.count || 1) : 0;
+
+  if (packCount > 0 && currentCount + packCount > INVENTORY_LIMIT) {
+    const freeSlots = INVENTORY_LIMIT - currentCount;
+    if (freeSlots <= 0) {
+      await botReply(
+        `❌ Инвентарь заполнен! Максимум ${INVENTORY_LIMIT} игроков.\n` +
+        `Продай или обменяй игроков перед открытием пака.`,
+        400
+      );
+    } else {
+      await botReply(
+        `❌ Недостаточно места в инвентаре!\n` +
+        `Пак содержит <b>${packCount}</b> игроков, а свободно только <b>${freeSlots}</b> слотов.\n` +
+        `Продай лишних игроков и попробуй снова.`,
+        400, { html: true }
+      );
+    }
+    return;
+  }
+
   gameState[currencyKey] -= pack.price;
 
   // ── Ресурсный пак ──────────────────────────────────────────────────────
@@ -2049,7 +2330,14 @@ async function purchasePack(packId) {
     return;
   }
 
-  for (const p of drawn) gameState.myPlayers.push(p);
+  const PLAYER_LIMIT = 1000;
+  const beforeCount = (gameState.myPlayers || []).length;
+  const canAdd = Math.max(0, PLAYER_LIMIT - beforeCount);
+  const toAdd = drawn.slice(0, canAdd);
+  for (const p of toAdd) gameState.myPlayers.push(p);
+  if (toAdd.length < drawn.length) {
+    await botReply(`⚠️ Инвентарь почти полон! Добавлено ${toAdd.length} из ${drawn.length} игроков. Максимум ${PLAYER_LIMIT}.`, 400);
+  }
   gameState.packsOpened = (gameState.packsOpened || 0) + 1;
   saveState(); updateHeaderResources();
   checkAndRefreshQuests();
@@ -2367,6 +2655,7 @@ document.getElementById('nav-events').addEventListener('click', function() { han
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
+const ALL_PLAYERS_TEMPLATE_VERSION = 1;
 const ALL_PLAYERS_TEMPLATE = [
     // Событие World Tournament 
     // Мексика
@@ -2557,8 +2846,115 @@ const ALL_PLAYERS_TEMPLATE = [
     { id: 179, name: 'Switzerland 23', club: 'Switzerland', nation: 'Switzerland', position: 'RW', altPositions: ['ST'], ovr: 79, stats: { PAC:87, PAS:76, DRB:80, SHO:78, DEF:60, STR:74 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 75, league: 'International' },
     { id: 180, name: 'Switzerland 24', club: 'Switzerland', nation: 'Switzerland', position: 'ST', altPositions: [], ovr: 76, stats: { PAC:76, PAS:70, DRB:72, SHO:77, DEF:50, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 187, weight: 82, league: 'International' },
     { id: 181, name: 'Switzerland 25', club: 'Switzerland', nation: 'Switzerland', position: 'ST', altPositions: [], ovr: 82, stats: { PAC:84, PAS:74, DRB:80, SHO:83, DEF:55, STR:85 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 187, weight: 84, league: 'International' },
-    { id: 182, name: 'Switzerland 26', club: 'Switzerland', nation: 'Switzerland', position: 'ST', altPositions: ['CAM'], ovr: 80, stats: { PAC:82, PAS:78, DRB:80, SHO:82, DEF:55, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 78, league: 'International' }
-
+    { id: 182, name: 'Switzerland 26', club: 'Switzerland', nation: 'Switzerland', position: 'ST', altPositions: ['CAM'], ovr: 80, stats: { PAC:82, PAS:78, DRB:80, SHO:82, DEF:55, STR:78 }, program: 'World Tournament', image: 'https://i.ibb.co/JRWrQmnL/Switzerland.png', squadImage: '', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 78, league: 'International' },
+    // Brazil
+    { id: 183, name: 'Brazil 1', club: 'Brazil', nation: 'Brazil', position: 'GK', altPositions: [], ovr: 90, stats: { REF:92, KIC:88, PAS:86, SPE:82, DIV:90, HAN:91 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 3, height: 193, weight: 91, league: 'International' },
+    { id: 184, name: 'Brazil 2', club: 'Brazil', nation: 'Brazil', position: 'GK', altPositions: [], ovr: 89, stats: { REF:89, KIC:93, PAS:91, SPE:80, DIV:87, HAN:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'left', weakFoot: 4, height: 188, weight: 86, league: 'International' },
+    { id: 185, name: 'Brazil 3', club: 'Brazil', nation: 'Brazil', position: 'GK', altPositions: [], ovr: 82, stats: { REF:84, KIC:79, PAS:77, SPE:72, DIV:83, HAN:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2, preferredFoot: 'right', weakFoot: 2, height: 189, weight: 94, league: 'International' },
+    { id: 186, name: 'Brazil 4', club: 'Brazil', nation: 'Brazil', position: 'LB', altPositions: ['LM'], ovr: 81, stats: { PAC:79, PAS:81, DRB:79, SHO:69, DEF:83, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 175, weight: 69, league: 'International' },
+    { id: 187, name: 'Brazil 5', club: 'Brazil', nation: 'Brazil', position: 'LB', altPositions: ['CB'], ovr: 80, stats: { PAC:76, PAS:77, DRB:76, SHO:67, DEF:83, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 3, height: 180, weight: 80, league: 'International' },
+    { id: 188, name: 'Brazil 6', club: 'Brazil', nation: 'Brazil', position: 'CB', altPositions: [], ovr: 86, stats: { PAC:82, PAS:73, DRB:71, SHO:55, DEF:90, STR:91 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 80, league: 'International' },
+    { id: 189, name: 'Brazil 7', club: 'Brazil', nation: 'Brazil', position: 'RB', altPositions: ['CB','LB'], ovr: 82, stats: { PAC:74, PAS:79, DRB:77, SHO:67, DEF:84, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 4, height: 184, weight: 78, league: 'International' },
+    { id: 190, name: 'Brazil 8', club: 'Brazil', nation: 'Brazil', position: 'CB', altPositions: [], ovr: 87, stats: { PAC:79, PAS:75, DRB:71, SHO:60, DEF:91, STR:92 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 190, weight: 87, league: 'International' },
+    { id: 191, name: 'Brazil 9', club: 'Brazil', nation: 'Brazil', position: 'CB', altPositions: [], ovr: 83, stats: { PAC:81, PAS:73, DRB:72, SHO:58, DEF:85, STR:85 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 78, league: 'International' },
+    { id: 192, name: 'Brazil 10', club: 'Brazil', nation: 'Brazil', position: 'CB', altPositions: [], ovr: 81, stats: { PAC:75, PAS:76, DRB:73, SHO:60, DEF:84, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 2, height: 189, weight: 84, league: 'International' },
+    { id: 193, name: 'Brazil 11', club: 'Brazil', nation: 'Brazil', position: 'CB', altPositions: ['RB'], ovr: 88, stats: { PAC:82, PAS:82, DRB:79, SHO:63, DEF:90, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 75, league: 'International' },
+    { id: 194, name: 'Brazil 12', club: 'Brazil', nation: 'Brazil', position: 'RB', altPositions: ['RM'], ovr: 80, stats: { PAC:86, PAS:74, DRB:80, SHO:65, DEF:79, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 73, league: 'International' },
+    { id: 195, name: 'Brazil 13', club: 'Brazil', nation: 'Brazil', position: 'CAM', altPositions: ['CM'], ovr: 85, stats: { PAC:76, PAS:88, DRB:87, SHO:82, DEF:70, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 4, height: 180, weight: 72, league: 'International' },
+    { id: 196, name: 'Brazil 14', club: 'Brazil', nation: 'Brazil', position: 'CM', altPositions: ['CDM'], ovr: 88, stats: { PAC:77, PAS:89, DRB:86, SHO:78, DEF:83, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 4, height: 182, weight: 74, league: 'International' },
+    { id: 197, name: 'Brazil 15', club: 'Brazil', nation: 'Brazil', position: 'CDM', altPositions: ['CM'], ovr: 84, stats: { PAC:65, PAS:79, DRB:73, SHO:74, DEF:89, STR:91 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 84, league: 'International' },
+    { id: 198, name: 'Brazil 16', club: 'Brazil', nation: 'Brazil', position: 'CDM', altPositions: ['CB'], ovr: 82, stats: { PAC:67, PAS:80, DRB:73, SHO:69, DEF:86, STR:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 78, league: 'International' },
+    { id: 199, name: 'Brazil 17', club: 'Brazil', nation: 'Brazil', position: 'CM', altPositions: [], ovr: 79, stats: { PAC:75, PAS:79, DRB:78, SHO:72, DEF:78, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 177, weight: 73, league: 'International' },
+    { id: 200, name: 'Brazil 18', club: 'Brazil', nation: 'Brazil', position: 'CAM', altPositions: ['LW','CF'], ovr: 90, stats: { PAC:84, PAS:91, DRB:93, SHO:88, DEF:42, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 5, height: 175, weight: 68, league: 'International' },
+    { id: 201, name: 'Brazil 19', club: 'Brazil', nation: 'Brazil', position: 'RW', altPositions: ['LW'], ovr: 84, stats: { PAC:86, PAS:79, DRB:87, SHO:81, DEF:48, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 181, weight: 79, league: 'International' },
+    { id: 202, name: 'Brazil 20', club: 'Brazil', nation: 'Brazil', position: 'ST', altPositions: ['CF'], ovr: 86, stats: { PAC:87, PAS:74, DRB:85, SHO:88, DEF:40, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 4, height: 173, weight: 72, league: 'International' },
+    { id: 203, name: 'Brazil 21', club: 'Brazil', nation: 'Brazil', position: 'LW', altPositions: ['ST'], ovr: 86, stats: { PAC:91, PAS:78, DRB:87, SHO:84, DEF:52, STR:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 178, weight: 75, league: 'International' },
+    { id: 204, name: 'Brazil 22', club: 'Brazil', nation: 'Brazil', position: 'ST', altPositions: [], ovr: 81, stats: { PAC:78, PAS:68, DRB:76, SHO:83, DEF:42, STR:89 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 191, weight: 88, league: 'International' },
+    { id: 205, name: 'Brazil 23', club: 'Brazil', nation: 'Brazil', position: 'CF', altPositions: ['ST','CAM'], ovr: 87, stats: { PAC:86, PAS:83, DRB:88, SHO:86, DEF:50, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 183, weight: 76, league: 'International' },
+    { id: 206, name: 'Brazil 24', club: 'Brazil', nation: 'Brazil', position: 'RW', altPositions: ['LW'], ovr: 91, stats: { PAC:89, PAS:88, DRB:91, SHO:89, DEF:54, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 4, height: 176, weight: 68, league: 'International' },
+    { id: 207, name: 'Brazil 25', club: 'Brazil', nation: 'Brazil', position: 'LW', altPositions: ['RW'], ovr: 93, stats: { PAC:95, PAS:83, DRB:94, SHO:88, DEF:40, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 4, height: 176, weight: 73, league: 'International' },
+    { id: 208, name: 'Brazil 26', club: 'Brazil', nation: 'Brazil', position: 'RW', altPositions: [], ovr: 77, stats: { PAC:84, PAS:72, DRB:80, SHO:76, DEF:40, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/TMn0ssCf/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 186, weight: 78, league: 'International' },
+    // Morocco
+    { id: 209, name: 'Morocco 1', club: 'Morocco', nation: 'Morocco', position: 'GK', altPositions: [], ovr: 88, stats: { REF:90, KIC:84, PAS:80, SPE:79, DIV:89, HAN:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'left', weakFoot: 2, height: 195, weight: 78, league: 'International' },
+    { id: 210, name: 'Morocco 2', club: 'Morocco', nation: 'Morocco', position: 'GK', altPositions: [], ovr: 79, stats: { REF:81, KIC:74, PAS:71, SPE:72, DIV:80, HAN:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 78, league: 'International' },
+    { id: 211, name: 'Morocco 3', club: 'Morocco', nation: 'Morocco', position: 'GK', altPositions: [], ovr: 76, stats: { REF:78, KIC:72, PAS:69, SPE:70, DIV:77, HAN:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2, preferredFoot: 'right', weakFoot: 2, height: 182, weight: 75, league: 'International' },
+    { id: 212, name: 'Morocco 4', club: 'Morocco', nation: 'Morocco', position: 'RB', altPositions: ['RM','LB'], ovr: 90, stats: { PAC:94, PAS:85, DRB:86, SHO:77, DEF:85, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 4, height: 181, weight: 73, league: 'International' },
+    { id: 213, name: 'Morocco 5', club: 'Morocco', nation: 'Morocco', position: 'LB', altPositions: ['RB'], ovr: 84, stats: { PAC:82, PAS:81, DRB:82, SHO:70, DEF:84, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 183, weight: 73, league: 'International' },
+    { id: 214, name: 'Morocco 6', club: 'Morocco', nation: 'Morocco', position: 'LB', altPositions: ['LM'], ovr: 79, stats: { PAC:82, PAS:76, DRB:79, SHO:67, DEF:78, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 178, weight: 72, league: 'International' },
+    { id: 215, name: 'Morocco 7', club: 'Morocco', nation: 'Morocco', position: 'LB', altPositions: [], ovr: 76, stats: { PAC:78, PAS:72, DRB:73, SHO:63, DEF:78, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 2, height: 178, weight: 71, league: 'International' },
+    { id: 216, name: 'Morocco 8', club: 'Morocco', nation: 'Morocco', position: 'CB', altPositions: [], ovr: 81, stats: { PAC:71, PAS:73, DRB:68, SHO:52, DEF:85, STR:89 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 2, height: 194, weight: 92, league: 'International' },
+    { id: 217, name: 'Morocco 9', club: 'Morocco', nation: 'Morocco', position: 'CB', altPositions: [], ovr: 82, stats: { PAC:77, PAS:74, DRB:72, SHO:55, DEF:86, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 187, weight: 80, league: 'International' },
+    { id: 218, name: 'Morocco 10', club: 'Morocco', nation: 'Morocco', position: 'RB', altPositions: ['RM'], ovr: 80, stats: { PAC:84, PAS:76, DRB:79, SHO:70, DEF:78, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 177, weight: 70, league: 'International' },
+    { id: 219, name: 'Morocco 11', club: 'Morocco', nation: 'Morocco', position: 'CB', altPositions: [], ovr: 74, stats: { PAC:72, PAS:69, DRB:67, SHO:52, DEF:77, STR:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 184, weight: 76, league: 'International' },
+    { id: 220, name: 'Morocco 12', club: 'Morocco', nation: 'Morocco', position: 'CB', altPositions: [], ovr: 85, stats: { PAC:78, PAS:79, DRB:75, SHO:61, DEF:88, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 190, weight: 76, league: 'International' },
+    { id: 221, name: 'Morocco 13', club: 'Morocco', nation: 'Morocco', position: 'CM', altPositions: ['CDM'], ovr: 82, stats: { PAC:74, PAS:81, DRB:80, SHO:76, DEF:80, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 79, league: 'International' },
+    { id: 222, name: 'Morocco 14', club: 'Morocco', nation: 'Morocco', position: 'CM', altPositions: ['CAM'], ovr: 84, stats: { PAC:79, PAS:85, DRB:87, SHO:74, DEF:73, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 182, weight: 62, league: 'International' },
+    { id: 223, name: 'Morocco 15', club: 'Morocco', nation: 'Morocco', position: 'CAM', altPositions: ['CM','RW'], ovr: 85, stats: { PAC:82, PAS:83, DRB:86, SHO:83, DEF:70, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 80, league: 'International' },
+    { id: 224, name: 'Morocco 16', club: 'Morocco', nation: 'Morocco', position: 'CAM', altPositions: ['CM'], ovr: 84, stats: { PAC:78, PAS:86, DRB:88, SHO:74, DEF:67, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 4, height: 180, weight: 70, league: 'International' },
+    { id: 225, name: 'Morocco 17', club: 'Morocco', nation: 'Morocco', position: 'CDM', altPositions: [], ovr: 76, stats: { PAC:69, PAS:75, DRB:72, SHO:61, DEF:80, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 2, height: 183, weight: 77, league: 'International' },
+    { id: 226, name: 'Morocco 18', club: 'Morocco', nation: 'Morocco', position: 'CDM', altPositions: ['CM'], ovr: 83, stats: { PAC:69, PAS:81, DRB:76, SHO:69, DEF:87, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 80, league: 'International' },
+    { id: 227, name: 'Morocco 19', club: 'Morocco', nation: 'Morocco', position: 'CM', altPositions: [], ovr: 80, stats: { PAC:75, PAS:81, DRB:82, SHO:71, DEF:76, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 186, weight: 74, league: 'International' },
+    { id: 228, name: 'Morocco 20', club: 'Morocco', nation: 'Morocco', position: 'CAM', altPositions: ['RW','LW'], ovr: 88, stats: { PAC:86, PAS:85, DRB:91, SHO:84, DEF:55, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 4, height: 171, weight: 68, league: 'International' },
+    { id: 229, name: 'Morocco 21', club: 'Morocco', nation: 'Morocco', position: 'ST', altPositions: [], ovr: 84, stats: { PAC:80, PAS:71, DRB:78, SHO:88, DEF:42, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 182, weight: 77, league: 'International' },
+    { id: 230, name: 'Morocco 22', club: 'Morocco', nation: 'Morocco', position: 'LW', altPositions: ['RW'], ovr: 83, stats: { PAC:89, PAS:75, DRB:87, SHO:78, DEF:45, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 177, weight: 73, league: 'International' },
+    { id: 231, name: 'Morocco 23', club: 'Morocco', nation: 'Morocco', position: 'LW', altPositions: ['ST'], ovr: 84, stats: { PAC:86, PAS:77, DRB:84, SHO:85, DEF:46, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 72, league: 'International' },
+    { id: 232, name: 'Morocco 24', club: 'Morocco', nation: 'Morocco', position: 'RW', altPositions: [], ovr: 75, stats: { PAC:80, PAS:69, DRB:77, SHO:71, DEF:39, STR:67 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 3, height: 179, weight: 72, league: 'International' },
+    { id: 233, name: 'Morocco 25', club: 'Morocco', nation: 'Morocco', position: 'ST', altPositions: [], ovr: 73, stats: { PAC:77, PAS:66, DRB:72, SHO:74, DEF:38, STR:71 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 183, weight: 75, league: 'International' },
+    { id: 234, name: 'Morocco 26', club: 'Morocco', nation: 'Morocco', position: 'RW', altPositions: ['LW'], ovr: 79, stats: { PAC:85, PAS:73, DRB:81, SHO:75, DEF:42, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/kVM8w5zY/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 3, height: 175, weight: 68, league: 'International' },
+    // Scotland
+    { id: 235, name: 'Scotland 1', club: 'Scotland', nation: 'Scotland', position: 'GK', altPositions: [], ovr: 80, stats: { REF:82, KIC:76, PAS:72, SPE:69, DIV:81, HAN:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2, preferredFoot: 'right', weakFoot: 2, height: 193, weight: 83, league: 'International' },
+    { id: 236, name: 'Scotland 2', club: 'Scotland', nation: 'Scotland', position: 'GK', altPositions: [], ovr: 82, stats: { REF:84, KIC:79, PAS:75, SPE:72, DIV:83, HAN:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 3, height: 196, weight: 77, league: 'International' },
+    { id: 237, name: 'Scotland 3', club: 'Scotland', nation: 'Scotland', position: 'GK', altPositions: [], ovr: 76, stats: { REF:78, KIC:73, PAS:70, SPE:68, DIV:77, HAN:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 78, league: 'International' },
+    { id: 238, name: 'Scotland 4', club: 'Scotland', nation: 'Scotland', position: 'CB', altPositions: [], ovr: 78, stats: { PAC:61, PAS:68, DRB:62, SHO:51, DEF:82, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 84, league: 'International' },
+    { id: 239, name: 'Scotland 5', club: 'Scotland', nation: 'Scotland', position: 'CB', altPositions: [], ovr: 80, stats: { PAC:69, PAS:73, DRB:68, SHO:58, DEF:84, STR:85 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 191, weight: 85, league: 'International' },
+    { id: 240, name: 'Scotland 6', club: 'Scotland', nation: 'Scotland', position: 'LB', altPositions: ['RB'], ovr: 82, stats: { PAC:83, PAS:78, DRB:80, SHO:69, DEF:81, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 5, height: 185, weight: 72, league: 'International' },
+    { id: 241, name: 'Scotland 7', club: 'Scotland', nation: 'Scotland', position: 'CB', altPositions: [], ovr: 78, stats: { PAC:67, PAS:70, DRB:66, SHO:52, DEF:81, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 77, league: 'International' },
+    { id: 242, name: 'Scotland 8', club: 'Scotland', nation: 'Scotland', position: 'CB', altPositions: [], ovr: 81, stats: { PAC:72, PAS:72, DRB:68, SHO:56, DEF:85, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'left', weakFoot: 2, height: 189, weight: 83, league: 'International' },
+    { id: 243, name: 'Scotland 9', club: 'Scotland', nation: 'Scotland', position: 'RB', altPositions: ['RM'], ovr: 80, stats: { PAC:85, PAS:74, DRB:78, SHO:64, DEF:79, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 189, weight: 79, league: 'International' },
+    { id: 244, name: 'Scotland 10', club: 'Scotland', nation: 'Scotland', position: 'RB', altPositions: [], ovr: 78, stats: { PAC:74, PAS:73, DRB:71, SHO:62, DEF:80, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 77, league: 'International' },
+    { id: 245, name: 'Scotland 11', club: 'Scotland', nation: 'Scotland', position: 'LB', altPositions: ['LM'], ovr: 86, stats: { PAC:82, PAS:86, DRB:81, SHO:69, DEF:85, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'left', weakFoot: 3, height: 178, weight: 64, league: 'International' },
+    { id: 246, name: 'Scotland 12', club: 'Scotland', nation: 'Scotland', position: 'CB', altPositions: [], ovr: 80, stats: { PAC:66, PAS:73, DRB:68, SHO:57, DEF:84, STR:85 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 2, height: 198, weight: 83, league: 'International' },
+    { id: 247, name: 'Scotland 13', club: 'Scotland', nation: 'Scotland', position: 'LB', altPositions: ['CB'], ovr: 84, stats: { PAC:84, PAS:80, DRB:79, SHO:67, DEF:84, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 180, weight: 70, league: 'International' },
+    { id: 248, name: 'Scotland 14', club: 'Scotland', nation: 'Scotland', position: 'RM', altPositions: ['CAM','CM'], ovr: 82, stats: { PAC:78, PAS:83, DRB:81, SHO:77, DEF:68, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 4, height: 178, weight: 79, league: 'International' },
+    { id: 249, name: 'Scotland 15', club: 'Scotland', nation: 'Scotland', position: 'LW', altPositions: [], ovr: 71, stats: { PAC:78, PAS:67, DRB:73, SHO:69, DEF:40, STR:61 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 175, weight: 68, league: 'International' },
+    { id: 250, name: 'Scotland 16', club: 'Scotland', nation: 'Scotland', position: 'CM', altPositions: ['CDM'], ovr: 85, stats: { PAC:75, PAS:83, DRB:80, SHO:82, DEF:81, STR:85 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 75, league: 'International' },
+    { id: 251, name: 'Scotland 17', club: 'Scotland', nation: 'Scotland', position: 'RW', altPositions: ['LW'], ovr: 80, stats: { PAC:90, PAS:72, DRB:84, SHO:70, DEF:45, STR:67 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 175, weight: 68, league: 'International' },
+    { id: 252, name: 'Scotland 18', club: 'Scotland', nation: 'Scotland', position: 'CM', altPositions: [], ovr: 72, stats: { PAC:73, PAS:70, DRB:71, SHO:65, DEF:67, STR:69 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 72, league: 'International' },
+    { id: 253, name: 'Scotland 19', club: 'Scotland', nation: 'Scotland', position: 'CM', altPositions: ['CAM'], ovr: 86, stats: { PAC:74, PAS:84, DRB:82, SHO:84, DEF:78, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'left', weakFoot: 3, height: 178, weight: 68, league: 'International' },
+    { id: 254, name: 'Scotland 20', club: 'Scotland', nation: 'Scotland', position: 'CM', altPositions: ['CDM'], ovr: 80, stats: { PAC:67, PAS:80, DRB:75, SHO:72, DEF:79, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 180, weight: 70, league: 'International' },
+    { id: 255, name: 'Scotland 21', club: 'Scotland', nation: 'Scotland', position: 'CM', altPositions: ['CDM','CAM'], ovr: 88, stats: { PAC:76, PAS:82, DRB:80, SHO:86, DEF:84, STR:90 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5, preferredFoot: 'right', weakFoot: 4, height: 193, weight: 88, league: 'International' },
+    { id: 256, name: 'Scotland 22', club: 'Scotland', nation: 'Scotland', position: 'ST', altPositions: ['CF'], ovr: 82, stats: { PAC:78, PAS:72, DRB:77, SHO:82, DEF:46, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 179, weight: 76, league: 'International' },
+    { id: 257, name: 'Scotland 23', club: 'Scotland', nation: 'Scotland', position: 'ST', altPositions: [], ovr: 78, stats: { PAC:69, PAS:66, DRB:68, SHO:79, DEF:49, STR:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 80, league: 'International' },
+    { id: 258, name: 'Scotland 24', club: 'Scotland', nation: 'Scotland', position: 'ST', altPositions: [], ovr: 77, stats: { PAC:71, PAS:65, DRB:69, SHO:78, DEF:45, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 191, weight: 82, league: 'International' },
+    { id: 259, name: 'Scotland 25', club: 'Scotland', nation: 'Scotland', position: 'ST', altPositions: ['CF'], ovr: 81, stats: { PAC:72, PAS:71, DRB:75, SHO:85, DEF:42, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 80, league: 'International' },
+    { id: 260, name: 'Scotland 26', club: 'Scotland', nation: 'Scotland', position: 'ST', altPositions: [], ovr: 79, stats: { PAC:70, PAS:67, DRB:70, SHO:81, DEF:44, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/prX8H4hQ/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 79, league: 'International' },
+    // Haiti
+    { id: 261, name: 'Haiti 1', club: 'Haiti', nation: 'Haiti', position: 'GK', altPositions: [], ovr: 75, stats: { REF:78, KIC:72, PAS:69, SPE:67, DIV:77, HAN:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.0, preferredFoot: 'right', weakFoot: 2, height: 181, weight: 80, league: 'International' },
+    { id: 262, name: 'Haiti 2', club: 'Haiti', nation: 'Haiti', position: 'GK', altPositions: [], ovr: 68, stats: { REF:71, KIC:64, PAS:63, SPE:65, DIV:70, HAN:69 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 1.5, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 84, league: 'International' },
+    { id: 263, name: 'Haiti 3', club: 'Haiti', nation: 'Haiti', position: 'GK', altPositions: [], ovr: 70, stats: { REF:73, KIC:68, PAS:65, SPE:68, DIV:72, HAN:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.0, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 82, league: 'International' },
+    { id: 264, name: 'Haiti 4', club: 'Haiti', nation: 'Haiti', position: 'RB', altPositions: ['LB'], ovr: 73, stats: { PAC:75, PAS:70, DRB:69, SHO:58, DEF:76, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 72, league: 'International' },
+    { id: 265, name: 'Haiti 5', club: 'Haiti', nation: 'Haiti', position: 'CB', altPositions: [], ovr: 69, stats: { PAC:68, PAS:65, DRB:63, SHO:52, DEF:73, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 185, weight: 79, league: 'International' },
+    { id: 266, name: 'Haiti 6', club: 'Haiti', nation: 'Haiti', position: 'CB', altPositions: [], ovr: 76, stats: { PAC:73, PAS:72, DRB:68, SHO:60, DEF:80, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 84, league: 'International' },
+    { id: 267, name: 'Haiti 7', club: 'Haiti', nation: 'Haiti', position: 'CB', altPositions: ['LB'], ovr: 77, stats: { PAC:76, PAS:73, DRB:70, SHO:61, DEF:80, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 184, weight: 83, league: 'International' },
+    { id: 268, name: 'Haiti 8', club: 'Haiti', nation: 'Haiti', position: 'CB', altPositions: [], ovr: 72, stats: { PAC:70, PAS:68, DRB:65, SHO:55, DEF:76, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 187, weight: 82, league: 'International' },
+    { id: 269, name: 'Haiti 9', club: 'Haiti', nation: 'Haiti', position: 'RB', altPositions: ['RM'], ovr: 68, stats: { PAC:76, PAS:63, DRB:66, SHO:54, DEF:68, STR:64 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 2, height: 178, weight: 71, league: 'International' },
+    { id: 270, name: 'Haiti 10', club: 'Haiti', nation: 'Haiti', position: 'LB', altPositions: ['CB'], ovr: 71, stats: { PAC:74, PAS:68, DRB:67, SHO:55, DEF:74, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 178, weight: 73, league: 'International' },
+    { id: 271, name: 'Haiti 11', club: 'Haiti', nation: 'Haiti', position: 'RB', altPositions: [], ovr: 67, stats: { PAC:72, PAS:62, DRB:64, SHO:52, DEF:68, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 180, weight: 74, league: 'International' },
+    { id: 272, name: 'Haiti 12', club: 'Haiti', nation: 'Haiti', position: 'RW', altPositions: ['LW', 'RM'], ovr: 73, stats: { PAC:82, PAS:70, DRB:75, SHO:69, DEF:45, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 73, league: 'International' },
+    { id: 273, name: 'Haiti 13', club: 'Haiti', nation: 'Haiti', position: 'CM', altPositions: ['CDM'], ovr: 72, stats: { PAC:68, PAS:75, DRB:72, SHO:64, DEF:70, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 74, league: 'International' },
+    { id: 274, name: 'Haiti 14', club: 'Haiti', nation: 'Haiti', position: 'CM', altPositions: [], ovr: 67, stats: { PAC:67, PAS:68, DRB:67, SHO:61, DEF:65, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 180, weight: 75, league: 'International' },
+    { id: 275, name: 'Haiti 15', club: 'Haiti', nation: 'Haiti', position: 'CDM', altPositions: [], ovr: 66, stats: { PAC:65, PAS:67, DRB:64, SHO:58, DEF:69, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 182, weight: 77, league: 'International' },
+    { id: 276, name: 'Haiti 16', club: 'Haiti', nation: 'Haiti', position: 'CM', altPositions: ['CAM'], ovr: 69, stats: { PAC:70, PAS:71, DRB:69, SHO:65, DEF:64, STR:73 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 76, league: 'International' },
+    { id: 277, name: 'Haiti 17', club: 'Haiti', nation: 'Haiti', position: 'CDM', altPositions: ['CM'], ovr: 75, stats: { PAC:74, PAS:73, DRB:71, SHO:65, DEF:77, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 78, league: 'International' },
+    { id: 278, name: 'Haiti 18', club: 'Haiti', nation: 'Haiti', position: 'CM', altPositions: ['CAM', 'RM'], ovr: 80, stats: { PAC:81, PAS:79, DRB:81, SHO:72, DEF:75, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 5.0, preferredFoot: 'right', weakFoot: 4, height: 172, weight: 68, league: 'International' },
+    { id: 279, name: 'Haiti 19', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: ['CF'], ovr: 77, stats: { PAC:76, PAS:70, DRB:75, SHO:80, DEF:42, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 79, league: 'International' },
+    { id: 280, name: 'Haiti 20', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: [], ovr: 81, stats: { PAC:75, PAS:70, DRB:74, SHO:84, DEF:46, STR:89 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 194, weight: 86, league: 'International' },
+    { id: 281, name: 'Haiti 21', club: 'Haiti', nation: 'Haiti', position: 'RW', altPositions: ['LW'], ovr: 70, stats: { PAC:79, PAS:66, DRB:73, SHO:67, DEF:41, STR:65 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 175, weight: 68, league: 'International' },
+    { id: 282, name: 'Haiti 22', club: 'Haiti', nation: 'Haiti', position: 'LW', altPositions: ['RW'], ovr: 72, stats: { PAC:82, PAS:69, DRB:76, SHO:68, DEF:40, STR:67 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 73, league: 'International' },
+    { id: 283, name: 'Haiti 23', club: 'Haiti', nation: 'Haiti', position: 'LW', altPositions: ['RW', 'ST'], ovr: 71, stats: { PAC:80, PAS:67, DRB:74, SHO:69, DEF:39, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 70, league: 'International' },
+    { id: 284, name: 'Haiti 24', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: ['CF', 'RW'], ovr: 82, stats: { PAC:86, PAS:71, DRB:79, SHO:82, DEF:42, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 186, weight: 78, league: 'International' },
+    { id: 285, name: 'Haiti 25', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: [], ovr: 74, stats: { PAC:78, PAS:67, DRB:72, SHO:76, DEF:41, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 81, league: 'International' },
+    { id: 286, name: 'Haiti 26', club: 'Haiti', nation: 'Haiti', position: 'RW', altPositions: ['LW', 'RM'], ovr: 74, stats: { PAC:84, PAS:71, DRB:75, SHO:68, DEF:45, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/tMTxGf4Y/World-Cup-26-design.png', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 73, league: 'International' }
 ];
 
 // Простановка tradeable по умолчанию (если не задано явно)
@@ -2739,7 +3135,7 @@ const QUEST_POOL = [
 
 // Бонус за выполнение всех 4 квестов
 const ALL_QUESTS_BONUS = {
-  xp: 150, passCredits: 150, rubins: 500,
+  xp: 0, passCredits: 300, rubins: 500,
   fragments: 500, ovrUpgradePoints: 30, trainingPoints: 100
 };
 
@@ -4363,27 +4759,30 @@ function renderInventoryList() {
 
 // ── Тренировка ────────────────────────────────────────────────────────────
 function trainPlayer(cardId) {
-  const player = findPlayerByCardId(cardId);
-  if (!player) { botReply('❌ Игрок не найден.', 300); return; }
+  const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
+  if (idx === -1) { botReply('❌ Игрок не найден.', 300); return; }
+  const player = gameState.myPlayers[idx];
   if (player.trainingLevel >= MAX_TRAINING_LEVEL) { botReply(`❌ Максимальный уровень тренировки (${MAX_TRAINING_LEVEL}).`, 300); return; }
   if ((gameState.trainingPoints||0) < TRAINING_COST_PER_LEVEL) { botReply(`❌ Недостаточно очков тренировки (нужно ${TRAINING_COST_PER_LEVEL}).`, 300); return; }
   gameState.trainingPoints -= TRAINING_COST_PER_LEVEL;
-  player.trainingLevel = (player.trainingLevel||0) + 1;
+  gameState.myPlayers[idx].trainingLevel = (gameState.myPlayers[idx].trainingLevel || 0) + 1;
   saveState(); updateHeaderResources(); renderInventoryList();
-  botReply(`✅ Тренировка <b>${player.name}</b> завершена! Уровень: ${player.trainingLevel}.`, 300, { html: true });
+  botReply(`✅ Тренировка <b>${player.name}</b> завершена! Уровень: ${gameState.myPlayers[idx].trainingLevel}.`, 300, { html: true });
 }
 
 // ── Повышение OVR ─────────────────────────────────────────────────────────
 function upgradePlayerOvr(cardId) {
-  const player = findPlayerByCardId(cardId);
-  if (!player) { botReply('❌ Игрок не найден.', 300); return; }
+  // Ищем строго по cardId — не по id!
+  const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
+  if (idx === -1) { botReply('❌ Игрок не найден.', 300); return; }
+  const player = gameState.myPlayers[idx];
   if (player.ovrUpgrade >= 5) { botReply('❌ Максимальный ранг OVR (5).', 300); return; }
-  const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
+  const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade || 0];
   if ((gameState.ovrUpgradePoints||0) < cost) { botReply(`❌ Недостаточно очков OVR (нужно ${cost}).`, 300); return; }
   gameState.ovrUpgradePoints -= cost;
-  player.ovrUpgrade = (player.ovrUpgrade||0) + 1;
+  gameState.myPlayers[idx].ovrUpgrade = (gameState.myPlayers[idx].ovrUpgrade || 0) + 1;
   saveState(); updateHeaderResources(); renderInventoryList();
-  botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! OVR +${player.ovrUpgrade}.`, 300, { html: true });
+  botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! OVR +${gameState.myPlayers[idx].ovrUpgrade}.`, 300, { html: true });
 }
 
 // ── Обмен на фрагменты ────────────────────────────────────────────────────
@@ -6276,6 +6675,32 @@ function getPosCoords(pos, idx, total) {
   return {x: base.x + (idx/(total-1) - 0.5)*spread, y: base.y};
 }
 
+// ── Проверка лимита инвентаря ─────────────────────────────────────────────
+const PLAYER_LIMIT = 1000;
+const PLAYER_WARNING = 950;
+
+function checkInventoryLimit() {
+  const count = (gameState.myPlayers || []).length;
+  // Уведомление при 950+
+  if (count >= PLAYER_WARNING && !gameState._invWarningShown) {
+    gameState._invWarningShown = true;
+    saveState();
+    setTimeout(() => {
+      botReply(
+        `⚠️ <b>Инвентарь почти заполнен!</b><br>` +
+        `У вас <b>${count}</b> из <b>${PLAYER_LIMIT}</b> игроков.<br>` +
+        `Продай или обменяй лишних игроков.`,
+        1000, { html: true }
+      );
+    }, 500);
+  }
+  // Сбрасываем флаг если освободили место
+  if (count < PLAYER_WARNING && gameState._invWarningShown) {
+    gameState._invWarningShown = false;
+    saveState();
+  }
+}
+
 function initPlayerPositions() {
   if (!matchState) return;
   const formation = matchState.formation;
@@ -6630,92 +7055,63 @@ function randomizePlayerPositions() {
   if (matchState._specialPhase) return;
 
   const isSecond = matchState.secondHalf || false;
-
-  // ── Определяем у кого мяч ────────────────────────────────────────────
   const ballTeam = matchState.ballOwner ? matchState.ballOwner.team : null;
   const homeHasBall = ballTeam === 'home' || (!ballTeam && Math.random() < 0.5);
   const awayHasBall = !homeHasBall;
 
-  // ── Зоны игроков в зависимости от того, у кого мяч ──────────────────
-  // homeHasBall=true → хозяева атакуют (смещаются вперёд)
-  // homeHasBall=false → хозяева защищаются (смещаются назад)
-
-  // Базовые зоны для первого тайма (хозяева атакуют вправо, x→100)
-  // Для второго тайма зоны зеркалятся автоматически через isSecond
   const getZone = (pos, isAttacking, isHome, isSec) => {
-    // Вратарь — строго у своих ворот, никогда не уходит
     if (pos === 'GK') {
       const gkX = isHome ? (isSec ? 92 : 8) : (isSec ? 8 : 92);
       return { xMin: gkX - 2, xMax: gkX + 2, yMin: 38, yMax: 62 };
     }
-
-    // Направление атаки
-    // isHome && !isSec → атака вправо (xMax до 97)
-    // isHome && isSec  → атака влево (xMin от 3)
     const attackDir = (isHome && !isSec) || (!isHome && isSec) ? 1 : -1;
-
-    // Базовые зоны для каждой позиции (для атакующей команды)
     const ATK_ZONES = {
-      LB:  { xMin: 45, xMax: 80, yMin: 5,  yMax: 30 },  // фланг, вперёд
-      RB:  { xMin: 45, xMax: 80, yMin: 70, yMax: 95 },
-      CB:  { xMin: 30, xMax: 60, yMin: 30, yMax: 70 },   // не уходит далеко
-      CDM: { xMin: 35, xMax: 60, yMin: 30, yMax: 70 },
-      CM:  { xMin: 40, xMax: 70, yMin: 25, yMax: 75 },
-      CAM: { xMin: 52, xMax: 80, yMin: 20, yMax: 80 },
-      LM:  { xMin: 45, xMax: 82, yMin: 5,  yMax: 35 },
-      RM:  { xMin: 45, xMax: 82, yMin: 65, yMax: 95 },
-      LW:  { xMin: 55, xMax: 92, yMin: 3,  yMax: 30 },
-      RW:  { xMin: 55, xMax: 92, yMin: 70, yMax: 97 },
-      ST:  { xMin: 62, xMax: 94, yMin: 25, yMax: 75 },
-      CF:  { xMin: 58, xMax: 90, yMin: 25, yMax: 75 },
+      LB:  { xMin: 45, xMax: 75, yMin: 5,  yMax: 30 },
+      RB:  { xMin: 45, xMax: 75, yMin: 70, yMax: 95 },
+      CB:  { xMin: 28, xMax: 55, yMin: 30, yMax: 70 },
+      CDM: { xMin: 33, xMax: 58, yMin: 28, yMax: 72 },
+      CM:  { xMin: 38, xMax: 65, yMin: 22, yMax: 78 },
+      CAM: { xMin: 50, xMax: 75, yMin: 18, yMax: 82 },
+      LM:  { xMin: 42, xMax: 78, yMin: 5,  yMax: 35 },
+      RM:  { xMin: 42, xMax: 78, yMin: 65, yMax: 95 },
+      LW:  { xMin: 52, xMax: 85, yMin: 3,  yMax: 28 },
+      RW:  { xMin: 52, xMax: 85, yMin: 72, yMax: 97 },
+      ST:  { xMin: 58, xMax: 88, yMin: 25, yMax: 75 },
+      CF:  { xMin: 55, xMax: 85, yMin: 25, yMax: 75 },
     };
-
-    // Базовые зоны для защищающейся команды
     const DEF_ZONES = {
-      LB:  { xMin: 8,  xMax: 40, yMin: 5,  yMax: 30 },  // назад на свою половину
-      RB:  { xMin: 8,  xMax: 40, yMin: 70, yMax: 95 },
-      CB:  { xMin: 5,  xMax: 30, yMin: 28, yMax: 72 },   // держат линию
-      CDM: { xMin: 15, xMax: 45, yMin: 28, yMax: 72 },
-      CM:  { xMin: 20, xMax: 55, yMin: 22, yMax: 78 },
-      CAM: { xMin: 28, xMax: 58, yMin: 20, yMax: 80 },   // прессинг
-      LM:  { xMin: 15, xMax: 52, yMin: 5,  yMax: 35 },
-      RM:  { xMin: 15, xMax: 52, yMin: 65, yMax: 95 },
-      LW:  { xMin: 22, xMax: 58, yMin: 3,  yMax: 35 },   // прессинг/страховка
-      RW:  { xMin: 22, xMax: 58, yMin: 65, yMax: 97 },
-      ST:  { xMin: 35, xMax: 68, yMin: 25, yMax: 75 },   // прессинг
-      CF:  { xMin: 32, xMax: 65, yMin: 25, yMax: 75 },
+      LB:  { xMin: 6,  xMax: 35, yMin: 5,  yMax: 30 },
+      RB:  { xMin: 6,  xMax: 35, yMin: 70, yMax: 95 },
+      CB:  { xMin: 4,  xMax: 28, yMin: 25, yMax: 75 },
+      CDM: { xMin: 12, xMax: 42, yMin: 25, yMax: 75 },
+      CM:  { xMin: 18, xMax: 50, yMin: 20, yMax: 80 },
+      CAM: { xMin: 25, xMax: 55, yMin: 18, yMax: 82 },
+      LM:  { xMin: 12, xMax: 48, yMin: 5,  yMax: 35 },
+      RM:  { xMin: 12, xMax: 48, yMin: 65, yMax: 95 },
+      LW:  { xMin: 18, xMax: 52, yMin: 3,  yMax: 32 },
+      RW:  { xMin: 18, xMax: 52, yMin: 68, yMax: 97 },
+      ST:  { xMin: 30, xMax: 62, yMin: 22, yMax: 78 },
+      CF:  { xMin: 28, xMax: 60, yMin: 22, yMax: 78 },
     };
-
     const zones = isAttacking ? ATK_ZONES : DEF_ZONES;
     const z = zones[pos] || { xMin: 20, xMax: 80, yMin: 20, yMax: 80 };
-
-    // Зеркалим для второго тайма или гостей
     if (attackDir === -1) {
-      // Зеркалим по X: 100 - x
-      return {
-        xMin: 100 - z.xMax,
-        xMax: 100 - z.xMin,
-        yMin: z.yMin,
-        yMax: z.yMax
-      };
+      return { xMin: 100 - z.xMax, xMax: 100 - z.xMin, yMin: z.yMin, yMax: z.yMax };
     }
     return z;
   };
 
-  // ── Мяч: логика владения ─────────────────────────────────────────────
-  // Обновляем мяч только если нет активного владельца и прошло время
+  // ── Владение мячом ────────────────────────────────────────────────────
   matchState._ballPhaseTimer = (matchState._ballPhaseTimer || 0) + 1;
   if (matchState._ballPhaseTimer > 2 + Math.floor(Math.random() * 4)) {
     matchState._ballPhaseTimer = 0;
 
     if (matchState.ballOwner) {
-      // Мяч у игрока — он ведёт его вперёд или пасует
       const ownerTeam = matchState.ballOwner.team;
       const isOwnerHome = ownerTeam === 'home';
-      const ownerPlayers = isOwnerHome ? matchState.homePlayers : matchState.awayPlayers;
       const ownerPositions = isOwnerHome ? matchState.homePositions : matchState.awayPositions;
+      const ownerPlayers   = isOwnerHome ? matchState.homePlayers   : matchState.awayPlayers;
 
-      // Найдём позицию владельца
       let ownerPos = null;
       ownerPositions.forEach((pos, i) => {
         const pl = isOwnerHome ? ownerPlayers[pos.slotIndex] : ownerPlayers[i];
@@ -6723,129 +7119,155 @@ function randomizePlayerPositions() {
       });
 
       if (ownerPos) {
-        // Двигаем мяч немного вперёд от владельца
-        const forwardX = isOwnerHome
-          ? (isSecond ? ownerPos.x - 3 - Math.random()*5 : ownerPos.x + 3 + Math.random()*5)
-          : (isSecond ? ownerPos.x + 3 + Math.random()*5 : ownerPos.x - 3 - Math.random()*5);
-        const newBallX = Math.max(3, Math.min(97, forwardX));
-        const newBallY = Math.max(5, Math.min(95, ownerPos.y + (Math.random()-0.5)*8));
+        const goalX = isOwnerHome
+          ? (isSecond ? 3 : 97)
+          : (isSecond ? 97 : 3);
+        const distToGoal = Math.abs(ownerPos.x - goalX);
 
-        // Иногда пасуем к другому игроку той же команды
-        if (Math.random() < 0.4) {
-          const teammates = (isOwnerHome ? matchState.homePlayers : matchState.awayPlayers)
-            .filter(p => !p.redCarded && p.name !== matchState.ballOwner.name && p.position !== 'GK');
-          if (teammates.length > 0) {
-            // Выбираем игрока, который ближе к атаке
-            const receiver = teammates[Math.floor(Math.random() * teammates.length)];
-            matchState.ballOwner = { name: receiver.name, team: ownerTeam };
+        if (distToGoal < 22) {
+          // Близко к воротам — мяч держим у ноги, удар обработает игровое событие
+          setMatchBallTarget(ownerPos.x, ownerPos.y, matchState.ballOwner.name, ownerTeam);
+        } else {
+          // Далеко — ведём мяч вперёд к воротам
+          const forwardX = isOwnerHome
+            ? (isSecond ? ownerPos.x - 4 - Math.random()*6 : ownerPos.x + 4 + Math.random()*6)
+            : (isSecond ? ownerPos.x + 4 + Math.random()*6 : ownerPos.x - 4 - Math.random()*6);
+          const newBallX = Math.max(3, Math.min(97, forwardX));
+          const newBallY = Math.max(5, Math.min(95, ownerPos.y + (Math.random()-0.5)*6));
+
+          // Пас только вперёд — выбираем партнёра ближе к воротам соперника
+          if (Math.random() < 0.35) {
+            const teammates = (isOwnerHome ? matchState.homePlayers : matchState.awayPlayers)
+              .filter(p => !p.redCarded && p.name !== matchState.ballOwner.name && p.position !== 'GK');
+            if (teammates.length > 0) {
+              const sorted = teammates.slice().sort((a, b) => {
+                const findPos = (name) => {
+                  let found = null;
+                  ownerPositions.forEach((pp, i) => {
+                    const pl = isOwnerHome ? ownerPlayers[pp.slotIndex] : ownerPlayers[i];
+                    if (pl && pl.name === name) found = pp;
+                  });
+                  return found;
+                };
+                const posA = findPos(a.name);
+                const posB = findPos(b.name);
+                const distA = posA ? Math.abs(posA.x - goalX) : 999;
+                const distB = posB ? Math.abs(posB.x - goalX) : 999;
+                return distA - distB;
+              });
+              matchState.ballOwner = { name: sorted[0].name, team: ownerTeam };
+            }
           }
+          setMatchBallTarget(newBallX, newBallY, matchState.ballOwner.name, ownerTeam);
         }
-
-        setMatchBallTarget(newBallX, newBallY, matchState.ballOwner.name, ownerTeam);
       }
     } else {
       // Мяч свободен — подбирает ближайший игрок
-      const allActive = [
-        ...matchState.homePlayers.filter(p => !p.redCarded && p.position !== 'GK'),
-        ...matchState.awayPlayers.filter(p => !p.redCarded && p.position !== 'GK')
-      ];
-      if (allActive.length > 0) {
-        const picker = allActive[Math.floor(Math.random() * allActive.length)];
-        const isPickerHome = matchState.homePlayers.includes(picker);
-        matchState.ballOwner = { name: picker.name, team: isPickerHome ? 'home' : 'away' };
+      let nearest = null, minDist = Infinity;
+      const check = (p, positions, isHome, i) => {
+        const posObj = isHome ? positions.find(pp => {
+          const pl = matchState.homePlayers[pp.slotIndex];
+          return pl && pl.name === p.name;
+        }) : positions[i];
+        if (!posObj) return;
+        const dist = Math.hypot(posObj.x - matchState.ballX, posObj.y - matchState.ballY);
+        if (dist < minDist) { minDist = dist; nearest = { p, isHome }; }
+      };
+      matchState.homePlayers.filter(p => !p.redCarded && p.position !== 'GK')
+        .forEach(p => check(p, matchState.homePositions, true, 0));
+      matchState.awayPlayers.filter(p => !p.redCarded && p.position !== 'GK')
+        .forEach((p, i) => check(p, matchState.awayPositions, false, i));
+      if (nearest) {
+        matchState.ballOwner = {
+          name: nearest.p.name,
+          team: nearest.isHome ? 'home' : 'away'
+        };
       }
     }
   }
 
-    // ── Обновляем целевые позиции игроков ────────────────────────────────
+  // ── Позиции хозяев ────────────────────────────────────────────────────
+  const ownerIsHome = matchState.ballOwner && matchState.ballOwner.team === 'home';
+  const ownerIsAway = matchState.ballOwner && matchState.ballOwner.team === 'away';
+
   matchState.homePositions.forEach((posObj) => {
     const zone = getZone(posObj.pos, homeHasBall, true, isSecond);
-
-    // ── Если мяч у нас и владелец находится близко к воротам соперника ──
-    // Атакующие должны двигаться К воротам, а не от них
-    const ownerIsHome = matchState.ballOwner && matchState.ballOwner.team === 'home';
-    const ballNearOpponentGoal = isSecond ? matchState.ballX < 25 : matchState.ballX > 75;
     const isAttacker = ['ST','CF','LW','RW','CAM'].includes(posObj.pos);
     const isDefender = ['CB','LB','RB','CDM'].includes(posObj.pos);
+    const goalX   = isSecond ? 3 : 97;
+    const ownGoalX = isSecond ? 94 : 6;
 
-    if (ownerIsHome && ballNearOpponentGoal && isAttacker) {
-      // Атакующие тянутся к воротам соперника
-      const goalX = isSecond ? 3 : 97;
-      posObj.targetX = Math.max(3, Math.min(97, goalX + (Math.random()-0.5)*20));
+    if (posObj.pos === 'GK') {
+      posObj.targetX = isSecond ? 91 + Math.random()*3 : 6 + Math.random()*3;
+      posObj.targetY = 38 + Math.random() * 24;
+    } else if (ownerIsHome && isAttacker) {
+      // Наш мяч — атакующие рвутся к воротам
+      posObj.targetX = Math.max(52, Math.min(96,
+        goalX + (isSecond ? 10 : -10) + (Math.random()-0.5)*16
+      ));
       posObj.targetY = 20 + Math.random() * 60;
-    } else if (!ownerIsHome && isDefender) {
-      // Защитники тянутся к мячу для отбора
-      posObj.targetX = Math.max(3, Math.min(97,
-        matchState.ballX * 0.6 + zone.xMin * 0.4 + (Math.random()-0.5)*8
+    } else if (ownerIsAway && isDefender) {
+      // Чужой мяч — защитники идут отбирать
+      posObj.targetX = Math.max(3, Math.min(55,
+        matchState.ballX * 0.65 + ownGoalX * 0.35 + (Math.random()-0.5)*8
       ));
       posObj.targetY = Math.max(5, Math.min(95,
-        matchState.ballY * 0.5 + (zone.yMin + zone.yMax)/2 * 0.5 + (Math.random()-0.5)*10
+        matchState.ballY + (Math.random()-0.5)*14
       ));
     } else {
       posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
       posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
-    }
-
-    // Небольшое притяжение к мячу
-    if (matchState.ballX > 0 && !ballNearOpponentGoal) {
-      const ballPull = homeHasBall ? 0.12 : 0.07;
-      posObj.targetX = posObj.targetX * (1 - ballPull) + matchState.ballX * ballPull;
-      posObj.targetY = posObj.targetY * (1 - ballPull) + matchState.ballY * ballPull;
-    }
-
-    // Вратарь — никогда не двигается из штрафной
-    if (posObj.pos === 'GK') {
-      posObj.targetX = isSecond ? 90 + Math.random()*4 : 6 + Math.random()*4;
-      posObj.targetY = 38 + Math.random() * 24;
+      if (['CM','CAM','CDM','LM','RM'].includes(posObj.pos)) {
+        const pull = homeHasBall ? 0.08 : 0.05;
+        posObj.targetX = posObj.targetX * (1 - pull) + matchState.ballX * pull;
+        posObj.targetY = posObj.targetY * (1 - pull) + matchState.ballY * pull;
+      }
     }
 
     posObj.targetX = Math.max(3, Math.min(97, posObj.targetX));
     posObj.targetY = Math.max(3, Math.min(97, posObj.targetY));
   });
 
+  // ── Позиции гостей ────────────────────────────────────────────────────
   matchState.awayPositions.forEach((posObj) => {
     const zone = getZone(posObj.pos, awayHasBall, false, isSecond);
-
-    const ownerIsAway = matchState.ballOwner && matchState.ballOwner.team === 'away';
-    const ballNearHomeGoal = isSecond ? matchState.ballX > 75 : matchState.ballX < 25;
     const isAttacker = ['ST','CF','LW','RW','CAM'].includes(posObj.pos);
     const isDefender = ['CB','LB','RB','CDM'].includes(posObj.pos);
+    const goalX    = isSecond ? 97 : 3;
+    const ownGoalX = isSecond ? 6 : 94;
 
-    if (ownerIsAway && ballNearHomeGoal && isAttacker) {
-      // Атакующие гостей тянутся к нашим воротам
-      const goalX = isSecond ? 97 : 3;
-      posObj.targetX = Math.max(3, Math.min(97, goalX + (Math.random()-0.5)*20));
+    if (posObj.pos === 'GK') {
+      posObj.targetX = isSecond ? 6 + Math.random()*3 : 91 + Math.random()*3;
+      posObj.targetY = 38 + Math.random() * 24;
+    } else if (ownerIsAway && isAttacker) {
+      // Наш мяч (гости) — атакующие к воротам хозяев
+      posObj.targetX = Math.min(48, Math.max(4,
+        goalX + (isSecond ? -10 : 10) + (Math.random()-0.5)*16
+      ));
       posObj.targetY = 20 + Math.random() * 60;
-    } else if (!ownerIsAway && isDefender) {
-      // Защитники гостей тянутся к мячу
-      posObj.targetX = Math.max(3, Math.min(97,
-        matchState.ballX * 0.6 + zone.xMin * 0.4 + (Math.random()-0.5)*8
+    } else if (ownerIsHome && isDefender) {
+      // Чужой мяч — защитники гостей отбирают
+      posObj.targetX = Math.max(45, Math.min(97,
+        matchState.ballX * 0.65 + ownGoalX * 0.35 + (Math.random()-0.5)*8
       ));
       posObj.targetY = Math.max(5, Math.min(95,
-        matchState.ballY * 0.5 + (zone.yMin + zone.yMax)/2 * 0.5 + (Math.random()-0.5)*10
+        matchState.ballY + (Math.random()-0.5)*14
       ));
     } else {
       posObj.targetX = zone.xMin + Math.random() * (zone.xMax - zone.xMin);
       posObj.targetY = zone.yMin + Math.random() * (zone.yMax - zone.yMin);
-    }
-
-    // Небольшое притяжение к мячу
-    if (matchState.ballX > 0 && !ballNearHomeGoal) {
-      const ballPull = awayHasBall ? 0.12 : 0.07;
-      posObj.targetX = posObj.targetX * (1 - ballPull) + matchState.ballX * ballPull;
-      posObj.targetY = posObj.targetY * (1 - ballPull) + matchState.ballY * ballPull;
-    }
-
-    // Вратарь
-    if (posObj.pos === 'GK') {
-      posObj.targetX = isSecond ? 6 + Math.random()*4 : 90 + Math.random()*4;
-      posObj.targetY = 38 + Math.random() * 24;
+      if (['CM','CAM','CDM','LM','RM'].includes(posObj.pos)) {
+        const pull = awayHasBall ? 0.08 : 0.05;
+        posObj.targetX = posObj.targetX * (1 - pull) + matchState.ballX * pull;
+        posObj.targetY = posObj.targetY * (1 - pull) + matchState.ballY * pull;
+      }
     }
 
     posObj.targetX = Math.max(3, Math.min(97, posObj.targetX));
     posObj.targetY = Math.max(3, Math.min(97, posObj.targetY));
   });
-
+}
+  
 // ── Запуск специальной фазы (гол, угловой, штрафной, пенальти, от ворот) ──
 function _startSpecialPhase(phase, isHomeTeam, duration, callback) {
   if (!matchState) return;
@@ -9115,7 +9537,10 @@ function renderQuestsModal() {
   const quests     = gameState.quests || [];
   const bonusDone  = gameState.allQuestsBonusClaimed || false;
   const dailyDone  = (gameState.dailyRewardDate === today);
+  // allDone для прогресс-бара — все выполнены
   const allDone    = quests.length === 4 && quests.every(q => q.completed);
+  // Бонус доступен только если ВСЕ награды за квесты УЖЕ ПОЛУЧЕНЫ
+  const allClaimed = quests.length === 4 && quests.every(q => q.claimed);
 
   // Иконки ресурсов
   const iRuby  = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:13px;height:13px;vertical-align:middle;" />';
@@ -9192,8 +9617,10 @@ function renderQuestsModal() {
 
   if (bonusDone) {
     html += `<div style="text-align:center;padding:8px;background:rgba(77,192,90,0.15);border-radius:8px;font-size:13px;color:#4dc05a;">✓ Уже получено сегодня</div>`;
-  } else if (allDone) {
+  } else if (allClaimed) {
     html += `<button onclick="claimAllQuestsBonus()" style="width:100%;padding:10px;background:linear-gradient(135deg,#f0c040,#d4a800);border:none;border-radius:10px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">🎁 Забрать общую награду</button>`;
+  } else if (allDone) {
+    html += `<div style="text-align:center;padding:8px;background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);border-radius:8px;font-size:12px;color:#f0c040;">⏳ Сначала забери награды за каждый квест выше</div>`;
   } else {
     html += `<div style="text-align:center;padding:8px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px;color:#7d8e9e;">Выполни все квесты и забери бонус</div>`;
   }
@@ -9247,14 +9674,13 @@ async function claimAllQuestsBonus() {
   closeQuestsModal();
   checkAndRefreshQuests();
 
-  const allDone = (gameState.quests || []).every(q => q.completed);
-  if (!allDone || gameState.allQuestsBonusClaimed) {
+  const allClaimed = (gameState.quests || []).every(q => q.claimed);
+  if (!allClaimed || gameState.allQuestsBonusClaimed) {
     await botReply('❌ Бонус недоступен.', 300); return;
   }
 
   gameState.allQuestsBonusClaimed = true;
   const b = ALL_QUESTS_BONUS;
-  gameState.xp               = (gameState.xp               || 0) + b.xp;
   gameState.passCredits      = (gameState.passCredits      || 0) + b.passCredits;
   gameState.rubins            = (gameState.rubins            || 0) + b.rubins;
   gameState.fragments         = (gameState.fragments         || 0) + b.fragments;
@@ -9265,7 +9691,7 @@ async function claimAllQuestsBonus() {
 
   await botReply(
     `🏆 <b>Все квесты выполнены!</b><br>` +
-    `<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.xp} XP · ` +
+    `<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +150 очк. прогр. · ` +
     `<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.rubins} сапф. · ` +
     `<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.fragments} фрагм. · ` +
     `<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.ovrUpgradePoints} OVR · ` +
@@ -10138,10 +10564,26 @@ function renderMatchHistoryModal(detailId) {
 }
 
 // === END MODULE: match history ===
+
+function fixMissingCardIds() {
+  if (!gameState.myPlayers) return;
+  const seen = new Set();
+  let changed = false;
+  for (const player of gameState.myPlayers) {
+    // Нет cardId или дубликат cardId — генерируем новый
+    if (!player.cardId || seen.has(player.cardId)) {
+      player.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_fix';
+      changed = true;
+    }
+    seen.add(player.cardId);
+  }
+  if (changed) saveState();
+}
   
 // ========== INIT ==========
 function init() {
   loadState();
+  fixMissingCardIds();
   checkCustomDataUpdate();
     // ── Тех. поражение при перезагрузке во время матча ──
     if (gameState.inMatch) {
@@ -10225,14 +10667,20 @@ function init() {
     updateHeaderNickname();
   }
   const savedPlayers = localStorage.getItem('footballManager_allPlayers');
-  if (savedPlayers) {
+  const savedTemplateVersion = parseInt(localStorage.getItem('footballManager_template_version') || '0');
+  
+  if (savedPlayers && savedTemplateVersion >= ALL_PLAYERS_TEMPLATE_VERSION && !gameState.customDataUrl) {
     try {
       allPlayers = JSON.parse(savedPlayers);
     } catch (e) {
       allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+      localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+      localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
     }
   } else {
     allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
+    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
+    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
   }
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
     gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>{
@@ -10255,7 +10703,27 @@ function init() {
     if (now - lastTap < 300) e.preventDefault();
     lastTap = now;
   }, { passive: false });
-  if (gameState.registered) { hideStartOverlay(); botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true}); }
+    if (gameState.registered) {
+    hideStartOverlay();
+    botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true});
+    // Проверка лимита инвентаря при входе
+    const _cnt = (gameState.myPlayers || []).length;
+    if (_cnt >= 950 && _cnt < 1000) {
+      setTimeout(() => {
+        botReply(
+          `⚠️ <b>Инвентарь почти заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков. Продай или обменяй лишних, чтобы освободить место.`,
+          1500, { html: true }
+        );
+      }, 2000);
+    } else if (_cnt >= 1000) {
+      setTimeout(() => {
+        botReply(
+          `🚫 <b>Инвентарь заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков. Новых игроков получить нельзя — продай или обменяй лишних.`,
+          1500, { html: true }
+        );
+      }, 2000);
+    }
+  }
   else if (gameState.awaitingNickname) { hideStartOverlay(); botReply('Введи никнейм для продолжения регистрации:', 400); }
   else { startOverlay.classList.remove('hidden'); }
 }
