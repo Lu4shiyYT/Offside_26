@@ -7299,47 +7299,37 @@ function showMatchSubsPanel() {
   const canSub = matchState.subCount < matchState.maxSubs;
   const subsLeft = matchState.maxSubs - matchState.subCount;
 
-  // ── Строим карточку игрока для панели замен ──────────────────────────
+  // ── Строим карточку ──────────────────────────────────────────────────
   function buildSubCard(p, idx, isBench) {
     const effOvr = getEffectiveOvr ? getEffectiveOvr(p) : (p.ovr || 0);
     const staminaPct = (p.staminaPct != null) ? p.staminaPct : 100;
     const staminaVal = Math.min(100, staminaPct) / 100;
-    // Используем staminaColor для правильного отображения
     const staminaCol = (typeof staminaColor === 'function') ? staminaColor(staminaVal) : '#4dc05a';
     const posColor = getPositionColor(p.position);
     const liveRating = p.matchStats ? calculateRating(p.matchStats, matchState.minute || 1) : 6.5;
 
-    // Значки
     let badges = '';
-    if (p.matchStats && p.matchStats.goals > 0) {
-      badges += `<span style="font-size:11px;">⚽×${p.matchStats.goals}</span>`;
-    }
-    if (p.matchStats && p.matchStats.assists > 0) {
-      badges += `<span style="font-size:11px;margin-left:4px;">🅰️×${p.matchStats.assists}</span>`;
-    }
+    if (p.matchStats && p.matchStats.goals > 0)   badges += `<span style="font-size:11px;">⚽×${p.matchStats.goals}</span>`;
+    if (p.matchStats && p.matchStats.assists > 0) badges += `<span style="font-size:11px;margin-left:4px;">🅰️×${p.matchStats.assists}</span>`;
 
     const isRed = p.redCarded;
     const isOut = isBench && (
       matchState.subbedOutIds.includes(p.id) ||
-      matchState.subbedOutIds.includes(p.name) ||
-      (p.id !== undefined && matchState.subbedOutIds.includes(String(p.id)))
+      matchState.subbedOutIds.includes(p.name)
     );
 
-    // Подсветка выбранного для замены
-    const selOutActive = !isBench && window._subOutIdx === idx;
-    const borderColor = selOutActive ? '#f0c040' : (isRed ? '#e05050' : posColor);
-    const bgExtra = selOutActive ? 'background:rgba(240,192,64,0.15);' : '';
+    // ── Подсветка выбранного ─────────────────────────────────────────
+    // Для поля: выбранный хранится в _subOutIdx (индекс в homePlayers)
+    // Для скамейки: выбранный хранится в _subBenchIdx (индекс в benchPlayers)
+    const selField = !isBench && window._subOutIdx === idx;
+    const selBench = isBench && window._subBenchIdx === idx;
 
-    let clickAttr = '';
-    if (!isBench && !isRed && canSub) {
-      clickAttr = `onclick="subsSelectOut(${idx})"`;
-    } else if (isBench && !isOut && canSub) {
-      // idx уже является индексом в matchState.benchPlayers — оставляем как есть
-      // НО убедимся что isOut проверяется правильно
-      clickAttr = `onclick="subsSelectIn(${idx})"`;
-    }
+    const borderColor = selField ? '#f0c040' : selBench ? '#4dc05a' : (isRed ? '#e05050' : posColor);
+    const bgExtra = selField ? 'background:rgba(240,192,64,0.15);' : selBench ? 'background:rgba(77,192,90,0.15);' : '';
 
     const opacity = (isRed || isOut) ? '0.4' : '1';
+    const clickable = !isRed && !isOut && canSub;
+    const clickAttr = clickable ? `onclick="subsCardClick(${idx}, ${isBench})"` : '';
 
     return `
       <div ${clickAttr} style="
@@ -7347,53 +7337,41 @@ function showMatchSubsPanel() {
         border:2px solid ${borderColor};
         border-radius:12px;
         padding:10px 12px;
-        cursor:${(!isRed && !isOut && canSub) ? 'pointer' : 'default'};
+        cursor:${clickable ? 'pointer' : 'default'};
         opacity:${opacity};
         ${bgExtra}
-        transition:border-color 0.15s;
+        transition:border-color 0.15s, background 0.15s;
       ">
         <div style="display:flex;align-items:center;gap:10px;">
-          <!-- Позиция -->
-          <div style="
-            width:40px;height:40px;border-radius:50%;
-            background:${posColor};
+          <div style="width:40px;height:40px;border-radius:50%;background:${posColor};
             display:flex;align-items:center;justify-content:center;
-            font-size:12px;font-weight:700;color:#fff;flex-shrink:0;
-          ">${p.position}</div>
-
-          <!-- Имя + бейджи -->
+            font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">${p.position}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
             <div style="font-size:10px;color:#7d8e9e;margin-top:1px;">${badges}</div>
           </div>
-
-          <!-- OVR + рейтинг -->
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:18px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
             ${!isBench ? `<div style="font-size:10px;color:#7d8e9e;margin-top:2px;">★ ${liveRating.toFixed(1)}</div>` : ''}
           </div>
         </div>
-
-        <!-- Выносливость -->
         <div style="margin-top:8px;">
           <div style="display:flex;justify-content:space-between;font-size:10px;color:#7d8e9e;margin-bottom:3px;">
             <span>⚡ Выносливость</span>
             <span>${Math.round(staminaPct)}%</span>
           </div>
           <div style="background:#1a2a3a;border-radius:3px;height:5px;">
-            <div style="height:100%;width:${Math.min(100, staminaPct)}%;background:${staminaCol};border-radius:3px;transition:width 0.3s;"></div>
+            <div style="height:100%;width:${Math.min(100,staminaPct)}%;background:${staminaCol};border-radius:3px;"></div>
           </div>
         </div>
       </div>`;
   }
 
-  // ── Рендер панели ────────────────────────────────────────────────────
   const eligibleBench = matchState.benchPlayers.filter(p =>
     !matchState.subbedOutIds.includes(p.id) && !matchState.subbedOutIds.includes(p.name)
   );
 
   modal.innerHTML = `
-    <!-- Шапка -->
     <div style="background:#17212b;padding:12px 16px;
       padding-top:calc(12px + env(safe-area-inset-top,0px));
       border-bottom:1px solid #1e2d3d;flex-shrink:0;
@@ -7416,111 +7394,229 @@ function showMatchSubsPanel() {
            text-align:center;font-size:12px;color:#e05050;flex-shrink:0;">
            ❌ Лимит замен исчерпан
          </div>`
-      : `<div style="padding:8px 16px;background:rgba(82,136,193,0.1);
+      : `<div data-subs-hint style="padding:8px 16px;background:rgba(82,136,193,0.1);
            text-align:center;font-size:11px;color:#5288c1;flex-shrink:0;">
-           1️⃣ Нажми кого <b>убрать</b> (подсветится) → 2️⃣ Нажми кого <b>выпустить</b>
+           Нажми игрока на поле → затем игрока на скамейке
          </div>`
     }
 
-    <!-- Основной состав -->
     <div style="padding:12px 16px;">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-        <span style="font-size:13px;font-weight:700;color:#e8e8e8;">🏃 НА ПОЛЕ</span>
-        <span style="font-size:11px;color:#7d8e9e;">— нажми чтобы убрать</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        ${matchState.homePlayers.map((p, idx) => buildSubCard(p, idx, false)).join('')}
+      <div style="font-size:13px;font-weight:700;color:#e8e8e8;margin-bottom:10px;">🏃 НА ПОЛЕ</div>
+      <div data-subs-field style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+         ${matchState.homePlayers.map((p, idx) => buildSubCard(p, idx, false)).join('')}
       </div>
     </div>
 
-    <!-- Скамейка -->
     <div style="padding:0 16px 16px;">
       <div style="border-top:1px solid #1e2d3d;padding-top:12px;margin-bottom:10px;
-        display:flex;align-items:center;gap:6px;">
-        <span style="font-size:13px;font-weight:700;color:#e8e8e8;">🪑 СКАМЕЙКА</span>
-        <span style="font-size:11px;color:#7d8e9e;">— нажми чтобы выпустить</span>
-      </div>
+        font-size:13px;font-weight:700;color:#e8e8e8;">🪑 СКАМЕЙКА</div>
       ${eligibleBench.length === 0
-        ? `<div style="text-align:center;color:#7d8e9e;padding:20px;font-size:13px;">
-             Нет доступных игроков
-           </div>`
-        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ? `<div style="text-align:center;color:#7d8e9e;padding:20px;">Нет доступных игроков</div>`
+        : `<div data-subs-bench style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
              ${matchState.benchPlayers.map((p, idx) => buildSubCard(p, idx, true)).join('')}
-           </div>`
+          </div>`
       }
     </div>
     <div style="height:env(safe-area-inset-bottom,0px);flex-shrink:0;"></div>
   `;
 
-  window._subOutIdx = null;
+  // Сбрасываем выбор
+  window._subOutIdx   = null;
+  window._subBenchIdx = null;
+
   document.body.appendChild(modal);
 }
 
-// ── Выбрать кого убрать ───────────────────────────────────────────────────
-function subsSelectOut(fieldIdx) {
+// ── Единая функция клика по карточке ─────────────────────────────────────
+function subsCardClick(idx, isBench) {
+  if (!matchState || matchState.finished) return;
+  if (matchState.subCount >= matchState.maxSubs) return;
+
   const modal = document.getElementById('subs-modal');
   const savedScroll = modal ? modal.scrollTop : 0;
 
-  window._subOutIdx = fieldIdx;
+  if (!isBench) {
+    // Клик по полевому игроку
+    const p = matchState.homePlayers[idx];
+    if (!p || p.redCarded) return;
 
-  if (modal) modal.remove();
-  showMatchSubsPanel();
+    if (window._subOutIdx === idx) {
+      // Повторный клик — снимаем выделение
+      window._subOutIdx = null;
+    } else {
+      window._subOutIdx = idx;
+      // Если скамейка уже выбрана — сразу делаем замену
+      if (window._subBenchIdx !== null && window._subBenchIdx !== undefined) {
+        const fieldIdx  = window._subOutIdx;
+        const benchIdx  = window._subBenchIdx;
+        window._subOutIdx   = null;
+        window._subBenchIdx = null;
+        doSubstitution(fieldIdx, benchIdx);
+        return;
+      }
+    }
+  } else {
+    // Клик по игроку скамейки
+    const p = matchState.benchPlayers[idx];
+    if (!p) return;
+    const alreadyOut = matchState.subbedOutIds.includes(p.id) || matchState.subbedOutIds.includes(p.name);
+    if (alreadyOut) return;
 
+    if (window._subBenchIdx === idx) {
+      // Повторный клик — снимаем выделение
+      window._subBenchIdx = null;
+    } else {
+      window._subBenchIdx = idx;
+      // Если поле уже выбрано — сразу делаем замену
+      if (window._subOutIdx !== null && window._subOutIdx !== undefined) {
+        const fieldIdx  = window._subOutIdx;
+        const benchIdx  = window._subBenchIdx;
+        window._subOutIdx   = null;
+        window._subBenchIdx = null;
+        doSubstitution(fieldIdx, benchIdx);
+        return;
+      }
+    }
+  }
+
+  // Перерисовываем модал с сохранением значений _subOutIdx/_subBenchIdx
+  // ВАЖНО: НЕ вызываем showMatchSubsPanel() — он сбрасывает значения!
+  // Вместо этого перерисовываем карточки напрямую
+  rebuildSubsCards();
+  
   setTimeout(() => {
     const m = document.getElementById('subs-modal');
     if (m) m.scrollTop = savedScroll;
   }, 10);
 }
 
-// ── Выбрать кого выпустить ────────────────────────────────────────────────
-function subsSelectIn(benchIdx) {
-  if (window._subOutIdx === null || window._subOutIdx === undefined) {
-    showMatchEventOverlay('⚠️ Сначала выбери кого убрать', '#f0a040', 2000);
-    return;
+function rebuildSubsCards() {
+  const modal = document.getElementById('subs-modal');
+  if (!modal || !matchState) return;
+
+  const canSub  = matchState.subCount < matchState.maxSubs;
+
+  function buildSubCard(p, idx, isBench) {
+    const effOvr    = getEffectiveOvr ? getEffectiveOvr(p) : (p.ovr || 0);
+    const staminaPct = (p.staminaPct != null) ? p.staminaPct : 100;
+    const staminaVal = Math.min(100, staminaPct) / 100;
+    const staminaCol = (typeof staminaColor === 'function') ? staminaColor(staminaVal) : '#4dc05a';
+    const posColor  = getPositionColor(p.position);
+    const liveRating = p.matchStats ? calculateRating(p.matchStats, matchState.minute || 1) : 6.5;
+
+    let badges = '';
+    if (p.matchStats && p.matchStats.goals > 0)   badges += `<span style="font-size:11px;">⚽×${p.matchStats.goals}</span>`;
+    if (p.matchStats && p.matchStats.assists > 0) badges += `<span style="font-size:11px;margin-left:4px;">🅰️×${p.matchStats.assists}</span>`;
+
+    const isRed  = p.redCarded;
+    const isOut  = isBench && (
+      matchState.subbedOutIds.includes(p.id) ||
+      matchState.subbedOutIds.includes(p.name)
+    );
+
+    const selField = !isBench && window._subOutIdx === idx;
+    const selBench = isBench  && window._subBenchIdx === idx;
+
+    const borderColor = selField ? '#f0c040' : selBench ? '#4dc05a' : (isRed ? '#e05050' : posColor);
+    const bgExtra     = selField ? 'background:rgba(240,192,64,0.15);'
+                      : selBench ? 'background:rgba(77,192,90,0.15);' : '';
+
+    const opacity   = (isRed || isOut) ? '0.4' : '1';
+    const clickable = !isRed && !isOut && canSub;
+    const clickAttr = clickable ? `onclick="subsCardClick(${idx}, ${isBench})"` : '';
+
+    return `
+      <div ${clickAttr} style="
+        background:rgba(255,255,255,0.06);
+        border:2px solid ${borderColor};
+        border-radius:12px;
+        padding:10px 12px;
+        cursor:${clickable ? 'pointer' : 'default'};
+        opacity:${opacity};
+        ${bgExtra}
+        transition:border-color 0.15s, background 0.15s;
+      ">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:${posColor};
+            display:flex;align-items:center;justify-content:center;
+            font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">${p.position}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+            <div style="font-size:10px;color:#7d8e9e;margin-top:1px;">${badges}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:18px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
+            ${!isBench ? `<div style="font-size:10px;color:#7d8e9e;margin-top:2px;">★ ${liveRating.toFixed(1)}</div>` : ''}
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#7d8e9e;margin-bottom:3px;">
+            <span>⚡ Выносливость</span>
+            <span>${Math.round(staminaPct)}%</span>
+          </div>
+          <div style="background:#1a2a3a;border-radius:3px;height:5px;">
+            <div style="height:100%;width:${Math.min(100,staminaPct)}%;background:${staminaCol};border-radius:3px;"></div>
+          </div>
+        </div>
+      </div>`;
   }
 
-  const playerIndex = Number(window._subOutIdx);
-  
-  // benchIdx — индекс в полном массиве benchPlayers
+  // Обновляем только секцию "на поле"
+  const fieldGrid = modal.querySelector('[data-subs-field]');
+  if (fieldGrid) {
+    fieldGrid.innerHTML = matchState.homePlayers.map((p, idx) => buildSubCard(p, idx, false)).join('');
+  }
+
+  // Обновляем только секцию "скамейка"
+  const benchGrid = modal.querySelector('[data-subs-bench]');
+  if (benchGrid) {
+    const eligibleBench = matchState.benchPlayers.filter(p =>
+      !matchState.subbedOutIds.includes(p.id) && !matchState.subbedOutIds.includes(p.name)
+    );
+    if (eligibleBench.length === 0) {
+      benchGrid.innerHTML = '<div style="text-align:center;color:#7d8e9e;padding:20px;">Нет доступных игроков</div>';
+    } else {
+      benchGrid.innerHTML = matchState.benchPlayers.map((p, idx) => buildSubCard(p, idx, true)).join('');
+    }
+  }
+
+  // Обновляем подсказку
+  const hint = modal.querySelector('[data-subs-hint]');
+  if (hint) {
+    if (window._subOutIdx !== null && window._subOutIdx !== undefined) {
+      hint.textContent = '✅ Игрок выбран — теперь нажми кого выпустить со скамейки';
+      hint.style.color = '#f0c040';
+    } else if (window._subBenchIdx !== null && window._subBenchIdx !== undefined) {
+      hint.textContent = '✅ Выбран игрок со скамейки — теперь нажми кого убрать с поля';
+      hint.style.color = '#4dc05a';
+    } else {
+      hint.textContent = 'Нажми игрока на поле → затем игрока на скамейке';
+      hint.style.color = '#5288c1';
+    }
+  }
+}
+
+// ── Выполнить замену ──────────────────────────────────────────────────────
+function doSubstitution(fieldIdx, benchIdx) {
   const benchPlayer = matchState.benchPlayers[benchIdx];
+  if (!benchPlayer) { window._subOutIdx = null; window._subBenchIdx = null; return; }
 
-  if (!benchPlayer) {
-    showMatchEventOverlay('❌ Игрок со скамейки не найден', '#e05050', 2000);
-    return;
-  }
+  const fieldPlayer = matchState.homePlayers[fieldIdx];
+  if (!fieldPlayer) { window._subOutIdx = null; window._subBenchIdx = null; return; }
 
-  // Проверяем что этот игрок не выбывал
-  const alreadyOut = matchState.subbedOutIds.includes(benchPlayer.id) ||
-                     matchState.subbedOutIds.includes(benchPlayer.name);
-  if (alreadyOut) {
-    showMatchEventOverlay('❌ Этот игрок уже выходил', '#e05050', 2000);
-    return;
-  }
-
-  if (matchState.subCount >= matchState.maxSubs) {
-    showMatchEventOverlay('❌ Лимит замен исчерпан', '#e05050', 2000);
-    return;
-  }
-
-  const fieldPlayer = matchState.homePlayers[playerIndex];
-  if (!fieldPlayer) {
-    showMatchEventOverlay('❌ Игрок на поле не найден', '#e05050', 2000);
-    return;
-  }
-
-  const slotPos = matchState.formation.positions[playerIndex];
-  if (!slotPos) {
-    showMatchEventOverlay('❌ Позиция не найдена', '#e05050', 2000);
-    return;
-  }
+  const slotPos = matchState.formation.positions[fieldIdx];
+  if (!slotPos) { window._subOutIdx = null; window._subBenchIdx = null; return; }
 
   if ((benchPlayer.position === 'GK') !== (slotPos === 'GK')) {
     showMatchEventOverlay('❌ Нельзя: вратарь ↔ полевой', '#e05050', 2000);
+    window._subOutIdx = null; window._subBenchIdx = null;
+    const m = document.getElementById('subs-modal');
+    if (m) { m.remove(); showMatchSubsPanel(); }
     return;
   }
 
   // Выполняем замену
-  matchState.homePlayers[playerIndex] = {
+  matchState.homePlayers[fieldIdx] = {
     ...benchPlayer,
     slotPosition: slotPos,
     redCarded: false,
@@ -7534,17 +7630,17 @@ function subsSelectIn(benchIdx) {
     matchStats: { goals:0, assists:0, shots:0, shotsOnTarget:0, fouls:0, yellow:0, red:0, rating:6.5 }
   };
 
-  // Убираем из скамейки по индексу
-  const removedPlayer = matchState.benchPlayers.splice(benchIdx, 1)[0];
+  matchState.benchPlayers.splice(benchIdx, 1);
   matchState.benchPlayers.push(fieldPlayer);
-  
-  // Запоминаем что убрали с поля (по id или имени)
   matchState.subbedOutIds.push(fieldPlayer.id !== undefined ? fieldPlayer.id : fieldPlayer.name);
   matchState.subCount++;
   saveState();
 
   showMatchEventOverlay(`🔄 ${fieldPlayer.name} ↓\n${benchPlayer.name} ↑`, '#5288c1', 2500);
   matchState.commentary.push(`${matchState.minute}' 🔄 ${fieldPlayer.name} → ${benchPlayer.name}`);
+
+  window._subOutIdx = null;
+  window._subBenchIdx = null;
 
   const modal = document.getElementById('subs-modal');
   if (modal) modal.remove();
