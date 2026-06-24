@@ -10278,57 +10278,222 @@ function renderProfileModal() {
 
 function openKitColorModal() {
   closeProfileModal();
-  const colors = [
-    '#3a7bd5','#cc0000','#0055aa','#009900','#ff6600',
-    '#660099','#cc9900','#00aacc','#333333','#ff3399',
-    '#006633','#880000','#0033aa','#aa6600','#555555'
-  ];
-  let html = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;align-items:flex-end;justify-content:center;" id="kit-modal">
-      <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;padding:16px;max-height:70vh;overflow-y:auto;">
-        <h3 style="margin:0 0 14px;">🎽 Цвет формы</h3>
-        <div style="font-size:12px;color:#7d8e9e;margin-bottom:8px;">Цвет полевых игроков:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          ${colors.map(c => `<div onclick="gameState.kitColor='${c}';saveState();renderKitPreview();" 
-            style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${(gameState.kitColor||'#3a7bd5')===c?'#fff':'transparent'};"></div>`).join('')}
-        </div>
-        <div style="font-size:12px;color:#7d8e9e;margin-bottom:8px;">Цвет вратаря:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          ${colors.map(c => `<div onclick="gameState.kitColorGK='${c}';saveState();renderKitPreview();" 
-            style="width:36px;height:36px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${(gameState.kitColorGK||'#f0c040')===c?'#fff':'transparent'};"></div>`).join('')}
-        </div>
-        <div id="kit-preview" style="text-align:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;margin-bottom:12px;">
-          Предпросмотр: 
-          <span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${gameState.kitColor||'#3a7bd5'};vertical-align:middle;border:2px solid #fff;"></span>
-          Полевые &nbsp;
-          <span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${gameState.kitColorGK||'#f0c040'};vertical-align:middle;border:2px solid #fff;"></span>
-          Вратарь
-        </div>
-        <button onclick="document.getElementById('kit-modal').remove();openProfileModal();" 
-          style="width:100%;padding:12px;background:#5288c1;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
-          ✅ Сохранить
-        </button>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML('beforeend', html);
-}
 
-function renderKitPreview() {
-  const preview = document.getElementById('kit-preview');
-  if (!preview) return;
-  preview.innerHTML = `Предпросмотр: 
-    <span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${gameState.kitColor||'#3a7bd5'};vertical-align:middle;border:2px solid #fff;"></span>
-    Полевые &nbsp;
-    <span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${gameState.kitColorGK||'#f0c040'};vertical-align:middle;border:2px solid #fff;"></span>
-    Вратарь`;
-  // Перерисовываем чипы
-  const modal = document.getElementById('kit-modal');
-  if (modal) {
-    const circles = modal.querySelectorAll('div[onclick*="kitColor"]');
-    // Проще перерендерить весь модал
-    document.getElementById('kit-modal').remove();
-    openKitColorModal();
+  const PREMIUM_KIT_STYLES = [
+    { id:'gold_gradient',    name:'Золотой',      value:'linear-gradient(135deg,#f0c040,#b8860b)',                                         preview:'linear-gradient(135deg,#f0c040,#b8860b)' },
+    { id:'fire_gradient',    name:'Огонь',        value:'linear-gradient(135deg,#ff4500,#ff8c00,#ffd700)',                                 preview:'linear-gradient(135deg,#ff4500,#ff8c00,#ffd700)' },
+    { id:'ocean_gradient',   name:'Океан',        value:'linear-gradient(135deg,#006994,#00bfff,#87ceeb)',                                 preview:'linear-gradient(135deg,#006994,#00bfff,#87ceeb)' },
+    { id:'galaxy_gradient',  name:'Галактика',    value:'linear-gradient(135deg,#0a0a2e,#4b0082,#9400d3)',                                 preview:'linear-gradient(135deg,#0a0a2e,#4b0082,#9400d3)' },
+    { id:'rainbow_gradient', name:'Радуга',       value:'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)',        preview:'linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0000ff,#8b00ff)' },
+    { id:'stripes_bw',       name:'Полосы Б/Ч',  value:'repeating-linear-gradient(45deg,#fff 0px,#fff 6px,#222 6px,#222 12px)',          preview:'repeating-linear-gradient(45deg,#fff 0px,#fff 6px,#222 6px,#222 12px)' },
+    { id:'stripes_rb',       name:'Полосы Кр/Б', value:'repeating-linear-gradient(45deg,#cc0000 0px,#cc0000 6px,#fff 6px,#fff 12px)',    preview:'repeating-linear-gradient(45deg,#cc0000 0px,#cc0000 6px,#fff 6px,#fff 12px)' },
+    { id:'neon_green',       name:'Неон',         value:'linear-gradient(135deg,#00ff41,#008f11)',                                         preview:'linear-gradient(135deg,#00ff41,#008f11)' },
+    { id:'lava_gradient',    name:'Лава',         value:'linear-gradient(135deg,#1a0000,#8b0000,#ff4500)',                                 preview:'linear-gradient(135deg,#1a0000,#8b0000,#ff4500)' },
+    { id:'arctic_gradient',  name:'Арктика',      value:'linear-gradient(135deg,#e0f7ff,#b0e0e6,#4682b4)',                                 preview:'linear-gradient(135deg,#e0f7ff,#b0e0e6,#4682b4)' },
+  ];
+
+  if (!gameState.recentKitColors)   gameState.recentKitColors   = [];
+  if (!gameState.recentKitColorsGK) gameState.recentKitColorsGK = [];
+  if (!gameState.unlockedKitStyles) gameState.unlockedKitStyles  = [];
+
+  // Всё состояние — в window, чтобы onclick в HTML работал
+  window._KIT_TARGET  = 'field';
+  window._KIT_STYLES  = PREMIUM_KIT_STYLES;
+
+  window.kitGetColor = function() {
+    return window._KIT_TARGET === 'field'
+      ? (gameState.kitColor   || '#3a7bd5')
+      : (gameState.kitColorGK || '#f0c040');
+  };
+
+  window.kitSetColor = function(val) {
+    if (window._KIT_TARGET === 'field') {
+      gameState.kitColor = val;
+      if (!val.startsWith('linear') && !val.startsWith('repeating')) {
+        const arr = (gameState.recentKitColors || []).filter(c => c !== val);
+        arr.unshift(val);
+        gameState.recentKitColors = arr.slice(0, 5);
+      }
+    } else {
+      gameState.kitColorGK = val;
+      if (!val.startsWith('linear') && !val.startsWith('repeating')) {
+        const arr = (gameState.recentKitColorsGK || []).filter(c => c !== val);
+        arr.unshift(val);
+        gameState.recentKitColorsGK = arr.slice(0, 5);
+      }
+    }
+    saveState();
+    window.kitRebuild();
+  };
+
+  window.kitSwitch = function(target) {
+    window._KIT_TARGET = target;
+    window.kitRebuild();
+  };
+
+  window.kitSetPremium = function(idx) {
+    const s = window._KIT_STYLES[idx];
+    if (!s) return;
+    if (!(gameState.unlockedKitStyles || []).includes(s.id)) {
+      showMarketToast('🔒 Этот стиль можно получить только в событиях!');
+      return;
+    }
+    window.kitSetColor(s.value);
+  };
+
+  window.kitRebuild = function() {
+    const box = document.getElementById('kit-modal-box');
+    if (box) kitFill(box);
+  };
+
+  // Единственная функция рендера — не замыкание, нет переменных-ловушек
+  function kitFill(box) {
+    const cur      = window.kitGetColor();
+    const target   = window._KIT_TARGET;
+    const label    = target === 'field' ? 'Полевых игроков' : 'Вратаря';
+    const recent   = target === 'field'
+      ? (gameState.recentKitColors   || [])
+      : (gameState.recentKitColorsGK || []);
+    const unlocked  = gameState.unlockedKitStyles || [];
+    const isGrad    = cur.startsWith('linear') || cur.startsWith('repeating');
+    const hasPremium = window._KIT_STYLES.some(s => unlocked.includes(s.id));
+
+    const QUICK = [
+      '#3a7bd5','#cc0000','#009900','#ff6600','#660099',
+      '#cc9900','#00aacc','#ffffff','#333333','#ff3399',
+      '#006633','#880000','#0033aa','#aa6600','#f0c040',
+      '#4dc05a','#e05050','#5288c1','#ff8c00','#00bfff',
+      '#8b0000','#008080','#daa520','#2e8b57','#483d8b',
+    ];
+
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:16px;">🎽 Цвет формы</h3>
+        <button onclick="document.getElementById('kit-modal').remove();openProfileModal();"
+          style="background:none;border:none;color:#7d8e9e;font-size:20px;cursor:pointer;font-family:inherit;">✕</button>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button onclick="kitSwitch('field')"
+          style="flex:1;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;
+            background:${target==='field'?'#5288c1':'rgba(255,255,255,0.06)'};
+            border:1px solid ${target==='field'?'#5288c1':'#1e2d3d'};
+            color:${target==='field'?'#fff':'#7d8e9e'};">⚽ Полевые</button>
+        <button onclick="kitSwitch('gk')"
+          style="flex:1;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;
+            background:${target==='gk'?'#5288c1':'rgba(255,255,255,0.06)'};
+            border:1px solid ${target==='gk'?'#5288c1':'#1e2d3d'};
+            color:${target==='gk'?'#fff':'#7d8e9e'};">🧤 Вратарь</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;margin-bottom:14px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${cur};border:2px solid rgba(255,255,255,0.4);flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:12px;color:#7d8e9e;">Текущий цвет — ${label}</div>
+          <div style="font-size:13px;font-weight:600;margin-top:2px;">${isGrad ? 'Премиум-стиль' : cur.toUpperCase()}</div>
+        </div>
+      </div>
+
+      ${recent.length > 0 ? `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">🕐 Недавние</div>
+        <div style="display:flex;gap:8px;">
+          ${recent.map(c=>`
+            <div onclick="kitSetColor('${c}')"
+              style="width:38px;height:38px;border-radius:50%;background:${c};cursor:pointer;
+                border:3px solid ${cur===c?'#fff':'transparent'};flex-shrink:0;
+                box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">🎨 Выбрать любой цвет</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="kit-color-picker" value="${isGrad?'#3a7bd5':cur}"
+            style="width:52px;height:52px;border:none;border-radius:10px;cursor:pointer;background:none;padding:0;"
+            oninput="
+              kitSetColor(this.value);
+              var h=document.getElementById('kit-hex-input');
+              if(h) h.value=this.value;
+            " />
+          <div style="flex:1;">
+            <input type="text" id="kit-hex-input" value="${isGrad?'':cur}"
+              placeholder="#3a7bd5" maxlength="7"
+              style="width:100%;background:#0e1621;border:1px solid #1e2d3d;border-radius:8px;
+                padding:8px 10px;color:#fff;font-size:13px;font-family:inherit;outline:none;"
+              oninput="
+                var v=this.value.trim();
+                if(/^#[0-9a-fA-F]{6}$/.test(v)){
+                  kitSetColor(v);
+                  var p=document.getElementById('kit-color-picker');
+                  if(p) p.value=v;
+                }
+              " />
+            <div style="font-size:10px;color:#7d8e9e;margin-top:4px;">Введи HEX, например #ff3300</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚡ Быстрый выбор</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${QUICK.map(c=>`
+            <div onclick="kitSetColor('${c}');var p=document.getElementById('kit-color-picker');var h=document.getElementById('kit-hex-input');if(p)p.value='${c}';if(h)h.value='${c}';"
+              style="width:34px;height:34px;border-radius:50%;background:${c};cursor:pointer;
+                border:3px solid ${cur===c?'#fff':'transparent'};
+                box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`).join('')}
+        </div>
+      </div>
+
+      ${hasPremium ? `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#f0c040;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">✨ Премиум-стили</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${window._KIT_STYLES
+            .filter(s=>unlocked.includes(s.id))
+            .map(s=>{
+              const isActive = cur===s.value;
+              const idx = window._KIT_STYLES.indexOf(s);
+              return `
+                <div onclick="kitSetPremium(${idx})"
+                  style="border-radius:10px;overflow:hidden;cursor:pointer;
+                    border:2px solid ${isActive?'#f0c040':'transparent'};">
+                  <div style="height:36px;background:${s.preview};"></div>
+                  <div style="background:rgba(0,0,0,0.7);padding:5px 8px;display:flex;align-items:center;justify-content:space-between;">
+                    <span style="font-size:11px;font-weight:600;">${s.name}</span>
+                    ${isActive?'<span style="font-size:10px;color:#f0c040;">✓</span>':''}
+                  </div>
+                </div>`;
+            }).join('')}
+        </div>
+      </div>` : ''}
+
+      <button onclick="document.getElementById('kit-modal').remove();openProfileModal();"
+        style="width:100%;padding:12px;background:#5288c1;border:none;border-radius:10px;
+          color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+        ✅ Сохранить
+      </button>`;
   }
+
+  // Создаём модал
+  const old = document.getElementById('kit-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'kit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:flex;align-items:flex-end;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.id = 'kit-modal-box';
+  box.style.cssText = 'background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:16px;';
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  kitFill(box);
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) { modal.remove(); openProfileModal(); }
+  });
 }
 
 // ── Изменение никнейма ─────────────────────────────────────────────────────
