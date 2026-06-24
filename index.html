@@ -4867,16 +4867,49 @@ async function confirmExchangePlayer(cardId) {
   const ovr = getEffectiveOvr(player);
   const frags = getFragmentReward(ovr);
   const fragmentIcon = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const msg = `Вы уверены, что хотите обменять <b>${player.name}</b> (OVR ${ovr}) на ${fragmentIcon} <b>${frags}</b> фрагментов?`;
-  const btns = `<div class="inline-btn-row">
-    <button class="inline-btn" onclick="doExchangePlayerForFragments('${cardId}')">Да</button>
-    <button class="inline-btn" onclick="botReply('❌ Обмен отменён.', 200); openInventoryModal();">Нет</button>
-  </div>`;
-  closeInventoryModal();
-  await botReply(msg + btns, 400, { html: true });
+
+  // Показываем подтверждение прямо в инвентаре, не закрывая его
+  const invList = document.getElementById('inv-list');
+  if (!invList) return;
+
+  // Убираем предыдущее подтверждение если есть
+  const existingConfirm = document.getElementById('inv-exchange-confirm');
+  if (existingConfirm) existingConfirm.remove();
+
+  const confirmDiv = document.createElement('div');
+  confirmDiv.id = 'inv-exchange-confirm';
+  confirmDiv.style.cssText = `
+    position:fixed;bottom:0;left:0;right:0;z-index:999;
+    background:#17212b;border-top:2px solid #f0c040;
+    padding:14px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    max-width:600px;margin:0 auto;
+    box-shadow:0 -4px 20px rgba(0,0,0,0.5);
+  `;
+  confirmDiv.innerHTML = `
+    <div style="font-size:12px;color:#7d8e9e;margin-bottom:6px;text-align:center;">⚠️ Подтвердите обмен</div>
+    <div style="font-size:14px;font-weight:700;text-align:center;margin-bottom:10px;">
+      <b>${escapeHtml(player.name)}</b> (OVR ${ovr})
+      → ${fragmentIcon} <b>${frags}</b> фрагментов
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="doExchangePlayerForFragments('${cardId}')" 
+        style="flex:1;padding:11px;background:linear-gradient(135deg,#4dc05a,#38a046);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+        ✅ Обменять
+      </button>
+      <button onclick="document.getElementById('inv-exchange-confirm').remove()"
+        style="flex:1;padding:11px;background:rgba(255,255,255,0.08);border:1px solid #1e2d3d;border-radius:10px;color:#7d8e9e;font-size:14px;cursor:pointer;font-family:inherit;">
+        ❌ Отмена
+      </button>
+    </div>
+  `;
+  document.body.appendChild(confirmDiv);
 }
 
 async function doExchangePlayerForFragments(cardId) {
+  // Убираем панель подтверждения
+  const confirmDiv = document.getElementById('inv-exchange-confirm');
+  if (confirmDiv) confirmDiv.remove();
+
   const idx = (gameState.myPlayers||[]).findIndex(p => p.cardId === cardId);
   if (idx === -1) { await botReply('❌ Игрок не найден.', 300); return; }
   const player = gameState.myPlayers[idx];
@@ -4885,9 +4918,11 @@ async function doExchangePlayerForFragments(cardId) {
   gameState.myPlayers.splice(idx, 1);
   gameState.fragments = (gameState.fragments||0) + frags;
   saveState(); updateHeaderResources();
-  const fragmentIcon = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  await botReply(`${fragmentIcon} Игрок <b>${player.name}</b> обменян на <b>${frags}</b> фрагментов.`, 500, { html: true });
-  openInventoryModal();
+
+  // Показываем тост внутри инвентаря
+  showMarketToast(`🧩 ${player.name} → +${frags} фрагментов`);
+  
+  renderInventoryList();
 }
 
 function findPlayerByCardId(cardId) {
@@ -10033,11 +10068,68 @@ function resetReserveFiltersFromModal() {
 const PROFILE_PHOTOS = [
   {
     id: 'default',
-    name: 'По умолчанию',
+    name: 'Offside 26',
     url: 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png',
     animated: false,
     type: 'free'
   },
+  {
+    id: 'portugal_flag',
+    name: 'Португалия',
+    url: 'https://i.ibb.co/zhRjmxgb/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'argentina_flag',
+    name: 'Аргентина',
+    url: 'https://i.ibb.co/JRqGR888/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'france_flag',
+    name: 'Франция',
+    url: 'https://i.ibb.co/t0grhj5/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'germany_flag',
+    name: 'Германия',
+    url: 'https://i.ibb.co/C51CgMzq/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'belgium_flag',
+    name: 'Бельгия',
+    url: 'https://i.ibb.co/mVpGShqw/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'brazil_flag',
+    name: 'Бразилия',
+    url: 'https://i.ibb.co/210XRZmz/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'england_flag',
+    name: 'Англия',
+    url: 'https://i.ibb.co/ZznsVDgq/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'italy_flag',
+    name: 'Италия',
+    url: 'https://i.ibb.co/9k6GgH7n/image.png',
+    animated: false,
+    type: 'free'
+  },      
+];
   // ── Добавляй свои фото ниже ────────────────────────────────────────────
   // {
   //   id: 'photo_gold',
@@ -10053,7 +10145,6 @@ const PROFILE_PHOTOS = [
   //   animated: true,
   //   type: 'shop'
   // },
-];
 
 // Фото которые разблокированы у игрока
 // По умолчанию разблокировано только 'default'
@@ -10730,10 +10821,21 @@ function init() {
     checkAndRefreshQuests();
   }
   updateHeaderResources();
-  // Инициализируем поля профиля
+  // Инициализируем поля профиля — добавляем все free-фото автоматически
+  const freePhotoIds = PROFILE_PHOTOS.filter(p => p.type === 'free').map(p => p.id);
   if (!gameState.unlockedPhotos) {
-    gameState.unlockedPhotos = ['default'];
+    gameState.unlockedPhotos = freePhotoIds;
     saveState();
+  } else {
+    // Добавляем новые free-фото если их ещё нет
+    let changed = false;
+    for (const id of freePhotoIds) {
+      if (!gameState.unlockedPhotos.includes(id)) {
+        gameState.unlockedPhotos.push(id);
+        changed = true;
+      }
+    }
+    if (changed) saveState();
   }
   if (!gameState.profilePhoto) {
     gameState.profilePhoto = 'https://i.ibb.co/0pN8LQch/Offside-26-logo.png';
