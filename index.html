@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -552,7 +551,8 @@ const DEFAULT_STATE = {
   claimedDivisionRewards: [],
   seasonEndNotified: false,
   kitColor: '#3a7bd5',       // цвет полевых игроков
-  kitColorGK: '#f0c040'     // цвет вратаря
+  kitColorGK: '#f0c040',     // цвет вратаря
+  marketWatchlist: [],
 };
 
 let gameState = {};
@@ -898,69 +898,70 @@ function applyCustomDataToMyPlayers(data) {
 
 async function loadCustomDataPack() {
   const input = document.getElementById('custom-url-input');
-  if (!input) return;
+  if (!input) { await botReply('❌ Поле не найдено.', 300); return; }
+  
   const url = input.value.trim();
   if (!url) { await botReply('❌ Введите ссылку.', 300); return; }
 
+  await botReply('⏳ Загружаю...', 200);
+
   try {
-    let response;
-    try {
-      response = await fetch(url + '?_t=' + Date.now(), {
-        cache: 'no-store',
-        mode: 'cors'
-      });
-    } catch(e) {
-      response = await fetch(
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-        { cache: 'no-store' }
-      );
-    }
+    // Для GitHub Gist — используем raw URL напрямую
+    const fetchUrl = url.includes('gist.githubusercontent.com') 
+      ? url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now()
+      : url + '?_t=' + Date.now();
 
-    if (!response || !response.ok) {
-      throw new Error('Не удалось загрузить файл. Код: ' + (response ? response.status : 'нет ответа'));
-    }
-
-    let data;
-    try {
-      data = await response.json();
-    } catch(e) {
-      throw new Error('Файл не является валидным JSON');
-    }
-
+    const resp = await fetch(fetchUrl, { 
+      cache: 'no-store',
+      mode: 'cors',
+      headers: { 'Accept': 'application/json, text/plain, */*' }
+    });
+    
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    
+    const text = await resp.text();
+    console.log('Загружено байт:', text.length);
+    console.log('Первые 100 символов:', text.slice(0, 100));
+    
+    const data = JSON.parse(text);
+    
     const players = Array.isArray(data) ? data : (data.players || []);
-    if (!players.length) throw new Error('Файл не содержит игроков');
+    console.log('Игроков в файле:', players.length);
+    console.log('Версия:', data.version);
+    console.log('Последний игрок:', players[players.length - 1]);
+    
+    if (!players.length) throw new Error('Нет игроков в файле');
 
-    // Сохраняем версию как строку
     const version = (data.version != null) ? String(data.version) : null;
-    gameState.customDataVersion = version;
 
-    // Применяем поверх чистого шаблона
+    // Применяем к шаблону
     allPlayers = applyCustomPlayerData(data);
-
-    // Кэшируем
-    try {
-      localStorage.setItem('footballManager_customDataPack', JSON.stringify(data));
-    } catch(e) {}
-
-    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
-    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
-
-    // Обновляем коллекцию игрока
     applyCustomDataToMyPlayers(data);
 
     gameState.customDataUrl = url;
+    gameState.customDataVersion = version;
+
+    try {
+      localStorage.setItem('footballManager_customDataPack', JSON.stringify(data));
+    } catch(e) {
+      console.warn('Кэш не сохранён (возможно файл слишком большой):', e);
+    }
+
     saveState();
     updateHeaderResources();
 
     await botReply(
-      `✅ Дата-пак загружен!<br>Версия: <b>${version ?? 'нет'}</b><br>Игроков в паке: <b>${players.length}</b>`,
+      `✅ Дата-пак загружен!<br>` +
+      `Версия: <b>${version ?? 'нет'}</b><br>` +
+      `Игроков в файле: <b>${players.length}</b><br>` +
+      `Игроков в каталоге: <b>${allPlayers.length}</b><br>` +
+      `Первый: <b>${players[0]?.name}</b><br>` +
+      `Последний: <b>${players[players.length-1]?.name}</b>`,
       500, { html: true }
     );
 
-    console.log('✅ Дата-пак загружен вручную, версия:', version, ', игроков:', players.length);
-
   } catch (err) {
-    console.error('Ошибка загрузки дата-пака:', err);
+    console.error('Ошибка:', err);
     await botReply(`❌ Ошибка: ${err.message}`, 400);
   }
 }
@@ -973,57 +974,61 @@ async function checkCustomDataUpdate() {
   _dataPackCheckInProgress = true;
 
   try {
-    let response;
+    let data = null;
+
+    // Пробуем прямой запрос
     try {
-      response = await fetch(
-        gameState.customDataUrl + '?_t=' + Date.now(),
-        { cache: 'no-store', mode: 'cors' }
-      );
+      const resp = await fetch(gameState.customDataUrl + '?_t=' + Date.now(), {
+        cache: 'no-store', mode: 'cors'
+      });
+      if (resp && resp.ok) {
+        const text = await resp.text();
+        data = JSON.parse(text);
+      }
     } catch(e) {
-      response = await fetch(
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(gameState.customDataUrl),
-        { cache: 'no-store' }
-      );
+      // Прямой запрос не удался — пробуем через прокси
     }
 
-    if (!response || !response.ok) return;
+    // Если прямой не сработал — через прокси
+    if (!data) {
+      try {
+        const resp2 = await fetch(
+          'https://api.allorigins.win/get?url=' + encodeURIComponent(gameState.customDataUrl) + '&t=' + Date.now(),
+          { cache: 'no-store' }
+        );
+        if (resp2 && resp2.ok) {
+          const wrapper = await resp2.json();
+          // allorigins возвращает {contents: "...", status: {...}}
+          data = JSON.parse(wrapper.contents);
+        }
+      } catch(e2) {
+        console.warn('Прокси тоже не сработал:', e2);
+        return;
+      }
+    }
 
-    let data;
-    try { data = await response.json(); } catch(e) { return; }
+    if (!data) return;
 
-    // Читаем версию — поддерживаем number и string
-    const newVersion = (data && data.version != null) ? String(data.version) : null;
+    const newVersion = (data.version != null) ? String(data.version) : null;
     const savedVersion = gameState.customDataVersion != null ? String(gameState.customDataVersion) : null;
 
     console.log('Дата-пак: новая версия =', newVersion, ', сохранённая =', savedVersion);
 
-    // Если версии совпадают — не обновляем
     if (newVersion !== null && savedVersion !== null && newVersion === savedVersion) {
-      console.log('Дата-пак актуален, обновление не нужно');
+      console.log('Дата-пак актуален');
       return;
     }
 
-    // Сохраняем новую версию
-    if (newVersion !== null) {
-      gameState.customDataVersion = newVersion;
-    }
+    if (newVersion !== null) gameState.customDataVersion = newVersion;
 
-    // Применяем поверх чистого шаблона
     allPlayers = applyCustomPlayerData(data);
+    applyCustomDataToMyPlayers(data);
 
-    // Кэшируем дата-пак
     try {
       localStorage.setItem('footballManager_customDataPack', JSON.stringify(data));
     } catch(e) {}
 
-    localStorage.setItem('footballManager_allPlayers', JSON.stringify(allPlayers));
-    localStorage.setItem('footballManager_template_version', String(ALL_PLAYERS_TEMPLATE_VERSION));
-
-    // Обновляем уже имеющихся игроков в коллекции
-    applyCustomDataToMyPlayers(data);
-
     saveState();
-
     console.log('🔄 Дата-пак применён, версия:', newVersion);
 
   } catch (err) {
@@ -1194,7 +1199,8 @@ let marketState = {
   tab: 'all',
   selectedId: null,
   qty: 1,
-  watchlist: [],
+  get watchlist() { return gameState.marketWatchlist || []; },
+  set watchlist(v) { gameState.marketWatchlist = v; saveState(); },
   filters: {
     name: '', ovrMin: '', ovrMax: '', priceMin: '', priceMax: '',
     positions: [], nations: [], clubs: [], leagues: []
@@ -1318,7 +1324,7 @@ if (mf.positions && mf.positions.length) myTradeable = myTradeable.filter(p => m
 if (mf.nations && mf.nations.length) myTradeable = myTradeable.filter(p => mf.nations.includes(p.nation));
 if (mf.clubs && mf.clubs.length) myTradeable = myTradeable.filter(p => mf.clubs.includes(p.club));
 myTradeable.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
-  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id)).slice(0, 100);
+  const watchlistPlayers = allPlayers.filter(p => marketState.watchlist.includes(p.id)).sort((a, b) => b.ovr - a.ovr).slice(0, 100);
 
   const currentList = marketState.tab === 'all' ? catalogPlayers
     : marketState.tab === 'my' ? myTradeable
@@ -1662,9 +1668,13 @@ function toggleMarketFav(playerId) {
   const gridEl = document.getElementById('market-grid-container');
   const scrollTop = gridEl ? gridEl.scrollTop : 0;
   
-  const idx = marketState.watchlist.indexOf(playerId);
-  if (idx === -1) marketState.watchlist.push(playerId);
-  else marketState.watchlist.splice(idx, 1);
+  const list = [...(gameState.marketWatchlist || [])];
+  const idx = list.indexOf(playerId);
+  if (idx === -1) list.push(playerId);
+  else list.splice(idx, 1);
+  gameState.marketWatchlist = list;
+  saveState();
+  
   renderMarketModal();
   
   setTimeout(() => {
@@ -1720,7 +1730,11 @@ function buyFromMarket(playerId) {
     gameState.myPlayers.push(np);
   }
 
-  const qty = marketState.qty;
+    const qty = marketState.qty;
+  // Запоминаем скролл ДО перерисовки
+  const gridEl = document.getElementById('market-grid-container');
+  const savedScroll = gridEl ? gridEl.scrollTop : 0;
+  
   marketState.qty = 1;
   saveState();
   updateHeaderResources();
@@ -1728,6 +1742,12 @@ function buyFromMarket(playerId) {
   marketState.qty = 1;
   showMarketToast(`✅ Куплено: ${template.name} ×${qty} — ${COIN_ICON_SM}−${formatCoins(total)}`);
   renderMarketModal();
+  
+  // Восстанавливаем скролл ПОСЛЕ перерисовки
+  setTimeout(() => {
+    const gridEl2 = document.getElementById('market-grid-container');
+    if (gridEl2) gridEl2.scrollTop = savedScroll;
+  }, 0);
 }
 
 function sellToMarket(playerId) {
@@ -2710,7 +2730,7 @@ document.getElementById('nav-events').addEventListener('click', function() { han
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
-const ALL_PLAYERS_TEMPLATE_VERSION = 4;
+const ALL_PLAYERS_TEMPLATE_VERSION = 6;
 const ALL_PLAYERS_TEMPLATE = [
     // Событие World Tournament 
     // Мексика
@@ -10721,60 +10741,81 @@ function init() {
   if (gameState.registered) {
     updateHeaderNickname();
   }
+
+// Если есть сохранённый дата-пак — сразу пробуем загрузить и применить
 // Всегда начинаем с чистого шаблона
 allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
 
-// Если есть сохранённый дата-пак — сразу пробуем загрузить и применить
+// Если есть кэш дата-пака — применяем немедленно
 if (gameState.customDataUrl) {
-  // Применяем немедленно через fetch (асинхронно)
-  // checkCustomDataUpdate() уже вызван выше и сделает это
-  // Но чтобы игроки были видны сразу — применяем синхронно из кэша если есть
-  
-  if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
-    gameState.myPlayers = STARTER_PLAYER_IDS.map(id=>allPlayers.find(p=>p.id===id)).filter(p=>p).map(p=>{
-  const copy = JSON.parse(JSON.stringify(p));
-  copy.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  return copy;
-});
-    saveState();
-  }
-    // ── Мобильные фиксы ──────────────────────────────────────────────────────
-  // Предотвращаем зум на iOS при фокусе на input
-  document.querySelectorAll('input, textarea, select').forEach(el => {
-    el.style.fontSize = '16px';
-  });
-
-  // Блокируем двойной тап для зума
-  let lastTap = 0;
-  document.addEventListener('touchend', function(e) {
-    const now = Date.now();
-    if (now - lastTap < 300) e.preventDefault();
-    lastTap = now;
-  }, { passive: false });
-    if (gameState.registered) {
-    hideStartOverlay();
-    botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, {html:true});
-    // Проверка лимита инвентаря при входе
-    const _cnt = (gameState.myPlayers || []).length;
-    if (_cnt >= 950 && _cnt < 1000) {
-      setTimeout(() => {
-        botReply(
-          `⚠️ <b>Инвентарь почти заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков. Продай или обменяй лишних, чтобы освободить место.`,
-          1500, { html: true }
-        );
-      }, 2000);
-    } else if (_cnt >= 1000) {
-      setTimeout(() => {
-        botReply(
-          `🚫 <b>Инвентарь заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков. Новых игроков получить нельзя — продай или обменяй лишних.`,
-          1500, { html: true }
-        );
-      }, 2000);
+  const cachedPack = localStorage.getItem('footballManager_customDataPack');
+  if (cachedPack) {
+    try {
+      const cachedData = JSON.parse(cachedPack);
+      allPlayers = applyCustomPlayerData(cachedData);
+      applyCustomDataToMyPlayers(cachedData);
+      console.log('📦 Дата-пак применён из кэша');
+    } catch(e) {
+      console.warn('Не удалось применить кэш дата-пака:', e);
+      allPlayers = JSON.parse(JSON.stringify(ALL_PLAYERS_TEMPLATE));
     }
   }
-  else if (gameState.awaitingNickname) { hideStartOverlay(); botReply('Введи никнейм для продолжения регистрации:', 400); }
-  else { startOverlay.classList.remove('hidden'); }
 }
+
+// Стартовые игроки если коллекция пуста
+if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
+  gameState.myPlayers = STARTER_PLAYER_IDS
+    .map(id => allPlayers.find(p => p.id === id))
+    .filter(p => p)
+    .map(p => {
+      const copy = JSON.parse(JSON.stringify(p));
+      copy.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      return copy;
+    });
+  saveState();
+}
+
+// ── Мобильные фиксы ──────────────────────────────────────────────────────
+document.querySelectorAll('input, textarea, select').forEach(el => {
+  el.style.fontSize = '16px';
+});
+
+let lastTap = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
+
+// ── Показываем нужный экран ───────────────────────────────────────────────
+if (gameState.registered) {
+  hideStartOverlay();
+  botReply(`С возвращением, <b>${escapeHtml(gameState.nickname)}</b>! ⚽`, 600, { html: true });
+  const _cnt = (gameState.myPlayers || []).length;
+  if (_cnt >= 950 && _cnt < 1000) {
+    setTimeout(() => {
+      botReply(
+        `⚠️ <b>Инвентарь почти заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков.`,
+        1500, { html: true }
+      );
+    }, 2000);
+  } else if (_cnt >= 1000) {
+    setTimeout(() => {
+      botReply(
+        `🚫 <b>Инвентарь заполнен!</b><br>У тебя <b>${_cnt}/1000</b> игроков.`,
+        1500, { html: true }
+      );
+    }, 2000);
+  }
+} else if (gameState.awaitingNickname) {
+  hideStartOverlay();
+  botReply('Введи никнейм для продолжения регистрации:', 400);
+} else {
+  startOverlay.classList.remove('hidden');
+}
+
+} // ← закрытие функции init()
+
 document.addEventListener('DOMContentLoaded', init);
 if (document.readyState !== 'loading') init();
 // ============================================
