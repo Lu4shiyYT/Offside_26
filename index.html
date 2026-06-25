@@ -1778,7 +1778,7 @@ function buildMarketGrid(players) {
         style="${imgStyle}border:2px solid ${isSel?'#f0c040':color};border-radius:8px;cursor:pointer;position:relative;overflow:hidden;aspect-ratio:3/4;">
         <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
-            <div style="min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length>2?p.position.slice(0,2):p.position}</div>
+            <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">${p.position}</div>
             <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
@@ -2715,7 +2715,7 @@ function buildFragMarketGrid(players) {
 
           <!-- Позиция + OVR в левом верхнем углу -->
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-bottom:auto;">
-            <div style="min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length > 2 ? p.position.slice(0,2) : p.position}</div>
+            <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">${p.position}</div>
             <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${p.ovr}</div>
           </div>
 
@@ -2769,7 +2769,7 @@ function buildFragMarketMyGrid(players) {
 
           <!-- Позиция + OVR в левом верхнем углу -->
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-bottom:auto;">
-            <div style="min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length > 2 ? p.position.slice(0,2) : p.position}</div>
+            <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">${p.position}</div>
             <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
           </div>
 
@@ -5937,7 +5937,7 @@ function buildPlayerMiniGrid(players, context) {
         style="${imgStyle}border:2px solid ${color};border-radius:8px;cursor:pointer;position:relative;overflow:hidden;aspect-ratio:3/4;">
         <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
-            <div style="min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length>2?p.position.slice(0,2):p.position}</div>
+            <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">${p.position}</div>
             <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
@@ -11442,7 +11442,28 @@ const PROFILE_PHOTOS = [
     url: 'https://i.ibb.co/9k6GgH7n/image.png',
     animated: false,
     type: 'free'
-  },      
+  },
+  {
+    id: 'netherlands_flag',
+    name: 'Нидерланды',
+    url: 'https://i.ibb.co/TDgbHHk4/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'morocco_flag',
+    name: 'Марокко',
+    url: 'https://i.ibb.co/MvJzHgW/image.png',
+    animated: false,
+    type: 'free'
+  },
+  {
+    id: 'spain_flag',
+    name: 'Испания',
+    url: 'https://i.ibb.co/KTWQ3BW/image.png',
+    animated: false,
+    type: 'free'
+  },  
 ];
   // ── Добавляй свои фото ниже ────────────────────────────────────────────
   // {
