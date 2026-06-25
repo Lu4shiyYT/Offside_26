@@ -1238,6 +1238,266 @@ function showMarketToast(msg) {
     setTimeout(() => { toast.style.display = 'none'; }, 300);
   }, 2500);
 }
+
+function openPlayerDetailModal(player, context) {
+  const old = document.getElementById('player-detail-modal');
+  if (old) old.remove();
+
+  const effOvr = getEffectiveOvr(player);
+  const color = getPositionColor(player.position);
+  const stats = getEffectiveStats(player);
+  const isGK = player.position === 'GK';
+  const keys = isGK ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
+
+  // Цвет альт. позиции по уровню апгрейда
+  function altPosColor(ovrUpgrade) {
+    if (!ovrUpgrade || ovrUpgrade === 0) return '#e05050';
+    if (ovrUpgrade <= 2) return '#f0a040';
+    if (ovrUpgrade <= 4) return '#f0c040';
+    return '#4dc05a';
+  }
+
+  const imgBg = (player.image && player.image.trim())
+    ? `background-image:url(${player.image});background-size:cover;background-position:center top;`
+    : `background:linear-gradient(135deg,#1a4a1a,#2d7a2d);`;
+
+  const trainCost = TRAINING_COST_PER_LEVEL;
+  const ovrCost = OVR_UPGRADE_COSTS[player.ovrUpgrade || 0];
+  const canTrain = (player.trainingLevel||0) < MAX_TRAINING_LEVEL && (gameState.trainingPoints||0) >= trainCost;
+  const canUpgrade = (player.ovrUpgrade||0) < 5 && (gameState.ovrUpgradePoints||0) >= ovrCost;
+
+  // Кнопки действий (не показываем в squad_my)
+   const safeCardId2 = (player.cardId||'').replace(/'/g,"\\'");
+  const fragVal = getFragmentReward(player.ovr||0);
+  let actionBtns = '';
+
+  if (context === 'market') {
+    const price = getPlayerMarketPrice(player);
+    const canBuy = (gameState.coins||0) >= price;
+    actionBtns = `
+      <div style="margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#7d8e9e;">Цена:</span>
+          <span style="font-size:15px;font-weight:700;color:#f0c040;display:flex;align-items:center;gap:4px;">
+            <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;"/> ${formatCoins(price)}
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px;">
+          <button onclick="changeMarketQty(-1);updateMarketModalQty()" class="market-qty-btn">−</button>
+          <span id="modal-qty-display" style="font-size:16px;font-weight:700;min-width:30px;text-align:center;">${marketState.qty}</span>
+          <button onclick="changeMarketQty(1);updateMarketModalQty()" class="market-qty-btn">+</button>
+        </div>
+        <button onclick="buyFromMarket(${player.id});document.getElementById('player-detail-modal').remove();"
+          ${canBuy?'':'disabled'}
+          style="width:100%;padding:12px;background:${canBuy?'linear-gradient(135deg,#4dc05a,#38a046)':'rgba(255,255,255,0.08)'};
+            border:none;border-radius:10px;color:${canBuy?'#fff':'#7d8e9e'};font-size:14px;font-weight:700;
+            cursor:${canBuy?'pointer':'not-allowed'};font-family:inherit;">
+          ${canBuy?'КУПИТЬ':'Недостаточно монет'}
+        </button>
+      </div>`;
+
+  } else if (context === 'market_my') {
+    const price = getPlayerMarketPrice(player);
+    const sellPrice = Math.floor(price * 0.85);
+    actionBtns = `
+      <div style="margin-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#7d8e9e;">Цена продажи (−15%):</span>
+          <span style="font-size:15px;font-weight:700;color:#f0c040;display:flex;align-items:center;gap:4px;">
+            <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;"/> ${formatCoins(sellPrice)}
+          </span>
+        </div>
+        <button onclick="document.getElementById('player-detail-modal').remove();sellToMarketByCardId('${safeCardId2}')"
+          style="width:100%;padding:12px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.4);
+            border-radius:10px;color:#e05050;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
+          Продать за ${formatCoins(sellPrice)} монет
+        </button>
+        <div style="margin-top:8px;border-top:1px solid #1e2d3d;padding-top:8px;">
+          <div style="display:flex;gap:8px;">
+            <button onclick="trainPlayerFromModal('${safeCardId2}')"
+              ${canTrain?'':'disabled'}
+              style="flex:1;padding:9px;background:${canTrain?'rgba(77,192,90,0.2)':'rgba(255,255,255,0.05)'};
+                border:1px solid ${canTrain?'rgba(77,192,90,0.5)':'#1e2d3d'};
+                border-radius:10px;color:${canTrain?'#4dc05a':'#7d8e9e'};font-size:11px;
+                cursor:${canTrain?'pointer':'not-allowed'};font-family:inherit;">
+              🏋️ Тренировать (${player.trainingLevel||0})
+            </button>
+            <button onclick="upgradeOvrFromModal('${safeCardId2}')"
+              ${canUpgrade?'':'disabled'}
+              style="flex:1;padding:9px;background:${canUpgrade?'rgba(240,192,64,0.2)':'rgba(255,255,255,0.05)'};
+                border:1px solid ${canUpgrade?'rgba(240,192,64,0.5)':'#1e2d3d'};
+                border-radius:10px;color:${canUpgrade?'#f0c040':'#7d8e9e'};font-size:11px;
+                cursor:${canUpgrade?'pointer':'not-allowed'};font-family:inherit;">
+              ⬆️ OVR +${player.ovrUpgrade||0}
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    } else if (context === 'inventory') {
+    actionBtns = `
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="trainPlayerFromModal('${safeCardId2}')"
+          ${canTrain?'':'disabled'}
+          style="flex:1;padding:9px;background:${canTrain?'rgba(77,192,90,0.2)':'rgba(255,255,255,0.05)'};
+            border:1px solid ${canTrain?'rgba(77,192,90,0.5)':'#1e2d3d'};
+            border-radius:9px;color:${canTrain?'#4dc05a':'#7d8e9e'};font-size:11px;
+            cursor:${canTrain?'pointer':'not-allowed'};font-family:inherit;">
+          🏋️ Тренировать<br>
+          <span style="font-size:9px;">${trainCost} очк · ур.${player.trainingLevel||0}</span>
+        </button>
+        <button onclick="upgradeOvrFromModal('${safeCardId2}')"
+          ${canUpgrade?'':'disabled'}
+          style="flex:1;padding:9px;background:${canUpgrade?'rgba(240,192,64,0.2)':'rgba(255,255,255,0.05)'};
+            border:1px solid ${canUpgrade?'rgba(240,192,64,0.5)':'#1e2d3d'};
+            border-radius:9px;color:${canUpgrade?'#f0c040':'#7d8e9e'};font-size:11px;
+            cursor:${canUpgrade?'pointer':'not-allowed'};font-family:inherit;">
+          ⬆️ OVR<br>
+          <span style="font-size:9px;">${ovrCost} очк · +${player.ovrUpgrade||0}</span>
+        </button>
+      </div>`;
+    }
+  // context === 'squad_my' — actionBtns остаётся пустым, кнопок нет
+  // squad_my — без кнопок
+
+  const modal = document.createElement('div');
+  modal.id = 'player-detail-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.85);display:flex;align-items:flex-end;justify-content:center;';
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  modal.innerHTML = `
+    <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;">
+
+      <!-- Верхняя часть: фото игрока -->
+      <div style="${imgBg}width:100%;height:220px;position:relative;border-radius:16px 16px 0 0;overflow:hidden;flex-shrink:0;">
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%);"></div>
+
+        <!-- Кнопка закрыть -->
+        <button onclick="document.getElementById('player-detail-modal').remove()"
+          style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);border:none;color:#fff;
+            border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">✕</button>
+
+        <!-- OVR badge -->
+        <div style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.75);border-radius:8px;padding:4px 10px;">
+          <div style="font-size:22px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
+          <div style="font-size:9px;color:#7d8e9e;text-align:center;">OVR</div>
+        </div>
+
+        <!-- Имя и позиция снизу -->
+        <div style="position:absolute;bottom:10px;left:12px;right:12px;">
+          <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.2;">${player.name}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+            <span style="background:${color};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#fff;">${player.position}</span>
+            ${(player.altPositions||[]).length > 0 ? player.altPositions.map(ap =>
+              `<span style="background:rgba(0,0,0,0.6);border:1px solid ${altPosColor(player.ovrUpgrade||0)};border-radius:6px;padding:2px 8px;font-size:11px;color:${altPosColor(player.ovrUpgrade||0)};">${ap}</span>`
+            ).join('') : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Нижняя часть: инфо -->
+      <div style="padding:14px 16px;">
+
+        <!-- Нация / Клуб / Физика -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">Нация</div>
+            <div style="font-size:12px;font-weight:700;">${player.nation}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">Клуб</div>
+            <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${player.club}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">Рост/Вес</div>
+            <div style="font-size:12px;font-weight:700;">${player.height||'?'} / ${player.weight||'?'}</div>
+          </div>
+        </div>
+
+        <!-- Статы -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+          ${keys.map(k => `
+            <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+              <div style="font-size:9px;color:#7d8e9e;margin-bottom:2px;">${k}</div>
+              <div style="font-size:18px;font-weight:900;color:#f0c040;">${stats[k]||0}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Доп. параметры -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">⚡ Вынос.</div>
+            <div style="font-size:13px;font-weight:700;">${(player.stamina||3.0).toFixed(1)}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">👟 Нога</div>
+            <div style="font-size:13px;font-weight:700;">${player.preferredFoot==='right'?'Пр.':'Лев.'} / ${player.weakFoot||1}★</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:3px;">🌀 Скилл</div>
+            <div style="font-size:13px;font-weight:700;">${((player.skill!=null)?player.skill:2.5).toFixed(1)}</div>
+          </div>
+        </div>
+
+        <!-- Прогресс тренировки и OVR -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
+          <div style="background:rgba(77,192,90,0.1);border:1px solid rgba(77,192,90,0.3);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:2px;">Тренировка</div>
+            <div style="font-size:16px;font-weight:900;color:#4dc05a;">+${player.trainingLevel||0}</div>
+            <div style="background:#1a2a3a;border-radius:4px;height:4px;margin-top:4px;">
+              <div style="height:100%;width:${((player.trainingLevel||0)/MAX_TRAINING_LEVEL*100)}%;background:#4dc05a;border-radius:4px;"></div>
+            </div>
+          </div>
+          <div style="background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:10px;color:#7d8e9e;margin-bottom:2px;">Апгрейд OVR</div>
+            <div style="font-size:16px;font-weight:900;color:#f0c040;">+${player.ovrUpgrade||0}</div>
+            <div style="background:#1a2a3a;border-radius:4px;height:4px;margin-top:4px;">
+              <div style="height:100%;width:${((player.ovrUpgrade||0)/5*100)}%;background:#f0c040;border-radius:4px;"></div>
+            </div>
+          </div>
+        </div>
+
+        ${actionBtns}
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+}
+
+function updateMarketModalQty() {
+  const el = document.getElementById('modal-qty-display');
+  if (el) el.textContent = marketState.qty;
+}
+
+function trainPlayerFromModal(cardId) {
+  const idx = (gameState.myPlayers||[]).findIndex(p => p.cardId === cardId);
+  if (idx === -1) return;
+  const player = gameState.myPlayers[idx];
+  if ((player.trainingLevel||0) >= MAX_TRAINING_LEVEL) { showMarketToast('❌ Макс. уровень тренировки'); return; }
+  if ((gameState.trainingPoints||0) < TRAINING_COST_PER_LEVEL) { showMarketToast(`❌ Нужно ${TRAINING_COST_PER_LEVEL} очк. тренировки`); return; }
+  gameState.trainingPoints -= TRAINING_COST_PER_LEVEL;
+  gameState.myPlayers[idx].trainingLevel = (gameState.myPlayers[idx].trainingLevel||0) + 1;
+  saveState(); updateHeaderResources();
+  showMarketToast(`✅ Тренировка: +${gameState.myPlayers[idx].trainingLevel}`);
+  // Перерисовываем модал с обновлёнными данными
+  document.getElementById('player-detail-modal').remove();
+  openPlayerDetailModal(gameState.myPlayers[idx], 'inventory');
+}
+
+function upgradeOvrFromModal(cardId) {
+  const idx = (gameState.myPlayers||[]).findIndex(p => p.cardId === cardId);
+  if (idx === -1) return;
+  const player = gameState.myPlayers[idx];
+  if ((player.ovrUpgrade||0) >= 5) { showMarketToast('❌ Макс. ранг OVR'); return; }
+  const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade||0];
+  if ((gameState.ovrUpgradePoints||0) < cost) { showMarketToast(`❌ Нужно ${cost} очк. OVR`); return; }
+  gameState.ovrUpgradePoints -= cost;
+  gameState.myPlayers[idx].ovrUpgrade = (gameState.myPlayers[idx].ovrUpgrade||0) + 1;
+  saveState(); updateHeaderResources();
+  showMarketToast(`✅ OVR апгрейд: +${gameState.myPlayers[idx].ovrUpgrade}`);
+  document.getElementById('player-detail-modal').remove();
+  openPlayerDetailModal(gameState.myPlayers[idx], 'inventory');
+}
   
 function openMarketModal() {
   if (!allPlayers || allPlayers.length === 0) {
@@ -1383,14 +1643,10 @@ if (marketState.selectedId !== null) {
       </button>
     </div>
 
-    <div style="flex:1;display:flex;overflow:hidden;">
-      <div style="flex:1;overflow-y:auto;padding:10px;" id="market-grid-container">
-        ${buildMarketGrid(currentList)}
-      </div>
-      <div style="width:155px;flex-shrink:0;border-left:1px solid #1e2d3d;overflow-y:auto;">
-        ${sel ? buildMarketDetail(sel) : '<div style="padding:16px 10px;text-align:center;color:#7d8e9e;font-size:11px;margin-top:30px;">Выберите<br>игрока</div>'}
-      </div>
-    </div>`;
+    <div style="flex:1;overflow-y:auto;padding:8px;" id="market-grid-container">
+      ${buildMarketGrid(currentList)}
+    </div>
+  `;
 }
 
 function renderMarketGridOnly() {
@@ -1428,99 +1684,78 @@ function renderMarketGridOnly() {
 function buildMarketGrid(players) {
   if (!players.length) return '<div style="text-align:center;color:#7d8e9e;padding:30px 10px;font-size:13px;">Нет игроков</div>';
 
-  let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:10px;height:10px;vertical-align:middle;" />';
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">';
   for (const p of players) {
-    const price = getPlayerMarketPrice(p);
+    const effOvr = getEffectiveOvr(p);
+    const color = getPositionColor(p.position);
+    const hasImg = !!(p.squadImage || p.image);
+    const imgStyle = hasImg
+      ? `background-image:url(${p.squadImage||p.image});background-size:cover;background-position:center top;`
+      : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+    const overlay = hasImg ? 'background:rgba(0,0,0,0.45);' : '';
     const isSel = marketState.selectedId === p.id;
     const inFav = marketState.watchlist.includes(p.id);
-    const effOvr = getEffectiveOvr(p);
-    const isNonTradeable = p.tradeable === false;
-    
-    // Значок футболки только для вкладки "мои игроки"
-    // и только если именно ЭТА карточка (по cardId) стоит в составе
-    let isInSquad = false;
-    if (marketState.tab === 'my') {
-      // Собираем cardId игроков в составе/скамейке
-      const squadCardIds = new Set();
-      const slotPlayerIds = [
-        ...Object.values(gameState.squadSlots || {}),
-        ...Object.values(gameState.benchSlots || {})
-      ];
-      const idCountInSquad = {};
-      for (const pid of slotPlayerIds) {
-        if (pid == null) continue;
-        idCountInSquad[pid] = (idCountInSquad[pid] || 0) + 1;
-      }
-      for (const [pid, count] of Object.entries(idCountInSquad)) {
-        const numId = parseInt(pid);
-        let marked = 0;
-        for (const player of (gameState.myPlayers || [])) {
-          if (player.id === numId && player.cardId) {
-            squadCardIds.add(player.cardId);
-            marked++;
-            if (marked >= count) break;
-          }
-        }
-      }
-      // Проверяем именно эту карточку по cardId
-      isInSquad = p.cardId ? squadCardIds.has(p.cardId) : false;
-    }
-    const color = getPositionColor(p.position);
-    const stats = p.stats || {};
-    const keys = p.position === 'GK' ? ['REF','KIC','PAS','SPE','DIV','HAN'] : ['PAC','SHO','PAS','DRB','DEF','STR'];
-    
-    let statsHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;">';
-    for (const k of keys) {
-      statsHtml += `<div style="background:rgba(255,255,255,0.05);border-radius:4px;padding:2px 5px;text-align:center;min-width:34px;"><div style="font-size:8px;color:#7d8e9e;">${k}</div><div style="font-size:11px;font-weight:700;">${stats[k]||0}</div></div>`;
-    }
-    statsHtml += '</div>';
+    const nameParts = p.name.trim().split(' ');
+    const firstName = nameParts.length > 1 ? nameParts.slice(0,-1).join(' ') : '';
+    const lastName = nameParts[nameParts.length-1];
+    const price = getPlayerMarketPrice(p);
+    const safeCardId = (p.cardId||'').replace(/'/g,"\\'");
 
-    const trainingBadge = (p.trainingLevel > 0)
-      ? `<span style="font-size:9px;background:#4dc05a;color:#fff;padding:1px 5px;border-radius:8px;">+${p.trainingLevel} тр.</span>` : '';
-    const ovrUpBadge = (p.ovrUpgrade > 0)
-      ? `<span style="font-size:9px;background:#f0c040;color:#000;padding:1px 5px;border-radius:8px;">+${p.ovrUpgrade} OVR</span>` : '';
-    
-    let cardStyle = p.image ? `background-image:url(${p.image});background-size:cover;background-position:center;` : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
-    const overlayStyle = p.image ? 'background:rgba(0,0,0,0.55);border-radius:8px;padding:6px;' : '';
-    const borderColor = isSel ? '#f0c040' : color;
-    const borderWidth = isSel ? '2px' : '1px';
+    // Контекст: на вкладке 'my' открываем с кнопками тренировки, иначе — без
+    const ctx = marketState.tab === 'my' ? 'market_my' : 'market';
 
-    html += `<div style="${cardStyle}border:${borderWidth} solid ${borderColor};border-radius:10px;padding:8px 10px;cursor:pointer;position:relative;" onclick="selectMarketPlayer(${p.id})">
-      <div style="${overlayStyle}">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">${p.position}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
-            <div style="font-size:10px;color:#7d8e9e;">${p.club} • ${p.nation}</div>
-            <div style="display:flex;gap:4px;margin-top:2px;flex-wrap:wrap;align-items:center;">
-              ${trainingBadge}${ovrUpBadge}
-              ${isNonTradeable ? '<span style="font-size:12px;" title="Непродаваемый">🚫</span>' : ''}
-              ${isInSquad ? '<span style="font-size:12px;" title="В составе">👕</span>' : ''}
-            </div>
+    html += `
+      <div onclick="marketSelectAndDetail('${safeCardId}',${p.id},'${ctx}')"
+        style="${imgStyle}border:2px solid ${isSel?'#f0c040':color};border-radius:8px;cursor:pointer;position:relative;overflow:hidden;aspect-ratio:3/4;">
+        <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
+            <div style="width:18px;height:18px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length>2?p.position.slice(0,2):p.position}</div>
+            <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-            <div style="display:flex;align-items:center;gap:4px;">
-              ${isInSquad ? '<span style="font-size:14px;line-height:1;">👕</span>' : ''}
-              ${isNonTradeable ? '<span style="font-size:14px;line-height:1;">🚫</span>' : ''}
-              <div style="font-size:20px;font-weight:900;color:#f0c040;">${effOvr}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#f0c040;font-weight:700;">
-              <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:10px;height:10px;"/> ${formatCoins(price)}
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+            ${firstName?`<div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.8);text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstName}</div>`:''}
+            <div style="font-size:9px;font-weight:700;color:#fff;text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastName}</div>
+            <div style="font-size:8px;color:#f0c040;font-weight:700;display:flex;align-items:center;gap:1px;">
+              <img src="https://i.ibb.co/JRnypxvR/image.png" style="width:8px;height:8px;"/> ${formatCoins(price)}
             </div>
           </div>
         </div>
-        ${statsHtml}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
-          <span style="font-size:8px;color:#7d8e9e;">⚡${(p.stamina||3.0).toFixed(1)}</span>
-          <span style="font-size:8px;color:#7d8e9e;">👟${p.preferredFoot==='right'?'П':'Л'}/${p.weakFoot||1}</span>
-          <span style="font-size:8px;color:#7d8e9e;">🌀${((p.skill!=null)?p.skill:2.5).toFixed(1)}</span>
-        </div>
-      </div>
-      <button style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;" onclick="event.stopPropagation();toggleMarketFav(${p.id})">${inFav?'⭐':'☆'}</button>
-    </div>`;
+        <button onclick="event.stopPropagation();toggleMarketFav(${p.id})"
+          style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;z-index:2;">${inFav?'⭐':'☆'}</button>
+        ${p.tradeable===false?`<div style="position:absolute;bottom:2px;left:2px;background:rgba(224,80,80,0.85);border-radius:3px;padding:1px 3px;font-size:7px;color:#fff;">🔒</div>`:''}
+      </div>`;
   }
   html += '</div>';
   return html;
+}
+
+function marketSelectAndDetail(cardId, playerId, context) {
+  // Обновляем выбранный id для правой панели
+  const gridEl = document.getElementById('market-grid-container');
+  const scrollTop = gridEl ? gridEl.scrollTop : 0;
+
+  marketState.selectedId = playerId;
+  marketState.qty = 1;
+
+  // Находим игрока
+  let player = null;
+  if (context === 'market_my') {
+    player = (gameState.myPlayers||[]).find(p => p.cardId === cardId);
+  } else {
+    player = allPlayers.find(p => p.id === playerId);
+    // Если нет в каталоге — ищем в myPlayers
+    if (!player) player = (gameState.myPlayers||[]).find(p => p.id === playerId);
+  }
+
+  if (player) openPlayerDetailModal(player, context);
+
+  // Восстанавливаем скролл грида
+  setTimeout(() => {
+    const g = document.getElementById('market-grid-container');
+    if (g) g.scrollTop = scrollTop;
+  }, 0);
 }
 
 function buildMarketDetail(p) {
@@ -3327,7 +3562,7 @@ document.getElementById('nav-events').addEventListener('click', function() { han
 document.getElementById('nav-division').addEventListener('click', function() { handleNavDivision(); });
 
 // ========== MODULE: GAMESTATE & DATA ==========
-const ALL_PLAYERS_TEMPLATE_VERSION = 6;
+const ALL_PLAYERS_TEMPLATE_VERSION = 8;
 const ALL_PLAYERS_TEMPLATE = [
     // Событие World Tournament 
     // Мексика
@@ -3626,7 +3861,115 @@ const ALL_PLAYERS_TEMPLATE = [
     { id: 283, name: 'Haiti 23', club: 'Haiti', nation: 'Haiti', position: 'LW', altPositions: ['RW', 'ST'], ovr: 71, stats: { PAC:80, PAS:67, DRB:74, SHO:69, DEF:39, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 70, league: 'International' },
     { id: 284, name: 'Haiti 24', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: ['CF', 'RW'], ovr: 82, stats: { PAC:86, PAS:71, DRB:79, SHO:82, DEF:42, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 186, weight: 78, league: 'International' },
     { id: 285, name: 'Haiti 25', club: 'Haiti', nation: 'Haiti', position: 'ST', altPositions: [], ovr: 74, stats: { PAC:78, PAS:67, DRB:72, SHO:76, DEF:41, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 81, league: 'International' },
-    { id: 286, name: 'Haiti 26', club: 'Haiti', nation: 'Haiti', position: 'RW', altPositions: ['LW', 'RM'], ovr: 74, stats: { PAC:84, PAS:71, DRB:75, SHO:68, DEF:45, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 73, league: 'International' }
+    { id: 286, name: 'Haiti 26', club: 'Haiti', nation: 'Haiti', position: 'RW', altPositions: ['LW', 'RM'], ovr: 74, stats: { PAC:84, PAS:71, DRB:75, SHO:68, DEF:45, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BVnsVBtb/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 73, league: 'International' },
+    // USA
+    { id: 287, name: 'USA 1', club: 'USA', nation: 'USA', position: 'GK', altPositions: [], ovr: 77, stats: { REF:79, KIC:74, PAS:72, SPE:77, DIV:78, HAN:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 2, height: 191, weight: 87, league: 'International' },
+    { id: 288, name: 'USA 2', club: 'USA', nation: 'USA', position: 'GK', altPositions: [], ovr: 81, stats: { REF:84, KIC:79, PAS:76, SPE:78, DIV:82, HAN:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 193, weight: 88, league: 'International' },
+    { id: 289, name: 'USA 3', club: 'USA', nation: 'USA', position: 'GK', altPositions: [], ovr: 80, stats: { REF:83, KIC:77, PAS:73, SPE:76, DIV:82, HAN:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 191, weight: 78, league: 'International' },
+    { id: 290, name: 'USA 4', club: 'USA', nation: 'USA', position: 'LB', altPositions: ['LM','LW'], ovr: 75, stats: { PAC:82, PAS:72, DRB:74, SHO:68, DEF:73, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 185, weight: 79, league: 'International' },
+    { id: 291, name: 'USA 5', club: 'USA', nation: 'USA', position: 'RB', altPositions: ['LB'], ovr: 83, stats: { PAC:87, PAS:80, DRB:85, SHO:72, DEF:78, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 173, weight: 68, league: 'International' },
+    { id: 292, name: 'USA 6', club: 'USA', nation: 'USA', position: 'RB', altPositions: ['CB'], ovr: 77, stats: { PAC:81, PAS:71, DRB:73, SHO:69, DEF:80, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 191, weight: 83, league: 'International' },
+    { id: 293, name: 'USA 7', club: 'USA', nation: 'USA', position: 'CB', altPositions: [], ovr: 79, stats: { PAC:75, PAS:76, DRB:71, SHO:58, DEF:84, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 84, league: 'International' },
+    { id: 294, name: 'USA 8', club: 'USA', nation: 'USA', position: 'CB', altPositions: ['LB'], ovr: 78, stats: { PAC:62, PAS:81, DRB:72, SHO:55, DEF:83, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 3, height: 186, weight: 73, league: 'International' },
+    { id: 295, name: 'USA 9', club: 'USA', nation: 'USA', position: 'CB', altPositions: [], ovr: 84, stats: { PAC:81, PAS:76, DRB:74, SHO:60, DEF:88, STR:89 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 83, league: 'International' },
+    { id: 296, name: 'USA 10', club: 'USA', nation: 'USA', position: 'LB', altPositions: ['LM'], ovr: 86, stats: { PAC:91, PAS:80, DRB:82, SHO:65, DEF:84, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 5.0, preferredFoot: 'left', weakFoot: 2, height: 183, weight: 70, league: 'International' },
+    { id: 297, name: 'USA 11', club: 'USA', nation: 'USA', position: 'CB', altPositions: [], ovr: 80, stats: { PAC:82, PAS:69, DRB:67, SHO:55, DEF:85, STR:90 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 84, league: 'International' },
+    { id: 298, name: 'USA 12', club: 'USA', nation: 'USA', position: 'RB', altPositions: ['LB'], ovr: 80, stats: { PAC:79, PAS:74, DRB:75, SHO:61, DEF:82, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 184, weight: 80, league: 'International' },
+    { id: 299, name: 'USA 13', club: 'USA', nation: 'USA', position: 'CB', altPositions: [], ovr: 78, stats: { PAC:74, PAS:73, DRB:68, SHO:56, DEF:84, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 2, height: 191, weight: 84, league: 'International' },
+    { id: 300, name: 'USA 14', club: 'USA', nation: 'USA', position: 'CDM', altPositions: ['CM','RB'], ovr: 84, stats: { PAC:81, PAS:79, DRB:76, SHO:68, DEF:87, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 5.0, preferredFoot: 'right', weakFoot: 3, height: 175, weight: 72, league: 'International' },
+    { id: 301, name: 'USA 15', club: 'USA', nation: 'USA', position: 'CM', altPositions: [], ovr: 74, stats: { PAC:70, PAS:78, DRB:73, SHO:69, DEF:72, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 75, league: 'International' },
+    { id: 302, name: 'USA 16', club: 'USA', nation: 'USA', position: 'CM', altPositions: ['CDM','CAM'], ovr: 85, stats: { PAC:78, PAS:82, DRB:81, SHO:78, DEF:84, STR:89 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 84, league: 'International' },
+    { id: 303, name: 'USA 17', club: 'USA', nation: 'USA', position: 'CAM', altPositions: ['RW','LW'], ovr: 82, stats: { PAC:78, PAS:84, DRB:86, SHO:78, DEF:55, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 79, league: 'International' },
+    { id: 304, name: 'USA 18', club: 'USA', nation: 'USA', position: 'CM', altPositions: [], ovr: 77, stats: { PAC:72, PAS:78, DRB:76, SHO:70, DEF:76, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 173, weight: 75, league: 'International' },
+    { id: 305, name: 'USA 19', club: 'USA', nation: 'USA', position: 'CAM', altPositions: ['CM','CF'], ovr: 84, stats: { PAC:80, PAS:82, DRB:86, SHO:81, DEF:65, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 187, weight: 79, league: 'International' },
+    { id: 306, name: 'USA 20', club: 'USA', nation: 'USA', position: 'RW', altPositions: ['CAM','LW'], ovr: 81, stats: { PAC:84, PAS:79, DRB:82, SHO:76, DEF:65, STR:71 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 5.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 66, league: 'International' },
+    { id: 307, name: 'USA 21', club: 'USA', nation: 'USA', position: 'ST', altPositions: [], ovr: 84, stats: { PAC:85, PAS:72, DRB:81, SHO:86, DEF:42, STR:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 178, weight: 66, league: 'International' },
+    { id: 308, name: 'USA 22', club: 'USA', nation: 'USA', position: 'ST', altPositions: [], ovr: 82, stats: { PAC:78, PAS:69, DRB:76, SHO:85, DEF:40, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 77, league: 'International' },
+    { id: 309, name: 'USA 23', club: 'USA', nation: 'USA', position: 'LW', altPositions: ['RW','CAM'], ovr: 89, stats: { PAC:89, PAS:86, DRB:90, SHO:85, DEF:55, STR:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 178, weight: 70, league: 'International' },
+    { id: 310, name: 'USA 24', club: 'USA', nation: 'USA', position: 'RW', altPositions: ['ST','RM'], ovr: 81, stats: { PAC:89, PAS:75, DRB:80, SHO:77, DEF:62, STR:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 66, league: 'International' },
+    { id: 311, name: 'USA 25', club: 'USA', nation: 'USA', position: 'ST', altPositions: ['LW'], ovr: 80, stats: { PAC:82, PAS:70, DRB:77, SHO:81, DEF:41, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 191, weight: 80, league: 'International' },
+    { id: 312, name: 'USA 26', club: 'USA', nation: 'USA', position: 'RW', altPositions: ['LW'], ovr: 79, stats: { PAC:81, PAS:77, DRB:82, SHO:76, DEF:54, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/LzLCTHgr/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 167, weight: 66, league: 'International' },
+    // Paraguay
+    { id: 313, name: 'Paraguay 1', club: 'San Lorenzo', nation: 'Paraguay', position: 'GK', altPositions: [], ovr: 77, stats: { REF:79, KIC:72, PAS:70, SPE:73, DIV:78, HAN:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 2, height: 192, weight: 84, league: 'International' },
+    { id: 314, name: 'Paraguay 2', club: 'Olimpia', nation: 'Paraguay', position: 'GK', altPositions: [], ovr: 78, stats: { REF:80, KIC:74, PAS:72, SPE:74, DIV:79, HAN:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 85, league: 'International' },
+    { id: 315, name: 'Paraguay 3', club: 'Cerro Porteno', nation: 'Paraguay', position: 'GK', altPositions: [], ovr: 79, stats: { REF:81, KIC:76, PAS:73, SPE:75, DIV:80, HAN:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 191, weight: 86, league: 'International' },
+    { id: 316, name: 'Paraguay 4', club: 'Dynamo Moscow', nation: 'Paraguay', position: 'RB', altPositions: ['CB'], ovr: 76, stats: { PAC:78, PAS:70, DRB:72, SHO:55, DEF:76, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 73, league: 'International' },
+    { id: 317, name: 'Paraguay 5', club: 'Cerro Porteno', nation: 'Paraguay', position: 'CB', altPositions: [], ovr: 78, stats: { PAC:69, PAS:70, DRB:64, SHO:50, DEF:82, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 185, weight: 82, league: 'International' },
+    { id: 318, name: 'Paraguay 6', club: 'Palmeiras', nation: 'Paraguay', position: 'CB', altPositions: [], ovr: 86, stats: { PAC:70, PAS:76, DRB:65, SHO:58, DEF:89, STR:91 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 83, league: 'International' },
+    { id: 319, name: 'Paraguay 7', club: 'Atletico Mineiro', nation: 'Paraguay', position: 'CB', altPositions: ['LB'], ovr: 82, stats: { PAC:72, PAS:78, DRB:68, SHO:55, DEF:85, STR:86 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 184, weight: 83, league: 'International' },
+    { id: 320, name: 'Paraguay 8', club: 'Lanus', nation: 'Paraguay', position: 'CB', altPositions: [], ovr: 74, stats: { PAC:67, PAS:68, DRB:60, SHO:48, DEF:78, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 2, height: 187, weight: 82, league: 'International' },
+    { id: 321, name: 'Paraguay 9', club: 'Sunderland', nation: 'Paraguay', position: 'CB', altPositions: ['LB'], ovr: 83, stats: { PAC:73, PAS:75, DRB:63, SHO:52, DEF:86, STR:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 188, weight: 86, league: 'International' },
+    { id: 322, name: 'Paraguay 10', club: 'Talleres', nation: 'Paraguay', position: 'CB', altPositions: [], ovr: 73, stats: { PAC:70, PAS:67, DRB:60, SHO:48, DEF:77, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 183, weight: 78, league: 'International' },
+    { id: 323, name: 'Paraguay 11', club: 'Gremio', nation: 'Paraguay', position: 'CB', altPositions: [], ovr: 80, stats: { PAC:62, PAS:72, DRB:58, SHO:51, DEF:85, STR:87 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 84, league: 'International' },
+    { id: 324, name: 'Paraguay 12', club: 'Brighton', nation: 'Paraguay', position: 'CM', altPositions: ['CAM','RW'], ovr: 81, stats: { PAC:78, PAS:80, DRB:82, SHO:76, DEF:62, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 180, weight: 73, league: 'International' },
+    { id: 325, name: 'Paraguay 13', club: 'Palmeiras', nation: 'Paraguay', position: 'CM', altPositions: ['CDM'], ovr: 76, stats: { PAC:65, PAS:78, DRB:72, SHO:64, DEF:72, STR:75 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 74, league: 'International' },
+    { id: 326, name: 'Paraguay 14', club: 'Sao Paulo', nation: 'Paraguay', position: 'CM', altPositions: ['CDM'], ovr: 77, stats: { PAC:70, PAS:78, DRB:74, SHO:69, DEF:73, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 75, league: 'International' },
+    { id: 327, name: 'Paraguay 15', club: 'Orlando', nation: 'Paraguay', position: 'CDM', altPositions: ['CM'], ovr: 75, stats: { PAC:68, PAS:74, DRB:68, SHO:60, DEF:76, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 76, league: 'International' },
+    { id: 328, name: 'Paraguay 16', club: 'Vancouver', nation: 'Paraguay', position: 'CDM', altPositions: ['CM'], ovr: 80, stats: { PAC:72, PAS:75, DRB:72, SHO:55, DEF:84, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 5.0, preferredFoot: 'right', weakFoot: 3, height: 174, weight: 70, league: 'International' },
+    { id: 329, name: 'Paraguay 17', club: 'Atlanta', nation: 'Paraguay', position: 'CM', altPositions: ['CAM'], ovr: 77, stats: { PAC:75, PAS:77, DRB:78, SHO:68, DEF:60, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 75, league: 'International' },
+    { id: 330, name: 'Paraguay 18', club: 'Al Ain', nation: 'Paraguay', position: 'CAM', altPositions: ['RM','RW'], ovr: 78, stats: { PAC:74, PAS:82, DRB:80, SHO:72, DEF:45, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 171, weight: 68, league: 'International' },
+    { id: 331, name: 'Paraguay 19', club: 'Palmeiras', nation: 'Paraguay', position: 'LW', altPositions: ['RW'], ovr: 82, stats: { PAC:90, PAS:76, DRB:84, SHO:75, DEF:45, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 178, weight: 72, league: 'International' },
+    { id: 332, name: 'Paraguay 20', club: 'Atlanta', nation: 'Paraguay', position: 'RW', altPositions: ['CAM','LW'], ovr: 82, stats: { PAC:86, PAS:80, DRB:83, SHO:76, DEF:48, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 4, height: 174, weight: 70, league: 'International' },
+    { id: 333, name: 'Paraguay 21', club: 'Portsmouth', nation: 'Paraguay', position: 'ST', altPositions: ['RW'], ovr: 72, stats: { PAC:78, PAS:65, DRB:70, SHO:73, DEF:35, STR:75 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 75, league: 'International' },
+    { id: 334, name: 'Paraguay 22', club: 'Independiente Rivadavia', nation: 'Paraguay', position: 'ST', altPositions: [], ovr: 76, stats: { PAC:74, PAS:62, DRB:70, SHO:78, DEF:32, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 187, weight: 82, league: 'International' },
+    { id: 335, name: 'Paraguay 23', club: 'Independiente', nation: 'Paraguay', position: 'ST', altPositions: [], ovr: 75, stats: { PAC:60, PAS:61, DRB:65, SHO:77, DEF:30, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 85, league: 'International' },
+    { id: 336, name: 'Paraguay 24', club: 'Red Bull Bragantino', nation: 'Paraguay', position: 'ST', altPositions: [], ovr: 77, stats: { PAC:76, PAS:63, DRB:69, SHO:79, DEF:35, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 82, league: 'International' },
+    { id: 337, name: 'Paraguay 25', club: 'Strasbourg', nation: 'Paraguay', position: 'CAM', altPositions: ['LW','RW'], ovr: 84, stats: { PAC:83, PAS:82, DRB:87, SHO:79, DEF:45, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 173, weight: 70, league: 'International' },
+    { id: 338, name: 'Paraguay 26', club: 'Cremonese', nation: 'Paraguay', position: 'ST', altPositions: [], ovr: 79, stats: { PAC:72, PAS:70, DRB:76, SHO:82, DEF:35, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/Vcc360m8/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 4, height: 180, weight: 77, league: 'International' },
+    // Australia
+    { id: 339, name: 'Australia 1', club: 'Melbourne City', nation: 'Australia', position: 'GK', altPositions: [], ovr: 74, stats: { REF:76, KIC:70, PAS:68, SPE:72, DIV:74, HAN:77 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 2, height: 197, weight: 89, league: 'International' },
+    { id: 340, name: 'Australia 2', club: 'Runners', nation: 'Australia', position: 'GK', altPositions: [], ovr: 73, stats: { REF:75, KIC:71, PAS:69, SPE:70, DIV:74, HAN:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 2, height: 185, weight: 82, league: 'International' },
+    { id: 341, name: 'Australia 3', club: 'Levante', nation: 'Australia', position: 'GK', altPositions: [], ovr: 78, stats: { REF:80, KIC:76, PAS:74, SPE:75, DIV:79, HAN:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 184, weight: 82, league: 'International' },
+    { id: 342, name: 'Australia 4', club: 'Melbourne City', nation: 'Australia', position: 'LB', altPositions: ['LM'], ovr: 72, stats: { PAC:72, PAS:70, DRB:69, SHO:55, DEF:72, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 170, weight: 67, league: 'International' },
+    { id: 343, name: 'Australia 5', club: 'Feyenoord', nation: 'Australia', position: 'LB', altPositions: ['LM'], ovr: 75, stats: { PAC:83, PAS:72, DRB:74, SHO:60, DEF:70, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'left', weakFoot: 3, height: 180, weight: 74, league: 'International' },
+    { id: 344, name: 'Australia 6', club: 'Swansea City', nation: 'Australia', position: 'CB', altPositions: [], ovr: 73, stats: { PAC:58, PAS:68, DRB:55, SHO:45, DEF:76, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 2, height: 194, weight: 86, league: 'International' },
+    { id: 345, name: 'Australia 7', club: 'Parma', nation: 'Australia', position: 'CB', altPositions: [], ovr: 76, stats: { PAC:69, PAS:72, DRB:63, SHO:50, DEF:79, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 192, weight: 80, league: 'International' },
+    { id: 346, name: 'Australia 8', club: 'APOEL', nation: 'Australia', position: 'CB', altPositions: [], ovr: 74, stats: { PAC:62, PAS:70, DRB:57, SHO:46, DEF:78, STR:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 187, weight: 82, league: 'International' },
+    { id: 347, name: 'Australia 9', club: 'Albirex Niigata', nation: 'Australia', position: 'RB', altPositions: ['LB'], ovr: 73, stats: { PAC:74, PAS:67, DRB:68, SHO:52, DEF:72, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 77, league: 'International' },
+    { id: 348, name: 'Australia 10', club: 'Colorado Rapids', nation: 'Australia', position: 'CB', altPositions: [], ovr: 69, stats: { PAC:65, PAS:63, DRB:55, SHO:43, DEF:71, STR:75 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 188, weight: 82, league: 'International' },
+    { id: 349, name: 'Australia 11', club: 'GAK', nation: 'Australia', position: 'RM', altPositions: ['RW'], ovr: 70, stats: { PAC:77, PAS:68, DRB:71, SHO:62, DEF:48, STR:65 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 70, league: 'International' },
+    { id: 350, name: 'Australia 12', club: 'Leicester', nation: 'Australia', position: 'CB', altPositions: [], ovr: 77, stats: { PAC:55, PAS:69, DRB:52, SHO:45, DEF:83, STR:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 198, weight: 99, league: 'International' },
+    { id: 351, name: 'Australia 13', club: 'New York City', nation: 'Australia', position: 'CB', altPositions: ['RB'], ovr: 71, stats: { PAC:67, PAS:65, DRB:58, SHO:45, DEF:73, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 185, weight: 78, league: 'International' },
+    { id: 352, name: 'Australia 14', club: 'Hearts', nation: 'Australia', position: 'CM', altPositions: ['CDM'], ovr: 73, stats: { PAC:69, PAS:71, DRB:67, SHO:58, DEF:72, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 73, league: 'International' },
+    { id: 353, name: 'Australia 15', club: 'Heracles', nation: 'Australia', position: 'CM', altPositions: ['CAM'], ovr: 75, stats: { PAC:72, PAS:79, DRB:76, SHO:72, DEF:54, STR:66 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 4, height: 183, weight: 74, league: 'International' },
+    { id: 354, name: 'Australia 16', club: 'St Pauli', nation: 'Australia', position: 'CM', altPositions: ['CDM'], ovr: 76, stats: { PAC:62, PAS:74, DRB:65, SHO:64, DEF:76, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 189, weight: 84, league: 'International' },
+    { id: 355, name: 'Australia 17', club: 'St Pauli', nation: 'Australia', position: 'CM', altPositions: ['CDM'], ovr: 74, stats: { PAC:70, PAS:73, DRB:70, SHO:60, DEF:65, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 77, league: 'International' },
+    { id: 356, name: 'Australia 18', club: 'Sydney', nation: 'Australia', position: 'CDM', altPositions: [], ovr: 68, stats: { PAC:63, PAS:66, DRB:60, SHO:48, DEF:69, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 182, weight: 75, league: 'International' },
+    { id: 357, name: 'Australia 19', club: 'New York City', nation: 'Australia', position: 'CDM', altPositions: ['CM'], ovr: 74, stats: { PAC:66, PAS:72, DRB:65, SHO:58, DEF:75, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 78, league: 'International' },
+    { id: 358, name: 'Australia 20', club: 'Watford', nation: 'Australia', position: 'RW', altPositions: ['LW'], ovr: 75, stats: { PAC:92, PAS:69, DRB:78, SHO:72, DEF:35, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 175, weight: 68, league: 'International' },
+    { id: 359, name: 'Australia 21', club: 'Melbourne City', nation: 'Australia', position: 'RW', altPositions: ['RM'], ovr: 72, stats: { PAC:80, PAS:68, DRB:70, SHO:67, DEF:40, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 181, weight: 82, league: 'International' },
+    { id: 360, name: 'Australia 22', club: 'Eltham', nation: 'Australia', position: 'LW', altPositions: ['RW'], ovr: 71, stats: { PAC:82, PAS:66, DRB:72, SHO:65, DEF:38, STR:62 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 179, weight: 75, league: 'International' },
+    { id: 361, name: 'Australia 23', club: 'Norwich', nation: 'Australia', position: 'ST', altPositions: ['LW'], ovr: 70, stats: { PAC:83, PAS:60, DRB:70, SHO:69, DEF:30, STR:64 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 176, weight: 70, league: 'International' },
+    { id: 362, name: 'Australia 24', club: 'Melbourne Victory', nation: 'Australia', position: 'ST', altPositions: ['LW'], ovr: 69, stats: { PAC:80, PAS:61, DRB:68, SHO:67, DEF:32, STR:65 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 73, league: 'International' },
+    { id: 363, name: 'Australia 25', club: 'Sassuolo', nation: 'Australia', position: 'CAM', altPositions: ['RW'], ovr: 73, stats: { PAC:70, PAS:74, DRB:78, SHO:69, DEF:40, STR:62 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 4, height: 182, weight: 75, league: 'International' },
+    { id: 364, name: 'Australia 26', club: 'Machida Zelvia', nation: 'Australia', position: 'ST', altPositions: [], ovr: 70, stats: { PAC:78, PAS:58, DRB:66, SHO:70, DEF:30, STR:75 }, program: 'World Cup 26', image: 'https://i.ibb.co/BKZYvQLT/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 189, weight: 83, league: 'International' },
+    // Turkey
+    { id: 365, name: 'Turkey 1', club: 'Manchester United', nation: 'Turkey', position: 'GK', altPositions: [], ovr: 77, stats: { REF:79, KIC:75, PAS:72, SPE:70, DIV:78, HAN:80 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 198, weight: 88, league: 'International' },
+    { id: 366, name: 'Turkey 2', club: 'Fenerbahce', nation: 'Turkey', position: 'GK', altPositions: [], ovr: 76, stats: { REF:78, KIC:74, PAS:70, SPE:69, DIV:77, HAN:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 2.5, preferredFoot: 'right', weakFoot: 2, height: 196, weight: 92, league: 'International' },
+    { id: 367, name: 'Turkey 3', club: 'Galatasaray', nation: 'Turkey', position: 'GK', altPositions: [], ovr: 78, stats: { REF:80, KIC:76, PAS:73, SPE:71, DIV:79, HAN:81 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 191, weight: 87, league: 'International' },
+    { id: 368, name: 'Turkey 4', club: 'Galatasaray', nation: 'Turkey', position: 'CB', altPositions: [], ovr: 80, stats: { PAC:66, PAS:74, DRB:62, SHO:52, DEF:83, STR:84 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 3, height: 185, weight: 81, league: 'International' },
+    { id: 369, name: 'Turkey 5', club: 'Fenerbahce', nation: 'Turkey', position: 'CB', altPositions: [], ovr: 79, stats: { PAC:67, PAS:72, DRB:60, SHO:48, DEF:82, STR:85 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 185, weight: 82, league: 'International' },
+    { id: 370, name: 'Turkey 6', club: 'Galatasaray', nation: 'Turkey', position: 'LB', altPositions: ['LM'], ovr: 75, stats: { PAC:78, PAS:70, DRB:72, SHO:58, DEF:73, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 180, weight: 72, league: 'International' },
+    { id: 371, name: 'Turkey 7', club: 'Brighton', nation: 'Turkey', position: 'LB', altPositions: ['RB','LM'], ovr: 81, stats: { PAC:86, PAS:78, DRB:82, SHO:67, DEF:73, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 4, height: 174, weight: 68, league: 'International' },
+    { id: 372, name: 'Turkey 8', club: 'Al Ahli', nation: 'Turkey', position: 'CB', altPositions: [], ovr: 81, stats: { PAC:70, PAS:70, DRB:55, SHO:45, DEF:85, STR:88 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 86, league: 'International' },
+    { id: 373, name: 'Turkey 9', club: 'Fenerbahce', nation: 'Turkey', position: 'RB', altPositions: ['LB'], ovr: 75, stats: { PAC:77, PAS:71, DRB:70, SHO:55, DEF:73, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 83, league: 'International' },
+    { id: 374, name: 'Turkey 10', club: 'Hoffenheim', nation: 'Turkey', position: 'CB', altPositions: [], ovr: 75, stats: { PAC:71, PAS:69, DRB:56, SHO:45, DEF:78, STR:82 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 2, height: 186, weight: 86, league: 'International' },
+    { id: 375, name: 'Turkey 11', club: 'Rizespor', nation: 'Turkey', position: 'CB', altPositions: [], ovr: 72, stats: { PAC:63, PAS:65, DRB:50, SHO:40, DEF:74, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.0, preferredFoot: 'right', weakFoot: 2, height: 190, weight: 85, league: 'International' },
+    { id: 376, name: 'Turkey 12', club: 'Roma', nation: 'Turkey', position: 'RB', altPositions: ['CB'], ovr: 76, stats: { PAC:74, PAS:72, DRB:69, SHO:55, DEF:76, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 78, league: 'International' },
+    { id: 377, name: 'Turkey 13', club: 'Galatasaray', nation: 'Turkey', position: 'CB', altPositions: ['CDM'], ovr: 77, stats: { PAC:62, PAS:76, DRB:63, SHO:58, DEF:77, STR:75 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 185, weight: 82, league: 'International' },
+    { id: 378, name: 'Turkey 14', club: 'Inter', nation: 'Turkey', position: 'CM', altPositions: ['CAM','CDM'], ovr: 86, stats: { PAC:65, PAS:90, DRB:83, SHO:82, DEF:70, STR:72 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 178, weight: 76, league: 'International' },
+    { id: 379, name: 'Turkey 15', club: 'Fenerbahce', nation: 'Turkey', position: 'CDM', altPositions: ['CM'], ovr: 76, stats: { PAC:73, PAS:72, DRB:67, SHO:55, DEF:78, STR:76 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 183, weight: 77, league: 'International' },
+    { id: 380, name: 'Turkey 16', club: 'Besiktas', nation: 'Turkey', position: 'CM', altPositions: ['CAM'], ovr: 82, stats: { PAC:73, PAS:84, DRB:82, SHO:75, DEF:55, STR:70 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 4, height: 175, weight: 72, league: 'International' },
+    { id: 381, name: 'Turkey 17', club: 'Borussia Dortmund', nation: 'Turkey', position: 'CDM', altPositions: ['CM'], ovr: 75, stats: { PAC:66, PAS:70, DRB:64, SHO:52, DEF:76, STR:79 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 3, height: 180, weight: 78, league: 'International' },
+    { id: 382, name: 'Turkey 18', club: 'Real Madrid', nation: 'Turkey', position: 'CAM', altPositions: ['RW'], ovr: 82, stats: { PAC:76, PAS:82, DRB:86, SHO:78, DEF:38, STR:55 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 4, height: 176, weight: 70, league: 'International' },
+    { id: 383, name: 'Turkey 19', club: 'Kasimpasa', nation: 'Turkey', position: 'RM', altPositions: ['CAM'], ovr: 75, stats: { PAC:70, PAS:75, DRB:75, SHO:73, DEF:45, STR:65 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'left', weakFoot: 4, height: 176, weight: 72, league: 'International' },
+    { id: 384, name: 'Turkey 20', club: 'Fenerbahce', nation: 'Turkey', position: 'RW', altPositions: ['RM'], ovr: 73, stats: { PAC:82, PAS:70, DRB:76, SHO:68, DEF:35, STR:60 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 183, weight: 76, league: 'International' },
+    { id: 385, name: 'Turkey 21', club: 'Galatasaray', nation: 'Turkey', position: 'RW', altPositions: ['LW'], ovr: 76, stats: { PAC:84, PAS:72, DRB:78, SHO:69, DEF:40, STR:62 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'left', weakFoot: 3, height: 173, weight: 68, league: 'International' },
+    { id: 386, name: 'Turkey 22', club: 'Galatasaray', nation: 'Turkey', position: 'RW', altPositions: ['ST','LW'], ovr: 80, stats: { PAC:87, PAS:73, DRB:79, SHO:76, DEF:45, STR:78 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.5, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 80, league: 'International' },
+    { id: 387, name: 'Turkey 23', club: 'Eintracht Frankfurt', nation: 'Turkey', position: 'CAM', altPositions: ['ST'], ovr: 76, stats: { PAC:78, PAS:75, DRB:80, SHO:74, DEF:35, STR:62 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 4, height: 186, weight: 78, league: 'International' },
+    { id: 388, name: 'Turkey 24', club: 'Porto', nation: 'Turkey', position: 'ST', altPositions: [], ovr: 72, stats: { PAC:72, PAS:58, DRB:67, SHO:72, DEF:30, STR:74 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 3.5, preferredFoot: 'right', weakFoot: 3, height: 188, weight: 82, league: 'International' },
+    { id: 389, name: 'Turkey 25', club: 'Juventus', nation: 'Turkey', position: 'LW', altPositions: ['CAM','ST'], ovr: 81, stats: { PAC:82, PAS:78, DRB:84, SHO:77, DEF:38, STR:68 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 187, weight: 75, league: 'International' },
+    { id: 390, name: 'Turkey 26', club: 'Fenerbahce', nation: 'Turkey', position: 'LW', altPositions: ['RW'], ovr: 79, stats: { PAC:85, PAS:75, DRB:82, SHO:75, DEF:35, STR:60 }, program: 'World Cup 26', image: 'https://i.ibb.co/1GF2wB0n/image.png', squadImage: 'https://i.ibb.co/WNV86Z2h/photo-1-2026-06-25-10-49-35.jpg', trainingLevel: 0, ovrUpgrade: 0, stamina: 4.0, preferredFoot: 'right', weakFoot: 4, height: 173, weight: 68, league: 'International' }
 ];
 
 // Простановка tradeable по умолчанию (если не задано явно)
@@ -5367,75 +5710,80 @@ function resetInvFiltersFromModal() {
 // ── Рендер списка игроков ─────────────────────────────────────────────────
 function renderInventoryList() {
   const container = document.getElementById('inv-list');
-  const countEl   = document.getElementById('inv-count');
+  const countEl = document.getElementById('inv-count');
   if (!container) return;
 
-  let filtered = [...(gameState.myPlayers || [])];
+  let filtered = [...(gameState.myPlayers||[])];
+  if (invFilters.name.trim()) { const q=invFilters.name.trim().toLowerCase(); filtered=filtered.filter(p=>p.name.toLowerCase().includes(q)); }
+  if (invFilters.ovrMin!=='') filtered=filtered.filter(p=>getEffectiveOvr(p)>=Number(invFilters.ovrMin));
+  if (invFilters.ovrMax!=='') filtered=filtered.filter(p=>getEffectiveOvr(p)<=Number(invFilters.ovrMax));
+  if (invFilters.programs.length) filtered=filtered.filter(p=>invFilters.programs.includes(p.program));
+  if (invFilters.positions.length) filtered=filtered.filter(p=>invFilters.positions.includes(p.position));
+  if (invFilters.trainMin!=='') filtered=filtered.filter(p=>(p.trainingLevel||0)>=Number(invFilters.trainMin));
+  if (invFilters.trainMax!=='') filtered=filtered.filter(p=>(p.trainingLevel||0)<=Number(invFilters.trainMax));
+  if (invFilters.ovrUpgrades.length) filtered=filtered.filter(p=>invFilters.ovrUpgrades.includes(p.ovrUpgrade||0));
+  if (invFilters.leagues.length) filtered=filtered.filter(p=>invFilters.leagues.includes(p.league||'Без лиги'));
+  if (invFilters.clubs.length) filtered=filtered.filter(p=>invFilters.clubs.includes(p.club));
+  if (invFilters.nations.length) filtered=filtered.filter(p=>invFilters.nations.includes(p.nation));
+  if (invFilters.staminas.length) filtered=filtered.filter(p=>invFilters.staminas.includes(parseFloat((p.stamina||3.0).toFixed(1))));
+  if (invFilters.weakFeets.length) filtered=filtered.filter(p=>invFilters.weakFeets.includes(p.weakFoot||1));
+  if (invFilters.preferredFeet.length) filtered=filtered.filter(p=>invFilters.preferredFeet.includes(p.preferredFoot||'right'));
 
-  // По имени
-  if (invFilters.name.trim()) {
-    const q = invFilters.name.trim().toLowerCase();
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
-  }
-  // По OVR
-  if (invFilters.ovrMin !== '') filtered = filtered.filter(p => getEffectiveOvr(p) >= Number(invFilters.ovrMin));
-  if (invFilters.ovrMax !== '') filtered = filtered.filter(p => getEffectiveOvr(p) <= Number(invFilters.ovrMax));
-  // По программе
-  if (invFilters.programs.length) filtered = filtered.filter(p => invFilters.programs.includes(p.program));
-  // По позиции
-  if (invFilters.positions.length) filtered = filtered.filter(p => invFilters.positions.includes(p.position));
-  // По уровню тренировки
-  if (invFilters.trainMin !== '') filtered = filtered.filter(p => (p.trainingLevel||0) >= Number(invFilters.trainMin));
-  if (invFilters.trainMax !== '') filtered = filtered.filter(p => (p.trainingLevel||0) <= Number(invFilters.trainMax));
-  // По повышению OVR
-  if (invFilters.ovrUpgrades.length) filtered = filtered.filter(p => invFilters.ovrUpgrades.includes(p.ovrUpgrade||0));
-  // По лиге
-  if (invFilters.leagues.length) filtered = filtered.filter(p => invFilters.leagues.includes(p.league || 'Без лиги'));
-  // По команде
-  if (invFilters.clubs.length) filtered = filtered.filter(p => invFilters.clubs.includes(p.club));
-  // По нации
-  if (invFilters.nations.length) filtered = filtered.filter(p => invFilters.nations.includes(p.nation));
-  // По выносливости
-  if (invFilters.staminas.length) filtered = filtered.filter(p => invFilters.staminas.includes(parseFloat((p.stamina||3.0).toFixed(1))));
-  // По финтам (weakFoot)
-  if (invFilters.weakFeets.length) filtered = filtered.filter(p => invFilters.weakFeets.includes(p.weakFoot||1));
-  // По рабочей ноге
-  if (invFilters.preferredFeet.length) filtered = filtered.filter(p => invFilters.preferredFeet.includes(p.preferredFoot||'right'));
+  filtered.sort((a,b)=>getEffectiveOvr(b)-getEffectiveOvr(a));
+  if (countEl) countEl.textContent=`Найдено: ${filtered.length} из ${(gameState.myPlayers||[]).length}`;
 
-  // Сортировка по OVR
-  filtered.sort((a,b) => getEffectiveOvr(b) - getEffectiveOvr(a));
-
-  if (countEl) countEl.textContent = `Найдено: ${filtered.length} из ${(gameState.myPlayers||[]).length}`;
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:#7d8e9e;padding:20px;">Нет игроков по выбранным фильтрам.</div>';
+  if (filtered.length===0) {
+    container.innerHTML='<div style="text-align:center;color:#7d8e9e;padding:20px;">Нет игроков.</div>';
     return;
   }
+  container.innerHTML = buildPlayerMiniGrid(filtered, 'inventory');
+}
 
-  const imgTrain = '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const imgOvr   = '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const imgFrag  = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const btnSt    = 'font-size:10px;padding:3px 8px;';
+function buildPlayerMiniGrid(players, context) {
+  if (!players.length) return '<div style="text-align:center;color:#7d8e9e;padding:30px 10px;font-size:12px;">Нет игроков</div>';
 
-  let html = '';
-  for (const player of filtered) {
-    html += buildPlayerCardHTML(player);
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
+  let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">';
+  for (const p of players) {
+    const effOvr = getEffectiveOvr(p);
+    const color = getPositionColor(p.position);
+    const hasImg = !!(p.squadImage || p.image);
+    const imgStyle = hasImg
+      ? `background-image:url(${p.squadImage||p.image});background-size:cover;background-position:center top;`
+      : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+    const overlay = hasImg ? 'background:rgba(0,0,0,0.45);' : '';
+    const nameParts = p.name.trim().split(' ');
+    const firstName = nameParts.length > 1 ? nameParts.slice(0,-1).join(' ') : '';
+    const lastName = nameParts[nameParts.length-1];
+    const hasUpgrade = (p.ovrUpgrade||0) > 0 || (p.trainingLevel||0) > 0;
+    // Безопасно передаём cardId для onclick
+    const safeCardId = (p.cardId||'').replace(/'/g,"\\'");
 
-    if (player.trainingLevel < MAX_TRAINING_LEVEL) {
-      html += '<button class="inline-btn" onclick="trainPlayer(\'' + player.cardId + '\')" style="' + btnSt + '">'
-            + imgTrain + ' Тренировать (' + TRAINING_COST_PER_LEVEL + ' очк)</button>';
-    }
-    if (player.ovrUpgrade < 5) {
-      const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade];
-      html += '<button class="inline-btn" onclick="upgradePlayerOvr(\'' + player.cardId + '\')" style="' + btnSt + '">'
-            + imgOvr + ' Повысить OVR (' + cost + ' очк)</button>';
-    }
-    html += '<button class="inline-btn" onclick="confirmExchangePlayer(\'' + player.cardId + '\')" style="' + btnSt + '">'
-          + imgFrag + ' Обменять на фрагменты</button>';
-    html += '</div>';
+    html += `
+      <div onclick="openPlayerDetailModalById('${safeCardId}','${context}')"
+        style="${imgStyle}border:2px solid ${color};border-radius:8px;cursor:pointer;position:relative;overflow:hidden;aspect-ratio:3/4;">
+        <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
+            <div style="width:18px;height:18px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length>2?p.position.slice(0,2):p.position}</div>
+            <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+            ${firstName?`<div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.8);text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstName}</div>`:''}
+            <div style="font-size:9px;font-weight:700;color:#fff;text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastName}</div>
+          </div>
+        </div>
+        ${hasUpgrade ? `<div style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);border-radius:4px;padding:1px 3px;font-size:7px;color:#f0c040;line-height:1.4;">
+          ${(p.ovrUpgrade||0)>0?`+${p.ovrUpgrade}▲`:''}${(p.trainingLevel||0)>0?`+${p.trainingLevel}🏋`:''}
+        </div>` : ''}
+      </div>`;
   }
-  container.innerHTML = html;
+  html += '</div>';
+  return html;
+}
+
+// Вспомогательная — ищет игрока по cardId и открывает модал
+function openPlayerDetailModalById(cardId, context) {
+  const p = (gameState.myPlayers||[]).find(pl => pl.cardId === cardId);
+  if (p) openPlayerDetailModal(p, context);
 }
 
 // ── Тренировка ────────────────────────────────────────────────────────────
@@ -6049,30 +6397,30 @@ html += `<div style="display:flex;align-items:center;justify-content:center;gap:
         </button>
         ${resFilterCount > 0 ? `<button onclick="resetReserveFilters()" style="background:rgba(255,255,255,0.08);border:none;color:#7d8e9e;border-radius:6px;padding:6px 8px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>` : ''}
       </div>`;
-      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:scroll;overflow-y:visible;padding-bottom:8px;padding-top:2px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">`;
-      if (availablePlayers.length === 0) {
-        html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
-      }
-      for (const player of availablePlayers) {
-        const bgStyle = getSlotBgStyle(player);
-        const hasImage = !!(player && (player.squadImage || player.image));
-        const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
-        const isSelected = (selectedReservePlayerId === player.id);
-        const borderStyle = isSelected ? 'border: 2px solid #f0c040;' : '';
+html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:scroll;overflow-y:visible;padding-bottom:8px;padding-top:2px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">`;
+if (availablePlayers.length === 0) {
+  html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
+}
+for (const player of availablePlayers) {
+  const bgStyle = getSlotBgStyle(player);
+  const hasImage = !!(player && (player.squadImage || player.image));
+  const overlay = hasImage ? 'background: rgba(0,0,0,0.5);' : '';
+  const isSelected = (selectedReservePlayerId === player.id);
+  const borderStyle = isSelected ? 'border: 2px solid #f0c040;' : '';
 
-        html +=
-          `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
-          + `onclick="selectReservePlayer(event, ${player.id})" `
-          + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;overflow:hidden;">`
-          + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;">`
-          + (hasImage ? '' : `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`)
-          + `<div style="font-size:9px;color:#fff;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
-          + (hasImage ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>` : '')
-          + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${safeEffectiveOvr(player)}</div>`
-          + `</div>`
-          + `</div>`;
-      }
-      html += `</div>`;
+  html +=
+    `<div class="mini-card" draggable="true" data-player-id="${player.id}" ondragstart="handleDragStart(event)" `
+    + `onclick="selectReservePlayer(event, ${player.id})" `
+    + `style="width:54px;min-height:70px;${bgStyle} ${borderStyle} border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;cursor:pointer;font-size:10px;padding:4px;user-select:none;position:relative;overflow:hidden;">`
+    + `<div style="${overlay}position:absolute;inset:0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;">`
+    + (hasImage ? '' : `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>`)
+    + `<div style="font-size:9px;color:#fff;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${player.name}</div>`
+    + (hasImage ? `<span style="font-size:8px;color:rgba(255,255,255,0.7);">${player.position}</span>` : '')
+    + `<div style="font-size:11px;font-weight:700;color:#f0c040;">${safeEffectiveOvr(player)}</div>`
+    + `</div>`
+    + `</div>`;
+}
+html += `</div>`;
 
       // Назначения
       const squadPlayers = [];
@@ -10472,125 +10820,68 @@ function buildQuestRewardStr(rewards, iXP, iRuby) {
 
 // ── Забрать награду за квест ──────────────────────────────────────────────
 async function claimQuestReward(questId) {
-  closeQuestsModal();
   checkAndRefreshQuests();
-
   const q = (gameState.quests || []).find(qq => qq.id === questId);
-  if (!q || !q.completed || q.claimed) {
-    await botReply('❌ Награда недоступна.', 300); return;
-  }
-
+  if (!q || !q.completed || q.claimed) return;
   q.claimed = true;
   const r = q.rewards;
-  if (r.xp)          gameState.xp           = (gameState.xp           || 0) + r.xp;
-  if (r.rubins)      gameState.rubins        = (gameState.rubins        || 0) + r.rubins;
-  if (r.passCredits) gameState.passCredits   = (gameState.passCredits   || 0) + r.passCredits;
-  if (r.fragments)   gameState.fragments     = (gameState.fragments     || 0) + r.fragments;
-  if (r.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints || 0) + r.trainingPoints;
-  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + r.ovrUpgradePoints;
-
+  if (r.xp) gameState.xp = (gameState.xp||0)+r.xp;
+  if (r.rubins) gameState.rubins = (gameState.rubins||0)+r.rubins;
+  if (r.passCredits) gameState.passCredits = (gameState.passCredits||0)+r.passCredits;
+  if (r.fragments) gameState.fragments = (gameState.fragments||0)+r.fragments;
+  if (r.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints||0)+r.trainingPoints;
+  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints||0)+r.ovrUpgradePoints;
   saveState(); updateHeaderResources();
-
-  const iXP   = '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const iRuby = '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
-  const parts = [];
-  if (r.xp)          parts.push(`${iXP} +${r.xp} XP`);
-  if (r.rubins)      parts.push(`${iRuby} +${r.rubins} сапф.`);
-  if (r.passCredits) parts.push(`🪙 +${r.passCredits}`);
-  await botReply(`✅ Квест <b>${q.title}</b> выполнен!<br>${parts.join(' · ')}`, 500, { html: true });
-  openQuestsModal();
+  showMarketToast(`✅ ${q.title} — получено!`);
+  renderQuestsModal();
 }
 
 // ── Забрать общую награду ─────────────────────────────────────────────────
 async function claimAllQuestsBonus() {
-  closeQuestsModal();
   checkAndRefreshQuests();
-
-  const allClaimed = (gameState.quests || []).every(q => q.claimed);
-  if (!allClaimed || gameState.allQuestsBonusClaimed) {
-    await botReply('❌ Бонус недоступен.', 300); return;
-  }
-
+  const allClaimed = (gameState.quests||[]).every(q=>q.claimed);
+  if (!allClaimed || gameState.allQuestsBonusClaimed) return;
   gameState.allQuestsBonusClaimed = true;
   const b = ALL_QUESTS_BONUS;
-  gameState.passCredits      = (gameState.passCredits      || 0) + b.passCredits;
-  gameState.rubins            = (gameState.rubins            || 0) + b.rubins;
-  gameState.fragments         = (gameState.fragments         || 0) + b.fragments;
-  gameState.ovrUpgradePoints  = (gameState.ovrUpgradePoints  || 0) + b.ovrUpgradePoints;
-  gameState.trainingPoints    = (gameState.trainingPoints    || 0) + b.trainingPoints;
-
+  gameState.passCredits = (gameState.passCredits||0)+b.passCredits;
+  gameState.rubins = (gameState.rubins||0)+b.rubins;
+  gameState.fragments = (gameState.fragments||0)+b.fragments;
+  gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints||0)+b.ovrUpgradePoints;
+  gameState.trainingPoints = (gameState.trainingPoints||0)+b.trainingPoints;
   saveState(); updateHeaderResources();
-
-  await botReply(
-    `🏆 <b>Все квесты выполнены!</b><br>` +
-    `<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +150 очк. прогр. · ` +
-    `<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.rubins} сапф. · ` +
-    `<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.fragments} фрагм. · ` +
-    `<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.ovrUpgradePoints} OVR · ` +
-    `<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${b.trainingPoints} трен.`,
-    600, { html: true }
-  );
-  openQuestsModal();
+  showMarketToast(`🏆 Все квесты! +${b.rubins} сапф. +${b.fragments} фрагм.`);
+  renderQuestsModal();
 }
 
 // ── Забрать ежедневную награду ─────────────────────────────────────────────
 async function claimDailyReward() {
-  closeQuestsModal();
   checkAndRefreshQuests();
-
   const today = getMoscowDateString();
   if (gameState.dailyRewardDate === today) {
-    await botReply('ℹ️ Ежедневная награда уже получена сегодня.', 400); return;
+    showMarketToast('ℹ️ Уже получено сегодня'); return;
   }
-
   const rolled = rollDailyReward();
   gameState.dailyRewardDate = today;
-
   let rewardMsg = '';
-
-  if (rolled.reward.coins) {
-    gameState.coins = (gameState.coins || 0) + rolled.reward.coins;
-    rewardMsg = `<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.coins.toLocaleString('ru-RU')} монет`;
-  } else if (rolled.reward.trainingPoints) {
-    gameState.trainingPoints = (gameState.trainingPoints || 0) + rolled.reward.trainingPoints;
-    rewardMsg = `<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.trainingPoints} очков тренировки`;
-  } else if (rolled.reward.ovrUpgradePoints) {
-    gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + rolled.reward.ovrUpgradePoints;
-    rewardMsg = `<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.ovrUpgradePoints} очков OVR`;
-  } else if (rolled.reward.rubins) {
-    gameState.rubins = (gameState.rubins || 0) + rolled.reward.rubins;
-    rewardMsg = `<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +${rolled.reward.rubins} сапфиров`;
-  } else if (rolled.reward.player85) {
-    // Выбираем случайного игрока с OVR >= 85
-    const pool85 = allPlayers.filter(p => p.ovr >= 85);
-    if (pool85.length > 0) {
-      const tpl = pool85[Math.floor(Math.random() * pool85.length)];
-      const newPlayer = JSON.parse(JSON.stringify(tpl));
-      newPlayer.trainingLevel = 0;
-      newPlayer.ovrUpgrade    = 0;
-      newPlayer.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      gameState.myPlayers.push(newPlayer);
-      rewardMsg = `👤 <b>${newPlayer.name}</b> (OVR ${newPlayer.ovr})`;
-    } else {
-      // Fallback — монеты
-      gameState.coins = (gameState.coins || 0) + 20000;
-      rewardMsg = `<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" /> +20 000 монет`;
-    }
+  if (rolled.reward.coins) { gameState.coins=(gameState.coins||0)+rolled.reward.coins; rewardMsg=`+${rolled.reward.coins.toLocaleString('ru-RU')} монет`; }
+  else if (rolled.reward.trainingPoints) { gameState.trainingPoints=(gameState.trainingPoints||0)+rolled.reward.trainingPoints; rewardMsg=`+${rolled.reward.trainingPoints} очк. тренировки`; }
+  else if (rolled.reward.ovrUpgradePoints) { gameState.ovrUpgradePoints=(gameState.ovrUpgradePoints||0)+rolled.reward.ovrUpgradePoints; rewardMsg=`+${rolled.reward.ovrUpgradePoints} очк. OVR`; }
+  else if (rolled.reward.rubins) { gameState.rubins=(gameState.rubins||0)+rolled.reward.rubins; rewardMsg=`+${rolled.reward.rubins} сапфиров`; }
+  else if (rolled.reward.player85) {
+    const pool85 = allPlayers.filter(p=>p.ovr>=85);
+    if (pool85.length>0) {
+      const tpl=pool85[Math.floor(Math.random()*pool85.length)];
+      const np=JSON.parse(JSON.stringify(tpl));
+      np.trainingLevel=0; np.ovrUpgrade=0;
+      np.cardId=Date.now()+'_'+Math.random().toString(36).substr(2,9);
+      gameState.myPlayers.push(np);
+      rewardMsg=`👤 ${np.name} (OVR ${np.ovr})`;
+    } else { gameState.coins=(gameState.coins||0)+20000; rewardMsg=`+20 000 монет`; }
   }
-
   saveState(); updateHeaderResources();
-
-  // Обновляем квест "Забери ежедневную награду"
-  updateQuestProgress('daily', 1);
-
-  await botReply(`🎁 Ежедневная награда: ${rewardMsg}`, 500, { html: true });
-
-  if (rolled.reward.player85 && gameState.myPlayers.length > 0) {
-    const acquired = gameState.myPlayers[gameState.myPlayers.length - 1];
-    if (acquired) await botReply(null, 600, { card: buildPlayerCardHTML(acquired) });
-  }
-
-  openQuestsModal();
+  updateQuestProgress('daily',1);
+  showMarketToast(`🎁 Ежедневная награда: ${rewardMsg}`);
+  renderQuestsModal();
 }
 
 // === END MODULE: quests ===
