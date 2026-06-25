@@ -591,33 +591,33 @@ function getXpInCurrentLevel(xp) {
 }
 
 function updateHeaderResources() {
-  document.getElementById('hdr-rubins').textContent = gameState.rubins ?? 0;
-  document.getElementById('hdr-offside').textContent = gameState.offsideTokens ?? 0;
-  document.getElementById('hdr-coins').textContent = (gameState.coins ?? 0).toLocaleString('ru-RU');
+  // Универсальная функция форматирования с разделением по разрядам
+  function fmtNum(n) {
+    const num = n ?? 0;
+    return Number(num).toLocaleString('ru-RU');
+  }
 
-  // Вычисляем уровень из XP
-  const totalXp = gameState.xp ?? 0;
-  const level = getPlayerLevel(totalXp);
-  const xpInLevel = getXpInCurrentLevel(totalXp);
+  document.getElementById('hdr-rubins').textContent  = fmtNum(gameState.rubins);
+  document.getElementById('hdr-offside').textContent = fmtNum(gameState.offsideTokens);
+  document.getElementById('hdr-coins').textContent   = fmtNum(gameState.coins);
 
-  // Сохраняем уровень в gameState
+  const totalXp  = gameState.xp ?? 0;
+  const level    = getPlayerLevel(totalXp);
+  const xpInLvl  = getXpInCurrentLevel(totalXp);
+
   gameState.level = level;
 
-  document.getElementById('hdr-xp').textContent = totalXp;
+  document.getElementById('hdr-xp').textContent    = fmtNum(totalXp);
   document.getElementById('hdr-level').textContent = level;
 
-  // Шапка: показываем прогресс XP внутри уровня
   const xpEl = document.getElementById('header-xp-el');
-  if (xpEl) xpEl.textContent = `${xpInLevel}/${XP_PER_LEVEL} XP · Ур. ${level}`;
+  if (xpEl) xpEl.textContent = `${fmtNum(xpInLvl)}/${XP_PER_LEVEL} XP · Ур. ${level}`;
 
   const nickEl = document.getElementById('header-nickname-el');
   if (nickEl && gameState.nickname) nickEl.textContent = gameState.nickname;
 
-  // Фото профиля в шапке
   const avatarImg = document.getElementById('header-avatar-img');
-  if (avatarImg && gameState.profilePhoto) {
-    avatarImg.src = gameState.profilePhoto;
-  }
+  if (avatarImg && gameState.profilePhoto) avatarImg.src = gameState.profilePhoto;
 }
 
 // === CHAT ===
@@ -2200,7 +2200,604 @@ handleNavMarket = function() {
 };
 
 // === END MODULE: MARKET ===
-function handleNavFragMarket() { if(!gameState.registered){promptRegister();return;} setActiveNav('nav-fragmarket'); botReply('🧩 <b>Ярмарка фрагментов</b> — в разработке.', 500, {html:true}); }
+
+// ============================================
+// === MODULE: FRAG MARKET (Ярмарка) ===
+// ============================================
+
+// Состояние ярмарки
+let fragMarketState = {
+  tab: 'all',        // 'all' | 'my' | 'watchlist'
+  selectedId: null,  // id выбранного игрока (для правой панели)
+  selectedCardIds: new Set(), // cardId выбранных "моих" игроков для обмена
+  filters: {
+    name: '', ovrMin: '', ovrMax: '',
+    positions: [], nations: [], clubs: [], leagues: []
+  }
+};
+
+// ── Открыть модал ──────────────────────────────────────────────────────────
+function openFragMarketModal() {
+  let modal = document.getElementById('fragmarket-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'fragmarket-modal';
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:200;background:#0e1621;
+      display:flex;flex-direction:column;max-width:600px;width:100%;margin:0 auto;
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  renderFragMarket();
+}
+
+function closeFragMarketModal() {
+  const m = document.getElementById('fragmarket-modal');
+  if (m) m.style.display = 'none';
+}
+
+// ── Главный рендер ─────────────────────────────────────────────────────────
+function renderFragMarket() {
+  const modal = document.getElementById('fragmarket-modal');
+  if (!modal) return;
+
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
+  const tab = fragMarketState.tab;
+
+  // Списки игроков
+  const f = fragMarketState.filters;
+  let catalogPlayers = allPlayers.filter(p => p.fragPrice > 0); // только те у кого есть цена
+  if (f.name.trim()) {
+    const q = f.name.trim().toLowerCase();
+    catalogPlayers = catalogPlayers.filter(p =>
+      p.name.toLowerCase().includes(q) || p.club.toLowerCase().includes(q));
+  }
+  if (f.ovrMin !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr >= Number(f.ovrMin));
+  if (f.ovrMax !== '') catalogPlayers = catalogPlayers.filter(p => p.ovr <= Number(f.ovrMax));
+  if (f.positions.length) catalogPlayers = catalogPlayers.filter(p => f.positions.includes(p.position));
+  if (f.nations.length)   catalogPlayers = catalogPlayers.filter(p => f.nations.includes(p.nation));
+  if (f.clubs.length)     catalogPlayers = catalogPlayers.filter(p => f.clubs.includes(p.club));
+  if (f.leagues.length)   catalogPlayers = catalogPlayers.filter(p => f.leagues.includes(p.league || ''));
+  catalogPlayers.sort((a, b) => b.ovr - a.ovr);
+  catalogPlayers = catalogPlayers.slice(0, 100);
+
+  const watchlist = gameState.fragMarketWatchlist || [];
+  const watchlistPlayers = allPlayers
+    .filter(p => watchlist.includes(p.id))
+    .sort((a, b) => b.ovr - a.ovr);
+
+// Считаем сколько раз каждый id стоит в составе/скамейке
+const squadIdCount = {};
+for (const pid of [
+  ...Object.values(gameState.squadSlots || {}),
+  ...Object.values(gameState.benchSlots || {})
+]) {
+  if (pid == null) continue;
+  squadIdCount[pid] = (squadIdCount[pid] || 0) + 1;
+}
+
+// Для каждого id считаем сколько карточек уже "заняты" составом
+const usedCount = {};
+const myPlayersFiltered = [];
+for (const p of (gameState.myPlayers || [])) {
+  const fragVal = getFragmentRewardForFM(p);
+  if (fragVal <= 0) continue; // скрываем тех кто стоит 0 фрагментов
+  const inSquadSlots = squadIdCount[p.id] || 0;
+  const alreadyUsed = usedCount[p.id] || 0;
+  if (alreadyUsed < inSquadSlots) {
+    // эта карточка занята составом — пропускаем
+    usedCount[p.id] = alreadyUsed + 1;
+    continue;
+  }
+  myPlayersFiltered.push(p);
+}
+
+const myPlayers = myPlayersFiltered
+  .sort((a, b) => (b.ovr + (b.ovrUpgrade||0)) - (a.ovr + (a.ovrUpgrade||0)));
+
+  // Подсчёт суммы выбранных для обмена
+  const selectedCards = [...fragMarketState.selectedCardIds];
+  let selectedTotal = 0;
+  for (const cardId of selectedCards) {
+    const p = (gameState.myPlayers||[]).find(pp => pp.cardId === cardId);
+    if (p) selectedTotal += getFragmentRewardForFM(p);
+  }
+
+  // Выбранный игрок для правой панели
+  let selPlayer = null;
+  if (fragMarketState.selectedId !== null) {
+    selPlayer = allPlayers.find(p => p.id === fragMarketState.selectedId) || null;
+  }
+
+  // Фильтр-бейдж
+  const filterCount = [
+    f.name, f.ovrMin||f.ovrMax,
+    f.positions.length, f.nations.length, f.clubs.length, f.leagues.length
+  ].filter(Boolean).length;
+
+  modal.innerHTML = `
+    <!-- Шапка -->
+    <div style="background:#17212b;padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+      <button onclick="closeFragMarketModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:14px;">←</button>
+      <div style="font-size:15px;font-weight:700;flex:1;">🧩 Ярмарка</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:13px;color:#f0a040;font-weight:700;">
+        ${FRAG_ICON} ${(gameState.fragments||0).toLocaleString('ru-RU')}
+      </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div style="display:flex;background:#17212b;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+      <button style="flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid ${tab==='all'?'#5288c1':'transparent'};color:${tab==='all'?'#5288c1':'#7d8e9e'};font-size:11px;cursor:pointer;font-family:inherit;font-weight:${tab==='all'?'600':'400'};"
+        onclick="fragMarketState.tab='all';fragMarketState.selectedId=null;renderFragMarket()">Игроки</button>
+      <button style="flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid ${tab==='my'?'#5288c1':'transparent'};color:${tab==='my'?'#5288c1':'#7d8e9e'};font-size:11px;cursor:pointer;font-family:inherit;font-weight:${tab==='my'?'600':'400'};"
+        onclick="fragMarketState.tab='my';fragMarketState.selectedId=null;renderFragMarket()">Мои игроки</button>
+      <button style="flex:1;padding:9px 4px;background:none;border:none;border-bottom:2px solid ${tab==='watchlist'?'#5288c1':'transparent'};color:${tab==='watchlist'?'#5288c1':'#7d8e9e'};font-size:11px;cursor:pointer;font-family:inherit;font-weight:${tab==='watchlist'?'600':'400'};"
+        onclick="fragMarketState.tab='watchlist';fragMarketState.selectedId=null;renderFragMarket()">⭐ Избранное</button>
+    </div>
+
+    <!-- Фильтр (только для вкладок "игроки" и "избранное") -->
+    ${tab !== 'my' ? `
+    <div style="padding:8px 10px;background:#17212b;border-bottom:1px solid #1e2d3d;flex-shrink:0;">
+      <button onclick="openFragMarketFilterModal()" style="width:100%;background:rgba(82,136,193,0.2);border:1px solid rgba(82,136,193,0.4);color:#5288c1;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px;font-family:inherit;text-align:left;">
+        🔍 Поиск и фильтры${filterCount > 0 ? ' ('+filterCount+')' : ''}
+      </button>
+    </div>` : ''}
+
+    <!-- Основной контент -->
+    <div style="flex:1;display:flex;overflow:hidden;">
+
+      <!-- Сетка карточек -->
+      <div style="flex:1;overflow-y:auto;padding:8px;" id="fm-grid">
+        ${tab === 'all' ? buildFragMarketGrid(catalogPlayers) :
+          tab === 'my'  ? buildFragMarketMyGrid(myPlayers) :
+          buildFragMarketGrid(watchlistPlayers)}
+      </div>
+
+      <!-- Правая панель: детали (только на вкладках all/watchlist) -->
+      ${tab !== 'my' ? `
+      <div style="width:140px;flex-shrink:0;border-left:1px solid #1e2d3d;overflow-y:auto;" id="fm-detail">
+        ${selPlayer ? buildFragMarketDetail(selPlayer) :
+          '<div style="padding:14px 8px;text-align:center;color:#7d8e9e;font-size:11px;margin-top:30px;">Выберите<br>игрока</div>'}
+      </div>` : ''}
+    </div>
+
+    <!-- Нижняя панель: обмен (только "мои игроки") -->
+    ${tab === 'my' && selectedCards.length > 0 ? `
+    <div style="background:#17212b;border-top:1px solid #1e2d3d;padding:10px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:12px;color:#7d8e9e;">Выбрано: <b style="color:#fff;">${selectedCards.length}</b> игр.</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#f0a040;">
+          ${FRAG_ICON} +${selectedTotal}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="fragMarketState.selectedCardIds.clear();renderFragMarket();"
+          style="flex:1;padding:9px;background:rgba(255,255,255,0.06);border:1px solid #1e2d3d;border-radius:8px;color:#7d8e9e;font-size:12px;cursor:pointer;font-family:inherit;">
+          Снять выбор
+        </button>
+        <button onclick="doFragMarketExchange()"
+          style="flex:2;padding:9px;background:linear-gradient(135deg,#f0a040,#d47800);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+          Обменять на ${FRAG_ICON} ${selectedTotal}
+        </button>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+// ── Сетка "Все игроки" / "Избранное" ──────────────────────────────────────
+function buildFragMarketGrid(players) {
+  if (!players.length) return '<div style="text-align:center;color:#7d8e9e;padding:30px 10px;font-size:12px;">Нет игроков</div>';
+
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:11px;height:11px;vertical-align:middle;" />';
+  const watchlist = gameState.fragMarketWatchlist || [];
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">';
+  for (const p of players) {
+    const isSel = fragMarketState.selectedId === p.id;
+    const inFav = watchlist.includes(p.id);
+    const color = getPositionColor(p.position);
+    const hasImg = !!(p.squadImage || p.image);
+    const imgStyle = hasImg
+      ? `background-image:url(${p.squadImage||p.image});background-size:cover;background-position:center;`
+      : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+    const overlay = hasImg ? 'background:rgba(0,0,0,0.55);' : '';
+    const nameParts = p.name.trim().split(' ');
+    const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : '';
+    const lastName = nameParts[nameParts.length - 1];
+
+    html += `
+      <div onclick="fragMarketState.selectedId=${p.id};renderFragMarket();"
+        style="${imgStyle}border:2px solid ${isSel?'#f0c040':color};border-radius:8px;cursor:pointer;position:relative;overflow:hidden;aspect-ratio:3/4;">
+        <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
+
+          <!-- Позиция + OVR в левом верхнем углу -->
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-bottom:auto;">
+            <div style="width:18px;height:18px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length > 2 ? p.position.slice(0,2) : p.position}</div>
+            <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${p.ovr}</div>
+          </div>
+
+          <!-- Имя + цена снизу -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+            ${firstName ? `<div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.8);text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstName}</div>` : ''}
+<div style="font-size:9px;font-weight:700;color:#fff;text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastName}</div>
+            ${p.fragPrice ? `<div style="font-size:9px;font-weight:700;color:#f0a040;display:flex;align-items:center;gap:2px;">${FRAG_ICON}${p.fragPrice}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Звёздочка -->
+        <button onclick="event.stopPropagation();toggleFragFav(${p.id})"
+          style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;z-index:2;">${inFav?'⭐':'☆'}</button>
+      </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function buildFragMarketMyGrid(players) {
+  if (!players.length) return '<div style="text-align:center;color:#7d8e9e;padding:30px 10px;font-size:12px;">Нет игроков</div>';
+
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:11px;height:11px;vertical-align:middle;" />';
+  const selected = fragMarketState.selectedCardIds;
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">';
+  for (const p of players) {
+    const isSel = selected.has(p.cardId);
+    const inSquad = false;
+    const color = getPositionColor(p.position);
+    const hasImg = !!(p.squadImage || p.image);
+    const imgStyle = hasImg
+      ? `background-image:url(${p.squadImage||p.image});background-size:cover;background-position:center;`
+      : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+    const overlay = hasImg ? 'background:rgba(0,0,0,0.55);' : '';
+    const effOvr = (p.ovr||0) + (p.ovrUpgrade||0);
+    const fragVal = getFragmentRewardForFM(p);
+    const nameParts = p.name.trim().split(' ');
+    const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : '';
+    const lastName = nameParts[nameParts.length - 1];
+
+    // Нельзя выбрать игрока из состава
+    const clickable = true;
+    const borderColor = isSel ? '#4dc05a' : color;
+
+    html += `
+      <div onclick="${clickable ? `toggleFragMyCard('${p.cardId}')` : ''}"
+        style="${imgStyle}border:2px solid ${borderColor};border-radius:8px;cursor:${clickable?'pointer':'not-allowed'};position:relative;overflow:hidden;aspect-ratio:3/4;${isSel?'box-shadow:0 0 8px rgba(77,192,90,0.6);':''}${inSquad?'opacity:0.5;':''}">
+        <div style="${overlay}position:absolute;inset:0;display:flex;flex-direction:column;padding:3px;">
+
+          <!-- Позиция + OVR в левом верхнем углу -->
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-bottom:auto;">
+            <div style="width:18px;height:18px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;">${p.position.length > 2 ? p.position.slice(0,2) : p.position}</div>
+            <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${effOvr}</div>
+          </div>
+
+          <!-- Имя + цена снизу -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+            ${firstName ? `<div style="font-size:8px;font-weight:600;color:rgba(255,255,255,0.8);text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${firstName}</div>` : ''}
+<div style="font-size:9px;font-weight:700;color:#fff;text-align:center;line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastName}</div>
+            <div style="font-size:9px;font-weight:700;color:#f0a040;display:flex;align-items:center;gap:2px;">${FRAG_ICON}${fragVal}</div>
+          </div>
+        </div>
+
+        ${isSel ? '<div style="position:absolute;top:2px;right:2px;background:#4dc05a;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:2;">✓</div>' : ''}
+      </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// ── Правая панель: детали игрока ──────────────────────────────────────────
+function buildFragMarketDetail(p) {
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:12px;height:12px;vertical-align:middle;" />';
+  const color = getPositionColor(p.position);
+  const imgStyle = (p.squadImage||p.image)
+    ? `background-image:url(${p.squadImage||p.image});background-size:cover;background-position:center;`
+    : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+  const canBuy = !!(p.fragPrice) && (gameState.fragments||0) >= p.fragPrice;
+  const notEnough = !!(p.fragPrice) && (gameState.fragments||0) < p.fragPrice;
+
+  return `<div style="padding:8px 6px;">
+    <div style="width:100%;aspect-ratio:1/1;${imgStyle}border-radius:8px;position:relative;margin-bottom:6px;">
+      <div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.75);border-radius:4px;padding:1px 5px;font-size:11px;font-weight:700;color:#f0c040;">${p.ovr}</div>
+      <div style="position:absolute;bottom:3px;left:3px;background:${color};border-radius:3px;padding:1px 5px;font-size:8px;font-weight:700;color:#fff;">${p.position}</div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;margin-bottom:1px;word-break:break-word;line-height:1.3;">${p.name}</div>
+    <div style="font-size:8px;color:#7d8e9e;margin-bottom:6px;">${p.club}</div>
+
+    ${p.fragPrice ? `
+    <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:5px 6px;margin-bottom:6px;">
+      <div style="font-size:8px;color:#7d8e9e;margin-bottom:2px;">Цена</div>
+      <div style="display:flex;align-items:center;gap:3px;font-size:13px;font-weight:700;color:#f0a040;">
+        ${FRAG_ICON} ${p.fragPrice}
+      </div>
+    </div>
+
+    <button onclick="confirmFragBuy(${p.id})"
+      ${canBuy ? '' : 'disabled'}
+      style="width:100%;padding:8px 4px;background:${canBuy?'linear-gradient(135deg,#f0a040,#d47800)':'rgba(255,255,255,0.08)'};border:none;border-radius:7px;color:${canBuy?'#fff':'#7d8e9e'};font-size:11px;font-weight:700;cursor:${canBuy?'pointer':'not-allowed'};font-family:inherit;">
+      ${canBuy ? 'Подписать' : notEnough ? 'Мало фрагм.' : 'Купить'}
+    </button>` :
+    `<div style="text-align:center;font-size:9px;color:#7d8e9e;margin-top:4px;">Не продаётся</div>`}
+  </div>`;
+}
+
+// ── Тогл избранного ────────────────────────────────────────────────────────
+function toggleFragFav(playerId) {
+  // Сохраняем скролл грида
+  const grid = document.getElementById('fm-grid');
+  const scrollTop = grid ? grid.scrollTop : 0;
+
+  if (!gameState.fragMarketWatchlist) gameState.fragMarketWatchlist = [];
+  const list = gameState.fragMarketWatchlist;
+  const idx = list.indexOf(playerId);
+  if (idx === -1) list.push(playerId);
+  else list.splice(idx, 1);
+  saveState();
+  renderFragMarket();
+
+  setTimeout(() => {
+    const g = document.getElementById('fm-grid');
+    if (g) g.scrollTop = scrollTop;
+  }, 0);
+}
+
+// ── Тогл выбора карточки "мои игроки" ─────────────────────────────────────
+function toggleFragMyCard(cardId) {
+  const grid = document.getElementById('fm-grid');
+  const scrollTop = grid ? grid.scrollTop : 0;
+
+  const s = fragMarketState.selectedCardIds;
+  if (s.has(cardId)) s.delete(cardId);
+  else s.add(cardId);
+  renderFragMarket();
+
+  setTimeout(() => {
+    const g = document.getElementById('fm-grid');
+    if (g) g.scrollTop = scrollTop;
+  }, 0);
+}
+
+// ── Получить кол-во фрагментов за игрока (по базовому OVR) ─────────────────
+function getFragmentRewardForFM(player) {
+  const baseOvr = player.ovr || 0;
+  return getFragmentReward(baseOvr);
+}
+
+// ── Подтверждение покупки ──────────────────────────────────────────────────
+function confirmFragBuy(playerId) {
+  const p = allPlayers.find(pp => pp.id === playerId);
+  if (!p || !p.fragPrice) return;
+
+  if ((gameState.fragments||0) < p.fragPrice) {
+    showMarketToast('❌ Недостаточно фрагментов');
+    return;
+  }
+
+  // Показываем подтверждение прямо в детальной панели
+  const detail = document.getElementById('fm-detail');
+  if (!detail) return;
+
+  const FRAG_ICON = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:12px;height:12px;vertical-align:middle;" />';
+
+  detail.innerHTML = `
+    <div style="padding:10px 6px;">
+      <div style="font-size:11px;font-weight:700;color:#f0a040;margin-bottom:8px;">⚠️ Подтвердить?</div>
+      <div style="font-size:10px;color:#e8e8e8;margin-bottom:4px;font-weight:600;">${p.name}</div>
+      <div style="font-size:10px;color:#7d8e9e;margin-bottom:8px;">OVR ${p.ovr} · ${p.position}</div>
+      <div style="font-size:12px;color:#f0a040;font-weight:700;margin-bottom:10px;">${FRAG_ICON} −${p.fragPrice}</div>
+      <button onclick="doFragBuy(${p.id})"
+        style="width:100%;padding:9px;background:linear-gradient(135deg,#f0a040,#d47800);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:5px;">
+        ✅ Да, купить
+      </button>
+      <button onclick="renderFragMarket()"
+        style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid #1e2d3d;border-radius:8px;color:#7d8e9e;font-size:11px;cursor:pointer;font-family:inherit;">
+        Отмена
+      </button>
+    </div>`;
+}
+
+// ── Выполнить покупку ──────────────────────────────────────────────────────
+function doFragBuy(playerId) {
+  const p = allPlayers.find(pp => pp.id === playerId);
+  if (!p || !p.fragPrice) return;
+  if ((gameState.fragments||0) < p.fragPrice) {
+    showMarketToast('❌ Недостаточно фрагментов');
+    renderFragMarket();
+    return;
+  }
+
+  // Проверка лимита
+  if ((gameState.myPlayers||[]).length >= 1000) {
+    showMarketToast('❌ Инвентарь заполнен (макс. 1000)');
+    renderFragMarket();
+    return;
+  }
+
+  gameState.fragments = (gameState.fragments||0) - p.fragPrice;
+  const np = JSON.parse(JSON.stringify(p));
+  np.trainingLevel = 0;
+  np.ovrUpgrade = 0;
+  np.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  gameState.myPlayers.push(np);
+  saveState();
+  updateHeaderResources();
+
+  fragMarketState.selectedId = null;
+  showMarketToast(`✅ ${p.name} добавлен в коллекцию!`);
+  renderFragMarket();
+}
+
+// ── Выполнить обмен "мои игроки" → фрагменты ──────────────────────────────
+function doFragMarketExchange() {
+  const cardIds = [...fragMarketState.selectedCardIds];
+  if (!cardIds.length) return;
+
+  let totalFrags = 0;
+  const toRemove = [];
+
+  for (const cardId of cardIds) {
+    const idx = (gameState.myPlayers||[]).findIndex(p => p.cardId === cardId);
+    if (idx === -1) continue;
+    const player = gameState.myPlayers[idx];
+    // Нельзя обменять игрока из состава/скамейки
+    const inSquad = [
+      ...Object.values(gameState.squadSlots||{}),
+      ...Object.values(gameState.benchSlots||{})
+    ].includes(player.id);
+    if (inSquad) {
+      showMarketToast(`⚠️ ${player.name} стоит в составе — сначала убери`);
+      continue;
+    }
+    totalFrags += getFragmentRewardForFM(player);
+    // Добавь пропуск игроков с нулевой наградой:
+    const fragReward = getFragmentRewardForFM(player);
+    if (fragReward <= 0) {
+      showMarketToast(`⚠️ ${player.name} нельзя обменять на фрагменты`);
+      continue;
+    }
+    totalFrags += fragReward;
+    toRemove.push(idx);
+  }
+
+  if (!toRemove.length) return;
+
+  // Удаляем от конца к началу чтобы индексы не сбивались
+  toRemove.sort((a, b) => b - a);
+  for (const idx of toRemove) {
+    gameState.myPlayers.splice(idx, 1);
+  }
+
+  gameState.fragments = (gameState.fragments||0) + totalFrags;
+  fragMarketState.selectedCardIds.clear();
+  saveState();
+  updateHeaderResources();
+
+  showMarketToast(`🧩 Обменяно ${toRemove.length} игр. → +${totalFrags} фрагментов`);
+  renderFragMarket();
+}
+
+// ── Фильтр ────────────────────────────────────────────────────────────────
+function openFragMarketFilterModal() {
+  let fModal = document.getElementById('fm-filter-modal');
+  if (!fModal) {
+    fModal = document.createElement('div');
+    fModal.id = 'fm-filter-modal';
+    fModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:400;display:flex;align-items:flex-end;justify-content:center;';
+    fModal.addEventListener('click', e => { if (e.target === fModal) closeFMFilterModal(); });
+    document.body.appendChild(fModal);
+  }
+  fModal.style.display = 'flex';
+  renderFMFilterModal();
+}
+
+function closeFMFilterModal() {
+  const m = document.getElementById('fm-filter-modal');
+  if (m) m.style.display = 'none';
+}
+
+function renderFMFilterModal() {
+  const fModal = document.getElementById('fm-filter-modal');
+  if (!fModal) return;
+
+  const f = fragMarketState.filters;
+  const allPositions = ['GK','LB','CB','RB','CDM','CM','CAM','LM','RM','LW','RW','ST','CF'];
+  const allNations   = [...new Set(allPlayers.map(p => p.nation))].sort();
+  const allLeagues   = [...new Set(allPlayers.map(p => p.league||'').filter(Boolean))].sort();
+  const allClubs     = [...new Set(allPlayers.map(p => p.club))].sort();
+
+  function chip(val, key) {
+    const active = f[key].includes(val);
+    return `<button class="filter-chip${active?' active':''}" onclick="toggleFMFilter('${key}','${val}')">${val}</button>`;
+  }
+
+  fModal.innerHTML = `
+      <div style="background:#17212b;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">🔍 Фильтры ярмарки</h3>
+        <button onclick="closeFMFilterModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Поиск по имени</div>
+        <input class="filter-input" type="text" placeholder="Имя или клуб..."
+          value="${f.name}" oninput="fragMarketState.filters.name=this.value" />
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">OVR (диапазон)</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" placeholder="Мин." value="${f.ovrMin}"
+            oninput="fragMarketState.filters.ovrMin=this.value" />
+          <span style="color:#7d8e9e;">—</span>
+          <input class="filter-input" type="number" placeholder="Макс." value="${f.ovrMax}"
+            oninput="fragMarketState.filters.ovrMax=this.value" />
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Позиция</div>
+        <div class="filter-chips">${allPositions.map(v=>chip(v,'positions')).join('')}</div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Нация</div>
+        <div class="filter-chips">${allNations.map(v=>chip(v,'nations')).join('')}</div>
+      </div>
+
+      ${allLeagues.length ? `<div class="filter-section">
+        <div class="filter-section-title">Лига</div>
+        <div class="filter-chips">${allLeagues.map(v=>chip(v,'leagues')).join('')}</div>
+      </div>` : ''}
+
+      <div class="filter-section">
+        <div class="filter-section-title">Клуб</div>
+        <div class="filter-chips">${allClubs.map(v=>chip(v,'clubs')).join('')}</div>
+      </div>
+
+      <button class="filter-apply-btn" onclick="applyFMFilters()">✅ Применить</button>
+      <button class="filter-reset-btn" onclick="resetFMFilters()">🗑️ Сбросить</button>
+    </div>`;
+}
+
+function toggleFMFilter(key, val) {
+  const fModal = document.getElementById('fm-filter-modal');
+  const sc = fModal ? fModal.querySelector('div') : null;
+  const top = sc ? sc.scrollTop : 0;
+
+  const arr = fragMarketState.filters[key];
+  const idx = arr.indexOf(val);
+  if (idx === -1) arr.push(val);
+  else arr.splice(idx, 1);
+
+  renderFMFilterModal();
+
+  const sc2 = fModal ? fModal.querySelector('div') : null;
+  if (sc2) sc2.scrollTop = top;
+}
+
+function applyFMFilters() {
+  closeFMFilterModal();
+  fragMarketState.selectedId = null;
+  renderFragMarket();
+}
+
+function resetFMFilters() {
+  fragMarketState.filters = {
+    name: '', ovrMin: '', ovrMax: '',
+    positions: [], nations: [], clubs: [], leagues: []
+  };
+  renderFMFilterModal();
+}
+
+// ── Навигация ──────────────────────────────────────────────────────────────
+handleNavFragMarket = function() {
+  if (!gameState.registered) { promptRegister(); return; }
+  setActiveNav('nav-fragmarket');
+  openFragMarketModal();
+};
+
+// === END MODULE: FRAG MARKET ===
 
 // ============================================
 // === МАГАЗИН (МОДАЛЬНОЕ ОКНО) ==============
@@ -3037,8 +3634,8 @@ ALL_PLAYERS_TEMPLATE.forEach(p => {
   if (p.tradeable === undefined) p.tradeable = true;
 });
 
-const STARTER_PLAYER_IDS = [1, 3, 4, 5, 6, 8, 9, 10, 12, 14, 13];
-const FRAGMENT_EXCHANGE_RATES = [[0,93,10],[94,97,100],[98,98,200],[99,99,400],[100,100,900],[101,101,1800],[102,102,5000],[103,103,15000]];
+const STARTER_PLAYER_IDS = [1, 4, 5, 6, 9, 11, 15, 16, 19, 20, 22];
+const FRAGMENT_EXCHANGE_RATES = [[0,93,0],[94,97,100],[98,98,200],[99,99,400],[100,100,900],[101,101,1800],[102,102,5000],[103,103,15000]];
 const TRAINING_COST_PER_LEVEL = 100;
 const MAX_TRAINING_LEVEL = 50;
 const OVR_UPGRADE_COSTS = [120, 270, 450, 610, 750];
@@ -3066,11 +3663,20 @@ Object.assign(DEFAULT_STATE, {
 
 let allPlayers = [];
 
-function getEffectiveOvr(p) { return p ? (p.ovr||0)+(p.ovrUpgrade||0) : 0; }
+function getEffectiveOvr(p) {
+  if (!p) return 0;
+  // ovrUpgrade: +1 OVR за каждый уровень прокачки
+  return (p.ovr || 0) + (p.ovrUpgrade || 0);
+}
 function getEffectiveStats(p) {
-  if (!p||!p.stats) return {};
-  const s = {...p.stats}; const b = p.trainingLevel||0;
-  for (const k in s) s[k] = (s[k]||0)+b;
+  if (!p || !p.stats) return {};
+  const s = { ...p.stats };
+  // Буст от тренировки (trainingLevel)
+  const trainBonus = p.trainingLevel || 0;
+  // Буст от прокачки OVR: +2 к каждой стате за уровень
+  const ovrBonus = (p.ovrUpgrade || 0) * 2;
+  const totalBonus = trainBonus + ovrBonus;
+  for (const k in s) s[k] = (s[k] || 0) + totalBonus;
   return s;
 }
 function findPlayerById(id) { return gameState?.myPlayers?.find(p=>p.id===id)||null; }
@@ -4833,38 +5439,54 @@ function renderInventoryList() {
 }
 
 // ── Тренировка ────────────────────────────────────────────────────────────
+// ── Тренировка ────────────────────────────────────────────────────────────
 function trainPlayer(cardId) {
   const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
-  if (idx === -1) { botReply('❌ Игрок не найден.', 300); return; }
+  if (idx === -1) { showMarketToast('❌ Игрок не найден.'); return; }
   const player = gameState.myPlayers[idx];
-  if (player.trainingLevel >= MAX_TRAINING_LEVEL) { botReply(`❌ Максимальный уровень тренировки (${MAX_TRAINING_LEVEL}).`, 300); return; }
-  if ((gameState.trainingPoints||0) < TRAINING_COST_PER_LEVEL) { botReply(`❌ Недостаточно очков тренировки (нужно ${TRAINING_COST_PER_LEVEL}).`, 300); return; }
+  if (player.trainingLevel >= MAX_TRAINING_LEVEL) {
+    showMarketToast(`❌ Максимальный уровень тренировки (${MAX_TRAINING_LEVEL}).`);
+    return;
+  }
+  if ((gameState.trainingPoints || 0) < TRAINING_COST_PER_LEVEL) {
+    showMarketToast(`❌ Недостаточно очков тренировки (нужно ${TRAINING_COST_PER_LEVEL}, у вас ${gameState.trainingPoints || 0}).`);
+    return;
+  }
   gameState.trainingPoints -= TRAINING_COST_PER_LEVEL;
   gameState.myPlayers[idx].trainingLevel = (gameState.myPlayers[idx].trainingLevel || 0) + 1;
-  saveState(); updateHeaderResources(); renderInventoryList();
-  botReply(`✅ Тренировка <b>${player.name}</b> завершена! Уровень: ${gameState.myPlayers[idx].trainingLevel}.`, 300, { html: true });
+  saveState();
+  updateHeaderResources();
+  renderInventoryList();
+  showMarketToast(`✅ ${player.name} — уровень тренировки ${gameState.myPlayers[idx].trainingLevel}`);
 }
 
 // ── Повышение OVR ─────────────────────────────────────────────────────────
 function upgradePlayerOvr(cardId) {
-  // Ищем строго по cardId — не по id!
   const idx = (gameState.myPlayers || []).findIndex(p => p.cardId === cardId);
-  if (idx === -1) { botReply('❌ Игрок не найден.', 300); return; }
+  if (idx === -1) { showMarketToast('❌ Игрок не найден.'); return; }
   const player = gameState.myPlayers[idx];
-  if (player.ovrUpgrade >= 5) { botReply('❌ Максимальный ранг OVR (5).', 300); return; }
+  if (player.ovrUpgrade >= 5) {
+    showMarketToast('❌ Максимальный ранг OVR (5).');
+    return;
+  }
   const cost = OVR_UPGRADE_COSTS[player.ovrUpgrade || 0];
-  if ((gameState.ovrUpgradePoints||0) < cost) { botReply(`❌ Недостаточно очков OVR (нужно ${cost}).`, 300); return; }
+  if ((gameState.ovrUpgradePoints || 0) < cost) {
+    showMarketToast(`❌ Недостаточно очков OVR (нужно ${cost}, у вас ${gameState.ovrUpgradePoints || 0}).`);
+    return;
+  }
   gameState.ovrUpgradePoints -= cost;
   gameState.myPlayers[idx].ovrUpgrade = (gameState.myPlayers[idx].ovrUpgrade || 0) + 1;
-  saveState(); updateHeaderResources(); renderInventoryList();
-  botReply(`✅ Ранг OVR <b>${player.name}</b> повышен! OVR +${gameState.myPlayers[idx].ovrUpgrade}.`, 300, { html: true });
+  saveState();
+  updateHeaderResources();
+  renderInventoryList();
+  showMarketToast(`✅ ${player.name} — OVR +${gameState.myPlayers[idx].ovrUpgrade}`);
 }
 
 // ── Обмен на фрагменты ────────────────────────────────────────────────────
 async function confirmExchangePlayer(cardId) {
   const player = findPlayerByCardId(cardId);
   if (!player) { await botReply('❌ Игрок не найден.', 300); return; }
-  const ovr = getEffectiveOvr(player);
+  const ovr = player.ovr || 0;
   const frags = getFragmentReward(ovr);
   const fragmentIcon = '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" />';
 
@@ -4913,7 +5535,7 @@ async function doExchangePlayerForFragments(cardId) {
   const idx = (gameState.myPlayers||[]).findIndex(p => p.cardId === cardId);
   if (idx === -1) { await botReply('❌ Игрок не найден.', 300); return; }
   const player = gameState.myPlayers[idx];
-  const ovr = getEffectiveOvr(player);
+  const ovr = player.ovr || 0;
   const frags = getFragmentReward(ovr);
   gameState.myPlayers.splice(idx, 1);
   gameState.fragments = (gameState.fragments||0) + frags;
@@ -5145,23 +5767,59 @@ function applyFormation() {
   }
 }
 
-    function getPositionPenalty(player, slotPos) {
-      if (!player || !slotPos) return 0;
-      if (player.position === slotPos ||
-          (Array.isArray(player.altPositions) && player.altPositions.includes(slotPos))) {
-        return 0;
-      }
-      if ((player.position === 'GK') !== (slotPos === 'GK')) return 999;
-      const LINE_GROUPS = {
-        GK: [], LB: ['LB','CB','RB'], CB: ['LB','CB','RB','CDM'], RB: ['LB','CB','RB'],
-        CDM: ['LM','CM','CAM','RM','CDM','CB'], CM: ['LM','CM','CAM','RM','CDM'],
-        CAM: ['LM','CM','CAM','RM','CDM'], LM: ['LM','CM','CAM','RM','CDM'],
-        RM: ['LM','CM','CAM','RM','CDM'], LW: ['LW','RW','ST','CF'],
-        RW: ['LW','RW','ST','CF'], ST: ['LW','RW','ST','CF'], CF: ['LW','RW','ST','CF']
-      };
-      const sameLine = LINE_GROUPS[player.position] || [];
-      return sameLine.includes(slotPos) ? 4 : 15;
+// ── Таблица штрафов позиций ───────────────────────────────────────────────
+const POSITION_PENALTY_TABLE = {
+  GK: {},
+  LB:  { CB:-4, RB:-4, LM:-4, CDM:-6, CM:-8, CAM:-10, RM:-8, LW:-13, CF:-15, ST:-19, RW:-19 },
+  CB:  { LB:-4, RB:-4, LM:-6, CDM:-4, CM:-8, CAM:-12, RM:-6, LW:-15, CF:-19, ST:-24, RW:-15 },
+  RB:  { LB:-4, CB:-4, LM:-8, CDM:-6, CM:-8, CAM:-10, RM:-4, LW:-19, CF:-15, ST:-19, RW:-13 },
+  LM:  { LB:-4, CB:-10, RB:-12, CDM:-8, CM:-6, CAM:-8, RM:-6, LW:-4, CF:-14, ST:-19, RW:-12 },
+  CDM: { LB:-12, CB:-4, RB:-12, LM:-6, CM:-4, CAM:-10, RM:-6, LW:-15, CF:-19, ST:-24, RW:-15 },
+  CM:  { LB:-12, CB:-8, RB:-12, LM:-6, CDM:-4, CAM:-4, RM:-6, LW:-12, CF:-10, ST:-14, RW:-12 },
+  CAM: { LB:-15, CB:-19, RB:-15, LM:-6, CDM:-8, CM:-4, RM:-6, LW:-12, CF:-4, ST:-8, RW:-12 },
+  RM:  { LB:-12, CB:-10, RB:-4, LM:-6, CDM:-8, CM:-6, CAM:-8, LW:-12, CF:-14, ST:-19, RW:-4 },
+  LW:  { LB:-13, CB:-15, RB:-19, LM:-4, CDM:-15, CM:-10, CAM:-6, RM:-10, CF:-8, ST:-6, RW:-4 },
+  CF:  { LB:-21, CB:-16, RB:-21, LM:-8, CDM:-12, CM:-10, CAM:-4, RM:-8, LW:-6, ST:-4, RW:-6 },
+  ST:  { LB:-25, CB:-19, RB:-25, LM:-10, CDM:-12, CM:-8, CAM:-6, RM:-10, LW:-6, CF:-4, RW:-6 },
+  RW:  { LB:-19, CB:-15, RB:-13, LM:-10, CDM:-15, CM:-10, CAM:-6, RM:-4, LW:-4, CF:-8, ST:-6 },
+};
+
+function getPositionPenalty(player, slotPos) {
+  if (!player || !slotPos) return 0;
+
+  const playerPos = player.position;
+  const ovrUpgrade = player.ovrUpgrade || 0;
+
+  // Родная позиция — штрафа нет всегда
+  if (playerPos === slotPos) return 0;
+
+  // GK ↔ полевой — нельзя никогда
+  if ((playerPos === 'GK') !== (slotPos === 'GK')) return 999;
+
+  // Проверяем — альтернативная ли это позиция
+  const isAltPosition = Array.isArray(player.altPositions) && player.altPositions.includes(slotPos);
+
+  // Ищем штраф из таблицы
+  const table = POSITION_PENALTY_TABLE[playerPos];
+  const basePenalty = table ? table[slotPos] : undefined;
+  const absPenalty = basePenalty !== undefined ? Math.abs(basePenalty) : 15;
+
+  if (isAltPosition) {
+    // Альтернативная позиция:
+    // Прокачка 0-2 — полный штраф по таблице
+    if (ovrUpgrade <= 2) return absPenalty;
+    // Прокачка 3-4 — штраф -4, если в таблице было -4 то -3
+    if (ovrUpgrade <= 4) {
+      if (absPenalty <= 4) return 3;
+      return 4;
     }
+    // Прокачка 5 — штрафа нет
+    return 0;
+  } else {
+    // Не альтернативная позиция — полный штраф по таблице при любой прокачке
+    return absPenalty;
+  }
+}
 
     // Фоновый стиль слота (изображение или обычный фон) + обязательный контур
     function getSlotBgStyle(player) {
@@ -5391,7 +6049,7 @@ html += `<div style="display:flex;align-items:center;justify-content:center;gap:
         </button>
         ${resFilterCount > 0 ? `<button onclick="resetReserveFilters()" style="background:rgba(255,255,255,0.08);border:none;color:#7d8e9e;border-radius:6px;padding:6px 8px;cursor:pointer;font-size:11px;flex-shrink:0;">✕</button>` : ''}
       </div>`;
-      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">`;
+      html += `<div class="players-scroll" style="display:flex;gap:6px;overflow-x:scroll;overflow-y:visible;padding-bottom:8px;padding-top:2px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;">`;
       if (availablePlayers.length === 0) {
         html += `<div style="font-size:12px;color:rgba(255,255,255,0.3);padding:8px;">Все игроки уже расставлены.</div>`;
       }
@@ -9041,7 +9699,11 @@ function showMatchEndScreen() {
         <div style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:12px;padding:12px;">
           <div style="font-size:11px;font-weight:700;color:#7d8e9e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">👥 Оценки игроков</div>
           <div style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">
-            ${matchState.homePlayers.map(p => {
+            ${matchState.homePlayers.slice().sort((a, b) => {
+              const rA = a.matchStats ? calculateRating(a.matchStats, 90) : 6.5;
+              const rB = b.matchStats ? calculateRating(b.matchStats, 90) : 6.5;
+              return rB - rA;
+            }).map(p => {
               const r = p.matchStats.rating || 6.5;
               const rColor = r >= 8.5 ? '#f0c040' : r >= 7.5 ? '#4dc05a' : r >= 6.0 ? '#7d8e9e' : '#e05050';
               const cardBadge = p.matchStats.red ? '🟥' : p.matchStats.yellow ? '🟨' : '';
@@ -10273,6 +10935,9 @@ function renderProfileModal() {
       <button onclick="closeProfileModal();showCustomDataDialog();" style="background:rgba(255,255,255,0.04);border:1px solid #1e2d3d;border-radius:10px;padding:12px;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;">
         📦 Загрузить дата-пак
       </button>
+      <button onclick="openResetProgressModal()" style="background:rgba(224,80,80,0.1);border:1px solid rgba(224,80,80,0.3);border-radius:10px;padding:12px;color:#e05050;font-size:14px;cursor:pointer;font-family:inherit;text-align:left;">
+        🗑️ Сбросить прогресс
+      </button>
     </div>`;
 }
 
@@ -10656,6 +11321,76 @@ function updateHeaderNickname() {
   if (nameEl && gameState.nickname) {
     nameEl.textContent = gameState.nickname;
   }
+}
+
+function openResetProgressModal() {
+  closeProfileModal();
+  const modal = document.createElement('div');
+  modal.id = 'reset-progress-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#17212b;border:2px solid #e05050;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+      <div style="font-size:18px;font-weight:700;color:#e05050;margin-bottom:8px;">Вы уверены?</div>
+      <div style="font-size:13px;color:#7d8e9e;margin-bottom:20px;line-height:1.6;">
+        Весь прогресс будет удалён:<br>
+        игроки, монеты, дивизион, история.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="closeResetProgressModal()" 
+          style="flex:1;padding:12px;background:rgba(255,255,255,0.08);border:1px solid #2a3a4a;border-radius:10px;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit;">
+          Нет, отмена
+        </button>
+        <button onclick="openResetProgressConfirm2()"
+          style="flex:1;padding:12px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.5);border-radius:10px;color:#e05050;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+          Да, продолжить
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function openResetProgressConfirm2() {
+  const modal = document.getElementById('reset-progress-modal');
+  if (!modal) return;
+  // Во втором подтверждении кнопки меняются местами
+  modal.innerHTML = `
+    <div style="background:#17212b;border:2px solid #e05050;border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">💀</div>
+      <div style="font-size:18px;font-weight:700;color:#e05050;margin-bottom:8px;">Вы точно уверены?</div>
+      <div style="font-size:13px;color:#7d8e9e;margin-bottom:20px;line-height:1.6;">
+        Это действие <b style="color:#e05050;">необратимо</b>.<br>
+        Восстановить данные будет невозможно.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="confirmResetProgress()"
+          style="flex:1;padding:12px;background:rgba(224,80,80,0.2);border:1px solid rgba(224,80,80,0.5);border-radius:10px;color:#e05050;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+          Да, сбросить всё
+        </button>
+        <button onclick="closeResetProgressModal()"
+          style="flex:1;padding:12px;background:rgba(255,255,255,0.08);border:1px solid #2a3a4a;border-radius:10px;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit;">
+          Нет, отмена
+        </button>
+      </div>
+    </div>`;
+}
+
+function closeResetProgressModal() {
+  const m = document.getElementById('reset-progress-modal');
+  if (m) m.remove();
+}
+
+function confirmResetProgress() {
+  closeResetProgressModal();
+  // Полный сброс — очищаем localStorage и перезагружаем
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('footballManager_customDataPack');
+  // Сбрасываем все глобальные ключи промокодов
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('promo_global_')) localStorage.removeItem(key);
+  }
+  // Перезагружаем страницу
+  window.location.reload();
 }
 
 // === END MODULE: profile ===
