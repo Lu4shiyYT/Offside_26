@@ -6401,7 +6401,7 @@ function handleBenchClick(benchIndex) {
 
     function removeFromSlot(slotIndex) { if (gameState.squadSlots) delete gameState.squadSlots[String(slotIndex)]; saveState(); renderSquadModal(); }
     function removeFromBench(benchIndex) { if (gameState.benchSlots) delete gameState.benchSlots[String(benchIndex)]; saveState(); renderSquadModal(); }
-    // ── Автоподбор состава ────────────────────────────────────────────────────
+// ── Автоподбор состава ────────────────────────────────────────────────────
 function autoPickSquad() {
   if (!gameState.myPlayers || gameState.myPlayers.length === 0) {
     botReply('❌ Нет игроков для подбора.', 300);
@@ -6415,65 +6415,125 @@ function autoPickSquad() {
   gameState.squadSlots = {};
   gameState.benchSlots = {};
 
-  // Копия всех игроков (будем убирать уже назначенных)
+  // Пул доступных игроков (копия, будем вычёркивать назначенных)
   let pool = [...gameState.myPlayers];
 
-  // Группы совместимости позиций (для фолбэка)
-  const LINE_GROUPS = {
-    GK:  ['GK'],
-    LB:  ['LB','RB','CB'],
-    CB:  ['CB','LB','RB','CDM'],
-    RB:  ['RB','LB','CB'],
-    CDM: ['CDM','CM','CB'],
-    CM:  ['CM','CDM','CAM','LM','RM'],
-    CAM: ['CAM','CM','LM','RM','LW','RW'],
-    LM:  ['LM','CM','CAM','LW','RM'],
-    RM:  ['RM','CM','CAM','RW','LM'],
-    LW:  ['LW','LM','CAM','RW','CF','ST'],
-    RW:  ['RW','RM','CAM','LW','CF','ST'],
-    ST:  ['ST','CF','LW','RW'],
-    CF:  ['CF','ST','LW','RW','CAM'],
-  };
+  // ── Шаг 1: расставляем слоты по приоритету ────────────────────────────
+  // Сначала слоты, для которых есть игрок с родной или alt позицией (приоритет = 0)
+  // Потом все остальные (приоритет = 1)
 
-  // Функция: найти лучшего игрока из pool для слота slotPos
-  function pickBestFor(slotPos) {
-    // 1) Сначала ищем игрока с родной позицией или альтернативной
-    let candidates = pool.filter(p =>
-      p.position === slotPos ||
-      (Array.isArray(p.altPositions) && p.altPositions.includes(slotPos))
-    );
-    // 2) Если нет — берём из линейной группы (без штрафа GK↔поле)
-    if (candidates.length === 0) {
-      const fallbacks = LINE_GROUPS[slotPos] || [];
-      const isGKSlot = slotPos === 'GK';
-      candidates = pool.filter(p => {
-        const isGKPlayer = p.position === 'GK';
-        if (isGKSlot !== isGKPlayer) return false; // нельзя мешать GK и поле
-        return fallbacks.includes(p.position);
-      });
+  // Для каждого слота считаем "лучший доступный игрок" и "штраф"
+  // Возвращает { player, penalty } или null
+  function bestForSlot(slotPos, currentPool) {
+    const isGKSlot = slotPos === 'GK';
+
+    // Только игроки той же "стороны" (GK или полевые)
+    const eligible = currentPool.filter(p => (p.position === 'GK') === isGKSlot);
+    if (eligible.length === 0) return null;
+
+    let bestPlayer = null;
+    let bestScore = -Infinity; // хотим максимизировать (OVR - penalty)
+
+    for (const p of eligible) {
+      const penalty = getPositionPenalty(p, slotPos);
+      if (penalty >= 999) continue; // GK ↔ поле — пропускаем
+      const score = getEffectiveOvr(p) - penalty;
+      if (score > bestScore) {
+        bestScore = score;
+        bestPlayer = p;
+      }
     }
-    // 3) Если совсем ничего — любой с той же стороной поля (GK или полевой)
-    if (candidates.length === 0) {
-      const isGKSlot = slotPos === 'GK';
-      candidates = pool.filter(p => (p.position === 'GK') === isGKSlot);
-    }
-    if (candidates.length === 0) return null;
-    // Берём лучшего по OVR
-    candidates.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
-    return candidates[0];
+    return bestPlayer ? { player: bestPlayer, penalty: getPositionPenalty(bestPlayer, slotPos), score: bestScore } : null;
   }
 
-  // ── Заполняем основу ─────────────────────────────────────────────────
+  // Разбиваем слоты на два прохода:
+  // Проход 1 — слоты, для которых есть игрок с НУЛЕВЫМ штрафом (родная или alt позиция)
+  // Проход 2 — оставшиеся слоты
+
+  const pass1 = []; // слоты с нулевым штрафом
+  const pass2 = []; // все остальные
+
   for (let i = 0; i < 11; i++) {
     const slotPos = positions[i];
-    const picked = pickBestFor(slotPos);
-    if (picked) {
-      gameState.squadSlots[String(i)] = picked.id;
-      pool = pool.filter(p => p.id !== picked.id);
+    const isGKSlot = slotPos === 'GK';
+    // Проверяем — есть ли в пуле хоть один игрок с нулевым штрафом для этой позиции
+    const hasNative = pool.some(p =>
+      (p.position === 'GK') === isGKSlot &&
+      getPositionPenalty(p, slotPos) === 0
+    );
+    if (hasNative) pass1.push(i);
+    else pass2.push(i);
+  }
+
+  // ── Жадный алгоритм для одного прохода ────────────────────────────────
+  // Для каждого слота из списка выбираем лучшего игрока, убираем его из пула
+  function assignSlots(slotIndices, onlyZeroPenalty) {
+    // Сортируем: сначала самые "конкурентные" позиции (меньше кандидатов)
+    const sorted = slotIndices.slice().sort((a, b) => {
+      const posA = positions[a];
+      const posB = positions[b];
+      const isGKA = posA === 'GK';
+      const isGKB = posB === 'GK';
+      const countA = pool.filter(p =>
+        (p.position === 'GK') === isGKA &&
+        (!onlyZeroPenalty || getPositionPenalty(p, posA) === 0)
+      ).length;
+      const countB = pool.filter(p =>
+        (p.position === 'GK') === isGKB &&
+        (!onlyZeroPenalty || getPositionPenalty(p, posB) === 0)
+      ).length;
+      return countA - countB; // сначала позиции с меньшим числом кандидатов
+    });
+
+    for (const slotIdx of sorted) {
+      const slotPos = positions[slotIdx];
+      const isGKSlot = slotPos === 'GK';
+
+      const eligible = pool.filter(p => {
+        if ((p.position === 'GK') !== isGKSlot) return false;
+        const pen = getPositionPenalty(p, slotPos);
+        if (pen >= 999) return false;
+        if (onlyZeroPenalty && pen > 0) return false;
+        return true;
+      });
+
+      if (eligible.length === 0) continue;
+
+      // Выбираем лучшего: максимальный (OVR - penalty)
+      eligible.sort((a, b) => {
+        const scoreA = getEffectiveOvr(a) - getPositionPenalty(a, slotPos);
+        const scoreB = getEffectiveOvr(b) - getPositionPenalty(b, slotPos);
+        return scoreB - scoreA;
+      });
+
+      const picked = eligible[0];
+      gameState.squadSlots[String(slotIdx)] = picked.id;
+      pool = pool.filter(p => p !== picked);
     }
   }
 
-  // ── Заполняем скамейку (7 мест) — по убыванию OVR ────────────────────
+  // Проход 1: слоты с нулевым штрафом — ищем только нулевых
+  assignSlots(pass1, true);
+
+  // Проход 2: оставшиеся слоты — любой подходящий
+  // Сначала собираем незаполненные слоты из pass1 (если кандидаты кончились)
+  const unfilled1 = pass1.filter(i => gameState.squadSlots[String(i)] == null);
+  const toFill2 = [...unfilled1, ...pass2];
+  assignSlots(toFill2, false);
+
+  // Финальный проход: если ещё есть незаполненные — любой той же стороны
+  for (let i = 0; i < 11; i++) {
+    if (gameState.squadSlots[String(i)] != null) continue;
+    const slotPos = positions[i];
+    const isGKSlot = slotPos === 'GK';
+    const fallback = pool.find(p => (p.position === 'GK') === isGKSlot);
+    if (fallback) {
+      gameState.squadSlots[String(i)] = fallback.id;
+      pool = pool.filter(p => p !== fallback);
+    }
+  }
+
+  // ── Скамейка (7 мест) — по убыванию OVR ──────────────────────────────
   pool.sort((a, b) => getEffectiveOvr(b) - getEffectiveOvr(a));
   for (let i = 0; i < 7 && i < pool.length; i++) {
     gameState.benchSlots[String(i)] = pool[i].id;
