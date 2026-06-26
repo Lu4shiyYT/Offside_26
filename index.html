@@ -10984,97 +10984,80 @@ function wtAddPlayerToCollection(template, extraOvrUpgrade) {
 }
 
 // ── Применить награду абонемента ─────────────────────────────────────────
-function wtApplyPassReward(reward) {
-  if (!reward) return '—';
-  if (reward.type === 'rubins') {
-    gameState.rubins = (gameState.rubins||0) + reward.amount;
-    return `${reward.amount} сапфиров`;
+function wtApplyPassReward(rewardDef) {
+  if (!rewardDef) return;
+  var amt = rewardDef.amount || 0;
+  switch (rewardDef.type) {
+    case 'player':
+    case 'finalPlayer':
+      var minOvr = rewardDef.minOvr || 94;
+      var maxOvr = rewardDef.maxOvr || 97;
+      var p = wtGetRandomPlayer(minOvr, maxOvr);
+      if (p) wtAddPlayerToCollection(p, 0);
+      break;
+    case 'coins':        gameState.coins            = (gameState.coins || 0)            + amt; break;
+    case 'rubins':       gameState.rubins           = (gameState.rubins || 0)           + amt; break;
+    case 'frags':        gameState.fragments        = (gameState.fragments || 0)        + amt; break;
+    case 'draft':        gameState.draftTokens      = (gameState.draftTokens || 0)      + amt; break;
+    case 'xp':           gameState.xp               = (gameState.xp || 0)               + amt; break;
+    case 'wtTicket':     gameState.wtTickets        = (gameState.wtTickets || 0)        + amt; break;
+    case 'wtTour':       gameState.wtTourPoints     = (gameState.wtTourPoints || 0)     + amt; break;
+    case 'offside':      gameState.offsideTokens    = (gameState.offsideTokens || 0)    + amt; break;
+    case 'train':        gameState.trainingPoints   = (gameState.trainingPoints || 0)   + amt; break;
+    case 'ovr':          gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
+    case 'passCredits':  gameState.wtPassCredits    = (gameState.wtPassCredits || 0)    + amt; break;
   }
-  if (reward.type === 'coins') {
-    gameState.coins = (gameState.coins||0) + reward.amount;
-    return `${reward.amount.toLocaleString('ru-RU')} монет`;
-  }
-  if (reward.type === 'trainingPoints') {
-    gameState.trainingPoints = (gameState.trainingPoints||0) + reward.amount;
-    return `${reward.amount} очк. тренировки`;
-  }
-  if (reward.type === 'ovrUpgradePoints') {
-    gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints||0) + reward.amount;
-    return `${reward.amount} очк. OVR`;
-  }
-  if (reward.type === 'fragments') {
-    gameState.fragments = (gameState.fragments||0) + reward.amount;
-    return `${reward.amount} фрагментов`;
-  }
-  if (reward.type === 'draftTokens') {
-    gameState.draftTokens = (gameState.draftTokens||0) + reward.amount;
-    return `${reward.amount} купонов`;
-  }
-  if (reward.type === 'passCredits') {
-    gameState.wtPassCredits = (gameState.wtPassCredits||0) + reward.amount;
-    return `${reward.amount} очк. абонемента`;
-  }
-  if (reward.type === 'ticket') {
-    gameState.wtTickets = (gameState.wtTickets||0) + (reward.amount||1);
-    return `${reward.amount||1} билет(ов)`;
-  }
-  if (reward.type === 'player') {
-    const p = wtGetRandomPlayer(reward.minOvr, reward.maxOvr);
-    if (p) { wtAddPlayerToCollection(p); return `${p.name} (OVR ${p.ovr})`; }
-    return 'Игрок не найден';
-  }
-  if (reward.type === 'finalPlayer') {
-    const tpl = allPlayers.find(p => p.id === reward.playerId);
-    if (tpl) {
-      wtAddPlayerToCollection(tpl, reward.ovrUpgrade || 0);
-      return `${tpl.name} (OVR ${tpl.ovr}+${reward.ovrUpgrade||0})`;
-    }
-    // Фолбэк если id не настроен
-    const p = wtGetRandomPlayer(100, 103);
-    if (p) { wtAddPlayerToCollection(p, reward.ovrUpgrade||0); return `${p.name} (OVR ${p.ovr}+${reward.ovrUpgrade||0})`; }
-    return 'Финальный игрок';
-  }
-  if (reward.type === 'wtTourPoints') {
-    gameState.wtTourPoints = (gameState.wtTourPoints||0) + reward.amount;
-    return `${reward.amount} очков турне`;
-  }
-  return '—';
 }
 
 // ── Иконка ресурса для ячейки абонемента ─────────────────────────────────
 function wtPassRewardIcon(reward) {
-  if (!reward) return '❓';
-  const icons = {
-    rubins: 'https://i.ibb.co/5gkW9zFJ/image.png',
-    coins: 'https://i.ibb.co/JRnypxvR/image.png',
-    trainingPoints: 'https://i.ibb.co/gb178dPT/image.png',
-    ovrUpgradePoints: 'https://i.ibb.co/jv3KsbMx/OVR.png',
-    fragments: 'https://i.ibb.co/xtBftkpX/image.png',
-    draftTokens: 'https://i.ibb.co/6RTT8K1z/image.png',
-    passCredits: 'https://i.ibb.co/zVW0z5nQ/image.png',
-    ticket: 'https://i.ibb.co/5x6LKnnF/World-Tournament.png',
-    wtTourPoints: 'https://i.ibb.co/0V6DqG3S/World-Tournament.png',
-  };
-  if (reward.type === 'player' || reward.type === 'finalPlayer') {
-    return '⚽'; // будем показывать эмодзи
+  if (!reward) return '';
+  var type = reward.type || '';
+
+  if (type === 'player' || type === 'finalPlayer') {
+    return '<img src="https://i.ibb.co/5x6LKnnF/World-Tournament.png" style="width:24px;height:24px;object-fit:contain;">';
   }
-  return icons[reward.type] ? `<img src="${icons[reward.type]}" style="width:22px;height:22px;">` : '❓';
+
+  var icons = {
+    coins:       '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    rubins:      '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    frags:       '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    draft:       '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    xp:          '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:24px;height:24px;object-fit:contain;">',
+    wtTicket:    '<img src="https://i.ibb.co/5x6LKnnF/World-Tournament.png" style="width:24px;height:24px;object-fit:contain;">',
+    wtTour:      '<img src="https://i.ibb.co/0V6DqG3S/World-Tournament.png" style="width:24px;height:24px;object-fit:contain;">',
+    offside:     '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:24px;height:24px;object-fit:contain;">',
+    train:       '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    ovr:         '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:24px;height:24px;object-fit:contain;">',
+    passCredits: '<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:24px;height:24px;object-fit:contain;">'
+  };
+
+  return icons[type] || '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:24px;height:24px;object-fit:contain;">';
 }
 
 function wtPassRewardLabel(reward) {
-  if (!reward) return '—';
-  if (reward.type === 'rubins')          return `${reward.amount}`;
-  if (reward.type === 'coins')           return `${(reward.amount/1000).toFixed(0)}K`;
-  if (reward.type === 'trainingPoints')  return `${reward.amount}`;
-  if (reward.type === 'ovrUpgradePoints')return `${reward.amount}`;
-  if (reward.type === 'fragments')       return `${reward.amount}`;
-  if (reward.type === 'draftTokens')     return `×${reward.amount}`;
-  if (reward.type === 'passCredits')     return `${reward.amount}`;
-  if (reward.type === 'ticket')          return `×${reward.amount||1}`;
-  if (reward.type === 'wtTourPoints')    return `${reward.amount}`;
-  if (reward.type === 'player')          return reward.label || `OVR ${reward.minOvr}-${reward.maxOvr}`;
-  if (reward.type === 'finalPlayer')     return reward.label || '×1';
-  return '—';
+  if (!reward) return '';
+  var type = reward.type || '';
+  var amt  = reward.amount || 0;
+
+  if (type === 'player')      return 'Игрок ' + (reward.minOvr || 94) + '–' + (reward.maxOvr || 97) + ' OVR';
+  if (type === 'finalPlayer') return 'Игрок ' + (reward.minOvr || 98) + '–' + (reward.maxOvr || 101) + ' OVR';
+
+  var labels = {
+    coins:       '+' + amt.toLocaleString('ru-RU') + ' монет',
+    rubins:      '+' + amt + ' сапфиров',
+    frags:       '+' + amt + ' фрагментов',
+    draft:       '+' + amt + ' купонов',
+    xp:          '+' + amt + ' XP',
+    wtTicket:    '+' + amt + ' билетов',
+    wtTour:      '+' + amt + ' оч. турне',
+    offside:     '+' + amt + ' Offside',
+    train:       '+' + amt + ' оч. трен.',
+    ovr:         '+' + amt + ' оч. OVR',
+    passCredits: '+' + amt + ' оч. абон.'
+  };
+
+  return labels[type] || ('+' + amt);
 }
 
 // ── Уровень абонемента по очкам ───────────────────────────────────────────
@@ -12050,150 +12033,442 @@ function openWTPass() {
 
   const modal = document.createElement('div');
   modal.id = 'wt-pass-modal';
-  modal.style.cssText = `
-    position:fixed;inset:0;z-index:300;background:#0d0d1a;
-    display:flex;flex-direction:column;max-width:600px;width:100%;margin:0 auto;
-  `;
+  modal.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'z-index:300',
+    'background:#0d0d1a',
+    'display:flex',
+    'flex-direction:column',
+    'max-width:600px',
+    'width:100%',
+    'margin:0 auto'
+  ].join(';');
 
-  const level = wtCalcPassLevel();
-  const creditsInLvl = wtPassCreditsInCurrentLevel();
-  const isGold = gameState.wtPassGold || false;
+  const level         = wtCalcPassLevel();
+  const creditsInLvl  = wtPassCreditsInCurrentLevel();
+  const isGold        = gameState.wtPassGold || false;
+  const totalLevels   = WT_PASS_LEVELS.length;
 
   // Несобранные уровни
   const unclaimedFree = [];
   const unclaimedGold = [];
   for (let i = 1; i <= level; i++) {
-    if (!(gameState.wtPassClaimedFree||[]).includes(i)) unclaimedFree.push(i);
-    if (isGold && !(gameState.wtPassClaimedGold||[]).includes(i)) unclaimedGold.push(i);
+    if (!(gameState.wtPassClaimedFree  || []).includes(i)) unclaimedFree.push(i);
+    if (isGold && !(gameState.wtPassClaimedGold || []).includes(i)) unclaimedGold.push(i);
   }
   const hasUnclaimed = unclaimedFree.length > 0 || unclaimedGold.length > 0;
 
-  modal.innerHTML = `
-    <!-- Шапка -->
-    <div style="background:linear-gradient(135deg,#2980b9,#c0392b,#e67e22);
-      padding:14px 16px;flex-shrink:0;
-      padding-top:calc(14px + env(safe-area-inset-top,0px));">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <button onclick="document.getElementById('wt-pass-modal').remove()"
-          style="background:rgba(0,0,0,0.3);border:none;color:#fff;padding:6px 12px;
-          border-radius:8px;cursor:pointer;font-family:inherit;">← Назад</button>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:15px;font-weight:700;color:#fff;">📋 Абонемент WT</span>
-          <span style="background:${isGold
-            ? 'linear-gradient(135deg,#f0c040,#b8860b)'
-            : 'rgba(255,255,255,0.2)'};
-            border-radius:6px;padding:2px 8px;font-size:11px;
-            font-weight:700;color:${isGold?'#000':'#fff'};">
-            ${isGold ? 'GOLD' : 'FREE'}
-          </span>
-        </div>
-        ${!isGold ? `
-          <button onclick="wtBuyGoldPass()"
-            style="background:linear-gradient(135deg,#f0c040,#b8860b);border:none;
-            color:#000;padding:6px 10px;border-radius:8px;cursor:pointer;
-            font-size:11px;font-weight:700;font-family:inherit;">
-            💎 1000 Offside
-          </button>` : '<div></div>'}
-      </div>
-      <!-- Прогресс -->
-      <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px;">
-        Уровень ${level}/50 · ${creditsInLvl}/100 до следующего уровня
-      </div>
-      <div style="background:rgba(0,0,0,0.3);border-radius:6px;height:8px;">
-        <div style="height:100%;width:${creditsInLvl}%;
-          background:linear-gradient(90deg,#2980b9,#e67e22);border-radius:6px;"></div>
-      </div>
-    </div>
+  // ───────────────────────────────────────────
+  // ШАПКА
+  // ───────────────────────────────────────────
+  const header = document.createElement('div');
+  header.style.cssText = [
+    'background:linear-gradient(135deg,#2980b9,#c0392b,#e67e22)',
+    'padding:14px 16px',
+    'flex-shrink:0',
+    'padding-top:calc(14px + env(safe-area-inset-top,0px))'
+  ].join(';');
 
-    <!-- Кнопка "Собрать все" -->
-    <div style="padding:10px 14px;background:#0d0d1a;flex-shrink:0;">
-      <button onclick="wtClaimAllPass()"
-        ${hasUnclaimed ? '' : 'disabled'}
-        style="width:100%;padding:11px;
-          background:${hasUnclaimed
-            ? 'linear-gradient(135deg,#e67e22,#c0392b)'
-            : 'rgba(255,255,255,0.06)'};
-          border:none;border-radius:10px;
-          color:${hasUnclaimed ? '#fff' : '#7d8e9e'};
-          font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
-        ${hasUnclaimed
-          ? `🎁 Собрать все (${unclaimedFree.length + unclaimedGold.length} наград)`
-          : '✓ Все собрано'}
-      </button>
-    </div>
+  // Строка с кнопками
+  const headerTop = document.createElement('div');
+  headerTop.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
 
-    <!-- Уровни (скролл вбок) -->
-    <div id="wt-pass-scroll" style="
-      display:flex;gap:8px;overflow-x:auto;padding:10px 14px;
-      flex-shrink:0;scrollbar-width:none;
-    ">
-      ${WT_PASS_LEVELS.map(lvl => {
-        const unlocked = lvl.level <= level;
-        const claimedFree = (gameState.wtPassClaimedFree||[]).includes(lvl.level);
-        const claimedGold = (gameState.wtPassClaimedGold||[]).includes(lvl.level);
+  // Кнопка Назад
+  const backBtn = document.createElement('button');
+  backBtn.textContent = '← Назад';
+  backBtn.style.cssText = [
+    'background:rgba(0,0,0,0.3)',
+    'border:none',
+    'color:#fff',
+    'padding:6px 12px',
+    'border-radius:8px',
+    'cursor:pointer',
+    'font-family:inherit'
+  ].join(';');
+  backBtn.addEventListener('click', function() {
+    modal.remove();
+  });
 
-        return `
-          <div style="flex-shrink:0;width:110px;display:flex;flex-direction:column;gap:5px;">
+  // Центр — название + бейдж
+  const titleWrap = document.createElement('div');
+  titleWrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
-            <!-- FREE ячейка -->
-            <div onclick="wtPassCellClick(${lvl.level},'free')"
-              style="
-                background:${claimedFree ? 'rgba(41,128,185,0.35)' : unlocked ? 'rgba(230,126,34,0.18)' : 'rgba(255,255,255,0.04)'};
-                border:2px solid ${claimedFree ? '#2980b9' : unlocked ? '#e67e22' : 'rgba(255,255,255,0.1)'};
-                border-radius:10px;padding:8px;text-align:center;cursor:pointer;
-                position:relative;min-height:82px;
-                display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-              ">
-              <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:2px;">FREE</div>
-              <div style="font-size:20px;">${wtPassRewardIcon(lvl.free)}</div>
-              <div style="font-size:9px;color:${claimedFree?'rgba(255,255,255,0.45)':'rgba(255,255,255,0.85)'};
-                line-height:1.3;text-align:center;">${wtPassRewardLabel(lvl.free)}</div>
-              ${claimedFree ? '<div style="position:absolute;top:3px;right:5px;color:#2980b9;font-size:11px;">✓</div>' : ''}
-              ${!unlocked ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔒</div>' : ''}
-            </div>
+  const titleText = document.createElement('span');
+  titleText.style.cssText = 'font-size:15px;font-weight:700;color:#fff;';
+  titleText.textContent = '📋 Абонемент WT';
 
-            <!-- Номер уровня -->
-            <div style="text-align:center;font-size:12px;font-weight:700;
-              color:${unlocked ? '#e67e22' : 'rgba(255,255,255,0.3)'};">
-              ${lvl.level}
-            </div>
+  const badge = document.createElement('span');
+  badge.style.cssText = [
+    isGold
+      ? 'background:linear-gradient(135deg,#f0c040,#b8860b)'
+      : 'background:rgba(255,255,255,0.2)',
+    'border-radius:6px',
+    'padding:2px 8px',
+    'font-size:11px',
+    'font-weight:700',
+    isGold ? 'color:#000' : 'color:#fff'
+  ].join(';');
+  badge.textContent = isGold ? 'GOLD' : 'FREE';
 
-            <!-- GOLD ячейка -->
-            <div onclick="wtPassCellClick(${lvl.level},'gold')"
-              style="
-                background:${claimedGold ? 'rgba(240,192,64,0.25)' : unlocked && isGold ? 'rgba(230,126,34,0.18)' : 'rgba(255,255,255,0.04)'};
-                border:2px solid ${claimedGold ? '#f0c040' : unlocked && isGold ? '#e67e22' : 'rgba(255,255,255,0.08)'};
-                border-radius:10px;padding:8px;text-align:center;cursor:pointer;
-                position:relative;min-height:82px;
-                display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-              ">
-              <div style="font-size:10px;color:${isGold?'#f0c040':'rgba(255,255,255,0.3)'};margin-bottom:2px;">GOLD</div>
-              <div style="font-size:20px;${!isGold?'filter:grayscale(1);opacity:0.4;':''}">${wtPassRewardIcon(lvl.gold)}</div>
-              <div style="font-size:9px;color:${claimedGold?'rgba(255,255,255,0.45)':isGold?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.25)'};
-                line-height:1.3;text-align:center;">${wtPassRewardLabel(lvl.gold)}</div>
-              ${claimedGold ? '<div style="position:absolute;top:3px;right:5px;color:#f0c040;font-size:11px;">✓</div>' : ''}
-              ${!unlocked || !isGold ? `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.55);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">${!isGold?'💎':'🔒'}</div>` : ''}
-            </div>
+  titleWrap.appendChild(titleText);
+  titleWrap.appendChild(badge);
 
-          </div>`;
-      }).join('')}
-    </div>
+  // Кнопка купить Gold / пустышка
+  const goldBtn = document.createElement('button');
+  if (!isGold) {
+    goldBtn.style.cssText = [
+      'background:linear-gradient(135deg,#f0c040,#b8860b)',
+      'border:none',
+      'color:#000',
+      'padding:6px 10px',
+      'border-radius:8px',
+      'cursor:pointer',
+      'font-size:11px',
+      'font-weight:700',
+      'font-family:inherit',
+      'display:flex',
+      'align-items:center',
+      'gap:4px'
+    ].join(';');
+    const goldIcon = document.createElement('img');
+    goldIcon.src = 'https://i.ibb.co/Cpq33M9q/Offside.png';
+    goldIcon.style.cssText = 'width:14px;height:14px;';
+    goldBtn.appendChild(goldIcon);
+    goldBtn.appendChild(document.createTextNode(' 1000'));
+    goldBtn.addEventListener('click', function() {
+      wtBuyGoldPass();
+    });
+  } else {
+    goldBtn.style.cssText = 'visibility:hidden;border:none;background:transparent;';
+  }
 
-    <!-- Подсказка -->
-    <div style="padding:6px 14px 14px;font-size:10px;color:rgba(255,255,255,0.35);text-align:center;flex-shrink:0;">
-      Нажми на пройденный уровень чтобы собрать награду · Нажми на заблокированный чтобы купить
-    </div>
-  `;
+  headerTop.appendChild(backBtn);
+  headerTop.appendChild(titleWrap);
+  headerTop.appendChild(goldBtn);
 
+  // Прогресс-бар
+  const progressLabel = document.createElement('div');
+  progressLabel.style.cssText = 'font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px;';
+  progressLabel.textContent = 'Уровень ' + level + '/50 · ' + creditsInLvl + '/100 до следующего уровня';
+
+  const progressTrack = document.createElement('div');
+  progressTrack.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:6px;height:8px;';
+
+  const progressFill = document.createElement('div');
+  progressFill.style.cssText = [
+    'height:100%',
+    'width:' + creditsInLvl + '%',
+    'background:linear-gradient(90deg,#2980b9,#e67e22)',
+    'border-radius:6px'
+  ].join(';');
+
+  progressTrack.appendChild(progressFill);
+  header.appendChild(headerTop);
+  header.appendChild(progressLabel);
+  header.appendChild(progressTrack);
+
+  // ───────────────────────────────────────────
+  // КНОПКА "СОБРАТЬ ВСЕ"
+  // ───────────────────────────────────────────
+  const claimAllWrap = document.createElement('div');
+  claimAllWrap.style.cssText = 'padding:10px 14px;background:#0d0d1a;flex-shrink:0;';
+
+  const claimAllBtn = document.createElement('button');
+  claimAllBtn.style.cssText = [
+    'width:100%',
+    'padding:11px',
+    hasUnclaimed
+      ? 'background:linear-gradient(135deg,#e67e22,#c0392b)'
+      : 'background:rgba(255,255,255,0.06)',
+    'border:none',
+    'border-radius:10px',
+    hasUnclaimed ? 'color:#fff' : 'color:#7d8e9e',
+    'font-size:14px',
+    'font-weight:700',
+    'cursor:pointer',
+    'font-family:inherit'
+  ].join(';');
+  claimAllBtn.textContent = hasUnclaimed
+    ? '🎁 Собрать все (' + (unclaimedFree.length + unclaimedGold.length) + ' наград)'
+    : '✓ Все собрано';
+  if (!hasUnclaimed) claimAllBtn.disabled = true;
+  claimAllBtn.addEventListener('click', function() {
+    wtClaimAllPass();
+  });
+
+  claimAllWrap.appendChild(claimAllBtn);
+
+  // ───────────────────────────────────────────
+  // ПОЛЗУНОК
+  // ───────────────────────────────────────────
+  const sliderWrap = document.createElement('div');
+  sliderWrap.style.cssText = 'padding:8px 14px 2px;flex-shrink:0;background:#0d0d1a;';
+
+  const slider = document.createElement('input');
+  slider.type  = 'range';
+  slider.min   = '1';
+  slider.max   = String(totalLevels);
+  slider.value = String(Math.max(1, level - 2));
+  slider.style.cssText = [
+    'width:100%',
+    'height:6px',
+    '-webkit-appearance:none',
+    'appearance:none',
+    'background:rgba(255,255,255,0.15)',
+    'border-radius:3px',
+    'outline:none',
+    'cursor:pointer',
+    'accent-color:#e67e22'
+  ].join(';');
+
+  const sliderLabels = document.createElement('div');
+  sliderLabels.style.cssText = 'display:flex;justify-content:space-between;margin-top:3px;';
+
+  const sliderLabelLeft = document.createElement('span');
+  sliderLabelLeft.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.35);';
+  sliderLabelLeft.textContent = 'Ур. 1';
+
+  const sliderLabelRight = document.createElement('span');
+  sliderLabelRight.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.35);';
+  sliderLabelRight.textContent = 'Ур. ' + totalLevels;
+
+  sliderLabels.appendChild(sliderLabelLeft);
+  sliderLabels.appendChild(sliderLabelRight);
+  sliderWrap.appendChild(slider);
+  sliderWrap.appendChild(sliderLabels);
+
+  // ───────────────────────────────────────────
+  // СЕТКА УРОВНЕЙ
+  // ───────────────────────────────────────────
+  const scrollWrap = document.createElement('div');
+  scrollWrap.id = 'wt-pass-scroll';
+  scrollWrap.style.cssText = [
+    'display:flex',
+    'gap:8px',
+    'overflow-x:auto',
+    'padding:10px 14px',
+    'flex-shrink:0',
+    'scrollbar-width:none'
+  ].join(';');
+
+  WT_PASS_LEVELS.forEach(function(lvl) {
+    const unlocked    = lvl.level <= level;
+    const claimedFree = (gameState.wtPassClaimedFree  || []).includes(lvl.level);
+    const claimedGold = (gameState.wtPassClaimedGold  || []).includes(lvl.level);
+
+    const col = document.createElement('div');
+    col.style.cssText = 'flex-shrink:0;width:110px;display:flex;flex-direction:column;gap:5px;';
+
+    // ── FREE ячейка ──
+    const freeCell = document.createElement('div');
+    freeCell.style.cssText = [
+      claimedFree
+        ? 'background:rgba(41,128,185,0.35);border:2px solid #2980b9'
+        : unlocked
+          ? 'background:rgba(230,126,34,0.18);border:2px solid #e67e22'
+          : 'background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1)',
+      'border-radius:10px',
+      'padding:8px',
+      'text-align:center',
+      'cursor:pointer',
+      'position:relative',
+      'min-height:82px',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'gap:3px'
+    ].join(';');
+
+    const freeLabel = document.createElement('div');
+    freeLabel.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:2px;';
+    freeLabel.textContent = 'FREE';
+
+    const freeIcon = document.createElement('div');
+    freeIcon.style.cssText = 'font-size:20px;';
+    freeIcon.innerHTML = wtPassRewardIcon(lvl.free);
+
+    const freeText = document.createElement('div');
+    freeText.style.cssText = [
+      'font-size:9px',
+      claimedFree ? 'color:rgba(255,255,255,0.45)' : 'color:rgba(255,255,255,0.85)',
+      'line-height:1.3',
+      'text-align:center'
+    ].join(';');
+    freeText.textContent = wtPassRewardLabel(lvl.free);
+
+    freeCell.appendChild(freeLabel);
+    freeCell.appendChild(freeIcon);
+    freeCell.appendChild(freeText);
+
+    if (claimedFree) {
+      const check = document.createElement('div');
+      check.style.cssText = 'position:absolute;top:3px;right:5px;color:#2980b9;font-size:11px;';
+      check.textContent = '✓';
+      freeCell.appendChild(check);
+    }
+    if (!unlocked) {
+      const lock = document.createElement('div');
+      lock.style.cssText = [
+        'position:absolute',
+        'inset:0',
+        'background:rgba(0,0,0,0.5)',
+        'border-radius:8px',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'font-size:18px'
+      ].join(';');
+      lock.textContent = '🔒';
+      freeCell.appendChild(lock);
+    }
+
+    freeCell.addEventListener('click', function() {
+      wtPassCellClick(lvl.level, 'free');
+    });
+
+    // ── Номер уровня ──
+    const numLabel = document.createElement('div');
+    numLabel.style.cssText = [
+      'text-align:center',
+      'font-size:12px',
+      'font-weight:700',
+      unlocked ? 'color:#e67e22' : 'color:rgba(255,255,255,0.3)'
+    ].join(';');
+    numLabel.textContent = String(lvl.level);
+
+    // ── GOLD ячейка ──
+    const goldCell = document.createElement('div');
+    goldCell.style.cssText = [
+      claimedGold
+        ? 'background:rgba(240,192,64,0.25);border:2px solid #f0c040'
+        : (unlocked && isGold)
+          ? 'background:rgba(230,126,34,0.18);border:2px solid #e67e22'
+          : 'background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.08)',
+      'border-radius:10px',
+      'padding:8px',
+      'text-align:center',
+      'cursor:pointer',
+      'position:relative',
+      'min-height:82px',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'gap:3px'
+    ].join(';');
+
+    const goldLabel = document.createElement('div');
+    goldLabel.style.cssText = [
+      'font-size:10px',
+      isGold ? 'color:#f0c040' : 'color:rgba(255,255,255,0.3)',
+      'margin-bottom:2px'
+    ].join(';');
+    goldLabel.textContent = 'GOLD';
+
+    const goldIcon = document.createElement('div');
+    goldIcon.style.cssText = 'font-size:20px;' + (!isGold ? 'filter:grayscale(1);opacity:0.4;' : '');
+    goldIcon.innerHTML = wtPassRewardIcon(lvl.gold);
+
+    const goldText = document.createElement('div');
+    goldText.style.cssText = [
+      'font-size:9px',
+      claimedGold
+        ? 'color:rgba(255,255,255,0.45)'
+        : isGold
+          ? 'color:rgba(255,255,255,0.85)'
+          : 'color:rgba(255,255,255,0.25)',
+      'line-height:1.3',
+      'text-align:center'
+    ].join(';');
+    goldText.textContent = wtPassRewardLabel(lvl.gold);
+
+    goldCell.appendChild(goldLabel);
+    goldCell.appendChild(goldIcon);
+    goldCell.appendChild(goldText);
+
+    if (claimedGold) {
+      const check = document.createElement('div');
+      check.style.cssText = 'position:absolute;top:3px;right:5px;color:#f0c040;font-size:11px;';
+      check.textContent = '✓';
+      goldCell.appendChild(check);
+    }
+    if (!unlocked || !isGold) {
+      const lock = document.createElement('div');
+      lock.style.cssText = [
+        'position:absolute',
+        'inset:0',
+        'background:rgba(0,0,0,0.55)',
+        'border-radius:8px',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'font-size:18px'
+      ].join(';');
+      lock.textContent = !isGold ? '💎' : '🔒';
+      goldCell.appendChild(lock);
+    }
+
+    goldCell.addEventListener('click', function() {
+      wtPassCellClick(lvl.level, 'gold');
+    });
+
+    col.appendChild(freeCell);
+    col.appendChild(numLabel);
+    col.appendChild(goldCell);
+    scrollWrap.appendChild(col);
+  });
+
+  // ───────────────────────────────────────────
+  // ПОДСКАЗКА
+  // ───────────────────────────────────────────
+  const hint = document.createElement('div');
+  hint.style.cssText = [
+    'padding:6px 14px 14px',
+    'font-size:10px',
+    'color:rgba(255,255,255,0.35)',
+    'text-align:center',
+    'flex-shrink:0'
+  ].join(';');
+  hint.textContent = 'Нажми на пройденный уровень чтобы собрать награду · Нажми на заблокированный чтобы купить';
+
+  // ───────────────────────────────────────────
+  // СБОРКА
+  // ───────────────────────────────────────────
+  modal.appendChild(header);
+  modal.appendChild(claimAllWrap);
+  modal.appendChild(sliderWrap);
+  modal.appendChild(scrollWrap);
+  modal.appendChild(hint);
   document.body.appendChild(modal);
 
-  // Прокручиваем к текущему уровню
-  setTimeout(() => {
+  // ───────────────────────────────────────────
+  // ПРОКРУТКА К ТЕКУЩЕМУ УРОВНЮ
+  // ───────────────────────────────────────────
+  setTimeout(function() {
     const scroll = document.getElementById('wt-pass-scroll');
     if (scroll && level > 1) {
       scroll.scrollLeft = Math.max(0, (level - 2) * 118);
+      slider.value = String(Math.max(1, level - 2));
     }
   }, 100);
+
+  // ───────────────────────────────────────────
+  // ПОЛЗУНОК → СКРОЛЛ
+  // ───────────────────────────────────────────
+  slider.addEventListener('input', function() {
+    const scroll = document.getElementById('wt-pass-scroll');
+    if (scroll) {
+      scroll.scrollLeft = (parseInt(slider.value) - 1) * 118;
+    }
+  });
+
+  // СКРОЛЛ → ПОЛЗУНОК
+  scrollWrap.addEventListener('scroll', function() {
+    const idx = Math.round(scrollWrap.scrollLeft / 118) + 1;
+    slider.value = String(Math.min(Math.max(idx, 1), totalLevels));
+  });
 }
 
 // ── Клик по ячейке абонемента ─────────────────────────────────────────────
@@ -12201,47 +12476,57 @@ function wtPassCellClick(lvlNum, track) {
   const level = wtCalcPassLevel();
   const isGold = gameState.wtPassGold || false;
 
-  // Уровень ещё не достигнут
   if (lvlNum > level) {
-    // Предлагаем купить
-    const cost = (lvlNum - level) * 50;
     const confirmDiv = document.createElement('div');
+    confirmDiv.id = 'wt-pass-buy-confirm';
     confirmDiv.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.9);
       display:flex;align-items:center;justify-content:center;padding:20px;`;
-    confirmDiv.innerHTML = `
-      <div style="background:#17212b;border:2px solid #e67e22;border-radius:16px;
-        padding:22px;max-width:300px;width:100%;text-align:center;">
-        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">🔒 Уровень ${lvlNum}</div>
-        <div style="font-size:12px;color:#7d8e9e;margin-bottom:14px;line-height:1.6;">
-          Купить уровень ${lvlNum} за<br>
-          <b style="color:#e67e22;font-size:15px;">50 Offside-токенов</b><br>
-          (у вас: ${gameState.offsideTokens||0})
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()"
-            style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #2a3a4a;
-            border-radius:8px;color:#7d8e9e;font-size:13px;cursor:pointer;font-family:inherit;">
-            Отмена
-          </button>
-          <button onclick="wtBuyPassLevel(${lvlNum});this.closest('div[style*=\"position:fixed\"]').remove();"
-            style="flex:1;padding:10px;background:linear-gradient(135deg,#e67e22,#c0392b);
-            border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;
-            cursor:pointer;font-family:inherit;">
-            Купить
-          </button>
-        </div>
+
+    const inner = document.createElement('div');
+    inner.style.cssText = `background:#17212b;border:2px solid #e67e22;
+      border-radius:16px;padding:22px;max-width:300px;width:100%;text-align:center;`;
+    inner.innerHTML = `
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">🔒 Уровень ${lvlNum}</div>
+      <div style="font-size:12px;color:#7d8e9e;margin-bottom:14px;line-height:1.6;">
+        Купить уровень ${lvlNum} за<br>
+        <b style="color:#e67e22;font-size:15px;">50 Offside-токенов</b><br>
+        (у вас: ${gameState.offsideTokens||0})
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="wt-pass-buy-cancel"
+          style="flex:1;padding:10px;background:rgba(255,255,255,0.08);border:1px solid #2a3a4a;
+          border-radius:8px;color:#7d8e9e;font-size:13px;cursor:pointer;font-family:inherit;">
+          Отмена
+        </button>
+        <button id="wt-pass-buy-confirm-btn"
+          style="flex:1;padding:10px;background:linear-gradient(135deg,#e67e22,#c0392b);
+          border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;
+          cursor:pointer;font-family:inherit;">
+          Купить
+        </button>
       </div>`;
+
+    confirmDiv.appendChild(inner);
     document.body.appendChild(confirmDiv);
+
+    document.getElementById('wt-pass-buy-cancel').addEventListener('click', function() {
+      confirmDiv.remove();
+    });
+    document.getElementById('wt-pass-buy-confirm-btn').addEventListener('click', function() {
+      confirmDiv.remove();
+      wtBuyPassLevel(lvlNum);
+    });
+    confirmDiv.addEventListener('click', function(e) {
+      if (e.target === confirmDiv) confirmDiv.remove();
+    });
     return;
   }
 
-  // Gold дорожка — проверяем куплен ли Gold Pass
   if (track === 'gold' && !isGold) {
     showMarketToast('💎 Купи Gold Pass чтобы получить Gold награды!');
     return;
   }
 
-  // Проверяем — уже собрано?
   const claimedArr = track === 'free'
     ? (gameState.wtPassClaimedFree||[])
     : (gameState.wtPassClaimedGold||[]);
@@ -12251,61 +12536,599 @@ function wtPassCellClick(lvlNum, track) {
     return;
   }
 
-  // Собираем награду
   wtClaimPassLevel(lvlNum, track);
 }
 
+function wtShowPackAnimation(rewards, onDone) {
+  const players   = rewards.filter(function(r) { return r.player; })
+                           .sort(function(a,b) { return (b.ovr||0)-(a.ovr||0); });
+  const resources = rewards.filter(function(r) { return !r.player; });
+  const ordered   = players.concat(resources);
+  const hasWalkout = players.some(function(r) { return r.pool === 'A' || r.pool === 'B'; });
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'z-index:9000',
+    'background:#000',
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'font-family:inherit'
+  ].join(';');
+
+  // ── Иконка ресурса (img-тег) ──────────────────────────────────────────
+  function getResIconImg(type, size) {
+    size = size || 32;
+    var urls = {
+      coins:       'https://i.ibb.co/JRnypxvR/image.png',
+      rubins:      'https://i.ibb.co/5gkW9zFJ/image.png',
+      frags:       'https://i.ibb.co/xtBftkpX/image.png',
+      draft:       'https://i.ibb.co/6RTT8K1z/image.png',
+      xp:          'https://i.ibb.co/TxwKYZVc/XP.png',
+      wtTicket:    'https://i.ibb.co/5x6LKnnF/World-Tournament.png',
+      wtTour:      'https://i.ibb.co/0V6DqG3S/World-Tournament.png',
+      offside:     'https://i.ibb.co/Cpq33M9q/Offside.png',
+      train:       'https://i.ibb.co/gb178dPT/image.png',
+      ovr:         'https://i.ibb.co/jv3KsbMx/OVR.png',
+      passCredits: 'https://i.ibb.co/zVW0z5nQ/image.png'
+    };
+    var url = urls[type];
+    if (!url) return '<span style="font-size:' + size + 'px;">🎁</span>';
+    return '<img src="' + url + '" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;">';
+  }
+
+  // ── Подпись ресурса ───────────────────────────────────────────────────
+  function getResLabel(type, amount) {
+    var amt = amount || 0;
+    var map = {
+      coins:       '+' + amt.toLocaleString('ru-RU') + ' монет',
+      rubins:      '+' + amt + ' сапфиров',
+      frags:       '+' + amt + ' фрагментов',
+      draft:       '+' + amt + ' купонов',
+      xp:          '+' + amt + ' XP',
+      wtTicket:    '+' + amt + ' билетов',
+      wtTour:      '+' + amt + ' оч. турне',
+      offside:     '+' + amt + ' Offside',
+      train:       '+' + amt + ' оч. трен.',
+      ovr:         '+' + amt + ' оч. OVR',
+      passCredits: '+' + amt + ' оч. абон.'
+    };
+    return map[type] || ('+' + amt);
+  }
+
+  // ── ШАГ 1: пак ────────────────────────────────────────────────────────
+  function showPackStep() {
+    overlay.innerHTML = [
+      '<style>',
+      '@keyframes wtPackGlow {',
+      '  0%   { box-shadow:0 0 20px #e67e22; }',
+      '  50%  { box-shadow:0 0 50px #e67e22, 0 0 80px #f0c040; }',
+      '  100% { box-shadow:0 0 20px #e67e22; }',
+      '}',
+      '@keyframes wtSlideUp {',
+      '  from { transform:translateY(30px);opacity:0; }',
+      '  to   { transform:translateY(0);opacity:1; }',
+      '}',
+      '</style>',
+      '<div id="wt-pack-box" style="',
+        'width:160px;height:220px;border-radius:18px;',
+        'background:linear-gradient(135deg,#c0392b,#e67e22,#f0c040);',
+        'display:flex;align-items:center;justify-content:center;',
+        'animation:wtPackGlow 1.5s ease-in-out infinite;',
+        'cursor:pointer;position:relative;overflow:hidden;',
+      '">',
+        '<div style="font-size:60px;z-index:2;position:relative;">⚽</div>',
+      '</div>',
+      '<div style="color:rgba(255,255,255,0.7);font-size:14px;margin-top:24px;">',
+        'Нажми, чтобы открыть',
+      '</div>'
+    ].join('');
+
+    overlay.querySelector('#wt-pack-box').addEventListener('click', function() {
+      // Лёгкая вспышка только самого пака
+      var box = overlay.querySelector('#wt-pack-box');
+      var flashes = 0;
+      var maxFlashes = 4;
+
+      function doFlash() {
+        if (flashes >= maxFlashes) {
+          // Переход
+          overlay.style.transition = 'opacity 0.3s';
+          overlay.style.opacity = '0';
+          setTimeout(function() {
+            overlay.style.opacity = '1';
+            overlay.style.transition = '';
+            if (hasWalkout) {
+              showWalkoutStep();
+            } else {
+              showRewardStep(0);
+            }
+          }, 300);
+          return;
+        }
+        // Мерцает только пак (scale), никакого белого экрана
+        box.style.transform = flashes % 2 === 0 ? 'scale(1.08)' : 'scale(1.0)';
+        flashes++;
+        setTimeout(doFlash, 100);
+      }
+      doFlash();
+    });
+  }
+
+  // ── ШАГ 2: волкаут ───────────────────────────────────────────────────
+  function showWalkoutStep() {
+    var w = players.filter(function(r) {
+      return r.pool === 'A' || r.pool === 'B';
+    })[0];
+    var poolColor = w.pool === 'A' ? '#c0392b' : '#2980b9';
+    var poolLabel = w.pool === 'A' ? '👑 WALKOUT — ПУЛ A!' : '⭐ WALKOUT — ПУЛ B!';
+    var hasImg = w.player && (w.player.squadImage || w.player.image);
+    var imgUrl  = hasImg ? (w.player.squadImage || w.player.image) : null;
+
+    overlay.innerHTML = [
+      '<style>',
+      '@keyframes wtSlideUp {',
+      '  from { transform:translateY(40px);opacity:0; }',
+      '  to   { transform:translateY(0);opacity:1; }',
+      '}',
+      '</style>',
+      '<div style="',
+        'animation:wtSlideUp 0.5s ease-out;',
+        'display:flex;flex-direction:column;align-items:center;',
+        'padding:20px;max-width:340px;width:100%;',
+      '">',
+        '<div style="font-size:14px;font-weight:800;color:' + poolColor + ';',
+          'letter-spacing:2px;margin-bottom:16px;text-align:center;">',
+          poolLabel,
+        '</div>',
+        '<div style="',
+          'width:170px;height:230px;border-radius:16px;overflow:hidden;',
+          'border:3px solid ' + poolColor + ';',
+          'box-shadow:0 0 40px ' + poolColor + '99;',
+          'position:relative;margin-bottom:18px;',
+        '">',
+          imgUrl
+            ? '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;object-position:center top;">'
+            : '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2f45,#1e3550);"></div>',
+          '<div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.7));"></div>',
+          '<div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);',
+            'border-radius:8px;padding:3px 8px;font-size:18px;font-weight:900;color:#f0c040;">',
+            w.ovr,
+          '</div>',
+          '<div style="position:absolute;bottom:8px;left:8px;right:8px;">',
+            '<div style="font-size:15px;font-weight:900;color:#fff;">' + (w.player ? w.player.name : '') + '</div>',
+            '<div style="font-size:11px;color:rgba(255,255,255,0.6);">' + (w.player ? (w.player.club || '') : '') + '</div>',
+          '</div>',
+        '</div>',
+        '<div style="font-size:22px;font-weight:900;color:#f0c040;">OVR ' + w.ovr + '</div>',
+        '<div style="margin-top:20px;width:100%;">',
+          '<button id="wt-walkout-next" style="',
+            'width:100%;padding:15px;',
+            'background:linear-gradient(135deg,' + poolColor + ',#e67e22);',
+            'border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;',
+            'cursor:pointer;font-family:inherit;">',
+            'Далее →',
+          '</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    overlay.querySelector('#wt-walkout-next').addEventListener('click', function() {
+      showRewardStep(0);
+    });
+  }
+
+  // ── ШАГ 3: карточки по одной ──────────────────────────────────────────
+  function getRewardCardHTML(r) {
+    if (r.player) {
+      var poolColor = r.pool === 'A' ? '#c0392b' : r.pool === 'B' ? '#2980b9' : '#4a5568';
+      var hasImg = r.player.squadImage || r.player.image;
+      var imgUrl  = hasImg ? (r.player.squadImage || r.player.image) : null;
+      var posColor = (typeof getPositionColor === 'function') ? getPositionColor(r.player.position) : '#7d8e9e';
+      return [
+        '<div style="display:flex;flex-direction:column;align-items:center;width:100%;">',
+          '<div style="',
+            'width:170px;height:230px;border-radius:16px;overflow:hidden;',
+            'border:3px solid ' + poolColor + ';',
+            'box-shadow:0 0 30px ' + poolColor + '66;',
+            'position:relative;margin-bottom:16px;',
+          '">',
+            imgUrl
+              ? '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;object-position:center top;">'
+              : '<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2f45,#1e3550);"></div>',
+            '<div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.7));"></div>',
+            '<div style="position:absolute;top:8px;left:8px;background:' + posColor + ';',
+              'border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;color:#fff;">',
+              r.player.position,
+            '</div>',
+            '<div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);',
+              'border-radius:8px;padding:3px 8px;font-size:18px;font-weight:900;color:#f0c040;">',
+              r.ovr,
+            '</div>',
+            '<div style="position:absolute;bottom:8px;left:8px;right:8px;">',
+              '<div style="font-size:15px;font-weight:900;color:#fff;">' + r.player.name + '</div>',
+              '<div style="font-size:11px;color:rgba(255,255,255,0.6);">' + (r.player.club || '') + '</div>',
+            '</div>',
+          '</div>',
+          '<div style="font-size:20px;font-weight:900;color:#f0c040;">OVR ' + r.ovr + '</div>',
+          '<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">' + r.player.name + '</div>',
+        '</div>'
+      ].join('');
+    } else {
+      return [
+        '<div style="display:flex;flex-direction:column;align-items:center;width:100%;">',
+          '<div style="',
+            'width:120px;height:120px;border-radius:24px;',
+            'background:linear-gradient(135deg,#1a2f45,#243b55);',
+            'border:2px solid rgba(255,255,255,0.1);',
+            'display:flex;align-items:center;justify-content:center;',
+            'margin-bottom:18px;',
+          '">',
+            '<div style="transform:scale(1.8);">' + getResIconImg(r.type, 36) + '</div>',
+          '</div>',
+          '<div style="font-size:24px;font-weight:900;color:#fff;">' + getResLabel(r.type, r.amount) + '</div>',
+        '</div>'
+      ].join('');
+    }
+  }
+
+  function showRewardStep(idx) {
+    var r = ordered[idx];
+    var isLast = idx === ordered.length - 1;
+
+    overlay.innerHTML = [
+      '<style>',
+      '@keyframes wtSlideUp {',
+      '  from { transform:translateY(30px);opacity:0; }',
+      '  to   { transform:translateY(0);opacity:1; }',
+      '}',
+      '</style>',
+      '<div style="',
+        'display:flex;flex-direction:column;align-items:center;',
+        'padding:24px 20px;max-width:340px;width:100%;',
+        'min-height:100vh;justify-content:center;',
+      '">',
+        '<div style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:20px;">',
+          (idx + 1) + ' / ' + ordered.length,
+        '</div>',
+        '<div style="',
+          'display:flex;flex-direction:column;align-items:center;width:100%;',
+          'animation:wtSlideUp 0.3s ease-out;',
+        '">',
+          getRewardCardHTML(r),
+        '</div>',
+        '<div style="width:100%;margin-top:28px;display:flex;flex-direction:column;gap:10px;">',
+          '<button id="wt-next-btn" style="',
+            'width:100%;padding:15px;',
+            'background:linear-gradient(135deg,#c0392b,#e67e22);',
+            'border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;',
+            'cursor:pointer;font-family:inherit;">',
+            isLast ? '🎉 Показать все' : 'Далее →',
+          '</button>',
+          '<button id="wt-showall-btn" style="',
+            'width:100%;padding:12px;',
+            'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);',
+            'border-radius:12px;color:rgba(255,255,255,0.7);font-size:13px;',
+            'cursor:pointer;font-family:inherit;">',
+            'Показать всё',
+          '</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    overlay.querySelector('#wt-next-btn').addEventListener('click', function() {
+      if (isLast) {
+        showAllStep();
+      } else {
+        showRewardStep(idx + 1);
+      }
+    });
+    overlay.querySelector('#wt-showall-btn').addEventListener('click', function() {
+      showAllStep();
+    });
+  }
+
+  // ── ШАГ 4: все награды СЕТКОЙ ────────────────────────────────────────
+  function showAllStep() {
+    // Строим сетку ячеек
+    var cellsHTML = '';
+
+    // Игроки
+    for (var i = 0; i < players.length; i++) {
+      var r = players[i];
+      var poolColor = r.pool === 'A' ? '#c0392b' : r.pool === 'B' ? '#2980b9' : '#4a5568';
+      var hasImg = r.player && (r.player.squadImage || r.player.image);
+      var imgUrl  = hasImg ? (r.player.squadImage || r.player.image) : null;
+      cellsHTML += [
+        '<div style="',
+          'background:linear-gradient(135deg,' + poolColor + '33,rgba(0,0,0,0.6));',
+          'border:2px solid ' + poolColor + ';',
+          'border-radius:12px;padding:10px;text-align:center;',
+          'display:flex;flex-direction:column;align-items:center;gap:4px;',
+        '">',
+          '<div style="',
+            'width:56px;height:56px;border-radius:8px;overflow:hidden;',
+            'background:linear-gradient(135deg,#1a2f45,#1e3550);',
+            'flex-shrink:0;',
+          '">',
+            imgUrl
+              ? '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;object-position:center top;">'
+              : '',
+          '</div>',
+          '<div style="font-size:13px;font-weight:900;color:#f0c040;">OVR ' + r.ovr + '</div>',
+          '<div style="font-size:9px;color:rgba(255,255,255,0.7);line-height:1.2;text-align:center;',
+            'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">',
+            r.player ? r.player.name : '',
+          '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    // Ресурсы
+    for (var j = 0; j < resources.length; j++) {
+      var res = resources[j];
+      cellsHTML += [
+        '<div style="',
+          'background:rgba(255,255,255,0.06);',
+          'border:1.5px solid rgba(255,255,255,0.15);',
+          'border-radius:12px;padding:10px;text-align:center;',
+          'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;',
+        '">',
+          '<div>' + getResIconImg(res.type, 32) + '</div>',
+          '<div style="font-size:11px;font-weight:700;color:#fff;line-height:1.3;">',
+            getResLabel(res.type, res.amount),
+          '</div>',
+        '</div>'
+      ].join('');
+    }
+
+    overlay.innerHTML = [
+      '<div style="',
+        'display:flex;flex-direction:column;',
+        'width:100%;max-width:400px;',
+        'max-height:100vh;overflow:hidden;',
+      '">',
+        // Шапка
+        '<div style="',
+          'padding:16px;flex-shrink:0;',
+          'background:linear-gradient(135deg,#c0392b,#e67e22);',
+          'display:flex;align-items:center;justify-content:center;',
+        '">',
+          '<div style="font-size:16px;font-weight:800;color:#fff;">🎁 Все награды</div>',
+        '</div>',
+        // Сетка
+        '<div style="',
+          'flex:1;overflow-y:auto;',
+          'padding:14px;',
+          'display:grid;',
+          'grid-template-columns:repeat(3,1fr);',
+          'gap:8px;',
+        '">',
+          cellsHTML,
+        '</div>',
+        // Кнопка
+        '<div style="padding:14px;flex-shrink:0;">',
+          '<button id="wt-pack-done" style="',
+            'width:100%;padding:15px;',
+            'background:linear-gradient(135deg,#c0392b,#e67e22);',
+            'border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;',
+            'cursor:pointer;font-family:inherit;">',
+            'Готово',
+          '</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    overlay.querySelector('#wt-pack-done').addEventListener('click', function() {
+      overlay.remove();
+      if (typeof onDone === 'function') onDone();
+    });
+  }
+
+  document.body.appendChild(overlay);
+  showPackStep();
+}
+
 function wtClaimPassLevel(lvlNum, track) {
-  const lvlData = WT_PASS_LEVELS.find(l => l.level === lvlNum);
-  if (!lvlData) return;
+  // Ищем данные уровня в WT_PASS_LEVELS
+  const lvlData = WT_PASS_LEVELS.find(function(l) { return l.level === lvlNum; });
+  if (!lvlData) {
+    showMarketToast('❌ Данные уровня не найдены');
+    return;
+  }
 
-  const reward = track === 'free' ? lvlData.free : lvlData.gold;
-  const msg = wtApplyPassReward(reward);
+  // Определяем объект награды
+  const rewardDef = track === 'free' ? lvlData.free : lvlData.gold;
+  if (!rewardDef) {
+    showMarketToast('❌ Награда не найдена');
+    return;
+  }
 
+  // Помечаем как собранное
   if (track === 'free') {
-    if (!(gameState.wtPassClaimedFree||[]).includes(lvlNum)) {
-      gameState.wtPassClaimedFree = [...(gameState.wtPassClaimedFree||[]), lvlNum];
+    gameState.wtPassClaimedFree = gameState.wtPassClaimedFree || [];
+    if (!gameState.wtPassClaimedFree.includes(lvlNum)) {
+      gameState.wtPassClaimedFree.push(lvlNum);
     }
   } else {
-    if (!(gameState.wtPassClaimedGold||[]).includes(lvlNum)) {
-      gameState.wtPassClaimedGold = [...(gameState.wtPassClaimedGold||[]), lvlNum];
+    gameState.wtPassClaimedGold = gameState.wtPassClaimedGold || [];
+    if (!gameState.wtPassClaimedGold.includes(lvlNum)) {
+      gameState.wtPassClaimedGold.push(lvlNum);
+    }
+  }
+
+  // Строим массив наград для анимации
+  var rewards = [];
+
+  if (rewardDef.type === 'player' || rewardDef.type === 'finalPlayer') {
+    var minOvr = rewardDef.minOvr || 94;
+    var maxOvr = rewardDef.maxOvr || 97;
+    var p = wtGetRandomPlayer(minOvr, maxOvr);
+    var ovr = p ? p.ovr : Math.floor(Math.random() * (maxOvr - minOvr + 1)) + minOvr;
+    var pool = ovr >= 98 ? 'A' : ovr >= 95 ? 'B' : 'C';
+
+    rewards.push({
+      type:   rewardDef.type,
+      player: p,
+      ovr:    ovr,
+      pool:   pool,
+      amount: 0
+    });
+
+    // Начисляем игрока
+    if (p) {
+      wtAddPlayerToCollection(p, 0);
+    }
+
+  } else {
+    var amt = rewardDef.amount || 0;
+
+    rewards.push({
+      type:   rewardDef.type,
+      amount: amt,
+      player: null,
+      ovr:    0,
+      pool:   'C'
+    });
+
+    // Начисляем ресурс
+    switch (rewardDef.type) {
+      case 'coins':
+        gameState.coins = (gameState.coins || 0) + amt;
+        break;
+      case 'rubins':
+        gameState.rubins = (gameState.rubins || 0) + amt;
+        break;
+      case 'frags':
+        gameState.fragments = (gameState.fragments || 0) + amt;
+        break;
+      case 'draft':
+        gameState.draftTokens = (gameState.draftTokens || 0) + amt;
+        break;
+      case 'xp':
+        if (typeof addXP === 'function') {
+          addXP(amt);
+        } else {
+          gameState.xp = (gameState.xp || 0) + amt;
+        }
+        break;
+      case 'wtTicket':
+        gameState.wtTickets = (gameState.wtTickets || 0) + amt;
+        break;
+      case 'wtTour':
+        gameState.wtTourPoints = (gameState.wtTourPoints || 0) + amt;
+        break;
+      case 'offside':
+        gameState.offsideTokens = (gameState.offsideTokens || 0) + amt;
+        break;
+      case 'train':
+        gameState.trainingPoints = (gameState.trainingPoints || 0) + amt;
+        break;
+      case 'ovr':
+        gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt;
+        break;
+      case 'passCredits':
+        gameState.wtPassCredits = (gameState.wtPassCredits || 0) + amt;
+        break;
     }
   }
 
   saveState();
   updateHeaderResources();
-  showMarketToast(`✅ Ур. ${lvlNum} (${track.toUpperCase()}): ${msg}`);
-  openWTPass(); // перерисовываем
+
+  // Показываем анимацию пака
+  wtShowPackAnimation(rewards, function() {
+    openWTPass();
+  });
 }
 
 function wtClaimAllPass() {
-  const level = wtCalcPassLevel();
-  const isGold = gameState.wtPassGold || false;
-  let count = 0;
+  var level  = wtCalcPassLevel();
+  var isGold = gameState.wtPassGold || false;
 
-  for (let i = 1; i <= level; i++) {
-    if (!(gameState.wtPassClaimedFree||[]).includes(i)) {
-      const lvlData = WT_PASS_LEVELS.find(l => l.level === i);
-      if (lvlData) {
-        wtApplyPassReward(lvlData.free);
-        gameState.wtPassClaimedFree = [...(gameState.wtPassClaimedFree||[]), i];
-        count++;
+  // Собираем все несобранные награды в один массив
+  var allRewards = [];
+
+  for (var i = 1; i <= level; i++) {
+    // FREE
+    if (!(gameState.wtPassClaimedFree || []).includes(i)) {
+      var lvlDataFree = WT_PASS_LEVELS.find(function(l) { return l.level === i; });
+      if (lvlDataFree && lvlDataFree.free) {
+        gameState.wtPassClaimedFree = (gameState.wtPassClaimedFree || []).concat([i]);
+        allRewards.push({ levelNum: i, track: 'free', rewardDef: lvlDataFree.free });
       }
     }
-    if (isGold && !(gameState.wtPassClaimedGold||[]).includes(i)) {
-      const lvlData = WT_PASS_LEVELS.find(l => l.level === i);
-      if (lvlData) {
-        wtApplyPassReward(lvlData.gold);
-        gameState.wtPassClaimedGold = [...(gameState.wtPassClaimedGold||[]), i];
-        count++;
+    // GOLD
+    if (isGold && !(gameState.wtPassClaimedGold || []).includes(i)) {
+      var lvlDataGold = WT_PASS_LEVELS.find(function(l) { return l.level === i; });
+      if (lvlDataGold && lvlDataGold.gold) {
+        gameState.wtPassClaimedGold = (gameState.wtPassClaimedGold || []).concat([i]);
+        allRewards.push({ levelNum: i, track: 'gold', rewardDef: lvlDataGold.gold });
       }
+    }
+  }
+
+  if (allRewards.length === 0) {
+    showMarketToast('✓ Все награды уже собраны');
+    return;
+  }
+
+  // Начисляем все ресурсы и собираем игроков
+  var animRewards = [];
+
+  for (var j = 0; j < allRewards.length; j++) {
+    var rDef = allRewards[j].rewardDef;
+
+    if (rDef.type === 'player' || rDef.type === 'finalPlayer') {
+      var minOvr = rDef.minOvr || 94;
+      var maxOvr = rDef.maxOvr || 97;
+      var p = wtGetRandomPlayer(minOvr, maxOvr);
+      var ovr = p ? p.ovr : Math.floor(Math.random() * (maxOvr - minOvr + 1)) + minOvr;
+      var pool = ovr >= 98 ? 'A' : ovr >= 95 ? 'B' : 'C';
+      if (p) wtAddPlayerToCollection(p, 0);
+      animRewards.push({
+        type:   rDef.type,
+        player: p,
+        ovr:    ovr,
+        pool:   pool,
+        amount: 0
+      });
+    } else {
+      var amt = rDef.amount || 0;
+      // Группируем одинаковые типы ресурсов
+      var existing = null;
+      for (var k = 0; k < animRewards.length; k++) {
+        if (animRewards[k].type === rDef.type && !animRewards[k].player) {
+          existing = animRewards[k];
+          break;
+        }
+      }
+      if (existing) {
+        existing.amount += amt;
+      } else {
+        animRewards.push({
+          type:   rDef.type,
+          amount: amt,
+          player: null,
+          ovr:    0,
+          pool:   'C'
+        });
+      }
+      // Начисляем
+      wtApplyPassReward(rDef);
     }
   }
 
   saveState();
   updateHeaderResources();
-  showMarketToast(`✅ Собрано ${count} наград!`);
-  openWTPass();
+
+  // Показываем анимацию пака
+  wtShowPackAnimation(animRewards, function() {
+    openWTPass();
+  });
 }
 
 function wtBuyGoldPass() {
@@ -12591,11 +13414,7 @@ async function wtOpenCell(count) {
 }
 
 async function wtShowCellResults(results) {
-  // Сортируем по убыванию OVR
   results.sort((a,b) => b.ovr - a.ovr);
-
-  const walkouts = results.filter(r => r.pool === 'A' || r.pool === 'B');
-  const regular  = results.filter(r => r.pool === 'C');
 
   const modal = document.createElement('div');
   modal.id = 'wt-cell-results';
@@ -12605,103 +13424,235 @@ async function wtShowCellResults(results) {
     overflow-y:auto;
   `;
 
-  let html = `
-    <div style="background:linear-gradient(135deg,#c0392b,#e67e22,#2980b9);
-      padding:14px 16px;flex-shrink:0;
-      padding-top:calc(14px + env(safe-area-inset-top,0px));
-      display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:16px;font-weight:700;color:#fff;">⚽ Результаты открытия</div>
-      <button onclick="document.getElementById('wt-cell-results').remove();openWTCell();"
-        style="background:rgba(0,0,0,0.3);border:none;color:#fff;padding:6px 12px;
-        border-radius:8px;cursor:pointer;font-family:inherit;">✕ Закрыть</button>
-    </div>
-    <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
-  `;
+  // Разделяем: сначала карточки (walkout потом обычные), потом ресурсы
+  const walkouts = results.filter(r => r.pool === 'A' || r.pool === 'B');
+  const regular  = results.filter(r => r.pool === 'C');
+  // Для ресурсов — нет player (не должно быть в ячейке, но на всякий случай)
+  // В ячейке всегда игроки, поэтому просто показываем всё по порядку
 
-  // Волкауты отдельно — крупно
-  for (const r of walkouts) {
-    const poolColor = r.pool === 'A' ? '#c0392b' : '#2980b9';
-    const poolLabel = r.pool === 'A' ? '👑 Пул A — WALKOUT!' : '⭐ Пул B — WALKOUT!';
-    const imgBg = r.player && r.player.image
-      ? `background-image:url(${r.player.image});background-size:cover;background-position:center top;`
-      : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+  // Порядок для пошагового: сначала walkouts, потом regular
+  const ordered = [...walkouts, ...regular];
+  let currentIdx = 0;
+  const total = ordered.length;
 
-    html += `
-      <div style="background:linear-gradient(135deg,${poolColor}33,rgba(0,0,0,0.5));
-        border:2px solid ${poolColor};border-radius:14px;overflow:hidden;">
-        <div style="padding:8px 12px;background:${poolColor};
-          font-size:13px;font-weight:700;color:#fff;text-align:center;">
-          ${poolLabel}
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;">
-          <div style="${imgBg}width:70px;height:70px;border-radius:10px;flex-shrink:0;
-            background-size:cover;background-position:center;"></div>
-          <div style="flex:1;">
-            <div style="font-size:16px;font-weight:900;color:#fff;">${r.player ? r.player.name : 'Игрок OVR '+r.ovr}</div>
-            <div style="font-size:13px;color:#f0c040;font-weight:700;margin-top:2px;">OVR ${r.ovr}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">
-              ${r.player ? r.player.position+' · '+r.player.club : ''}
-            </div>
-          </div>
-          <div style="font-size:36px;font-weight:900;color:#f0c040;text-shadow:0 0 20px ${poolColor};">
-            ${r.ovr}
-          </div>
-        </div>
-      </div>`;
+  function getResourceIcon(type) {
+    const icons = {
+      coins:    '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:18px;height:18px;vertical-align:middle;">',
+      rubins:   '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:18px;height:18px;vertical-align:middle;">',
+      frags:    '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:18px;height:18px;vertical-align:middle;">',
+      draft:    '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:18px;height:18px;vertical-align:middle;">',
+      xp:       '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:18px;height:18px;vertical-align:middle;">',
+      wtTicket: '<img src="https://i.ibb.co/5x6LKnnF/World-Tournament.png" style="width:18px;height:18px;vertical-align:middle;">',
+      wtTour:   '<img src="https://i.ibb.co/0V6DqG3S/World-Tournament.png" style="width:18px;height:18px;vertical-align:middle;">',
+      offside:  '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:18px;height:18px;vertical-align:middle;">',
+      train:    '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:18px;height:18px;vertical-align:middle;">',
+      ovr:      '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:18px;height:18px;vertical-align:middle;">',
+    };
+    return icons[type] || '🎁';
   }
 
-  // Обычные карточки — сеткой
-  if (regular.length > 0) {
-    html += `<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px;">⚪ Пул C</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">`;
-    for (const r of regular) {
-      const color = getPositionColor(r.player ? r.player.position : 'CM');
+  function getResourceLabel(type, amount) {
+    const labels = {
+      coins:    `+${(amount||0).toLocaleString('ru-RU')} монет`,
+      rubins:   `+${amount||0} сапфиров`,
+      frags:    `+${amount||0} фрагментов`,
+      draft:    `+${amount||0} купонов открытия`,
+      xp:       `+${amount||0} XP`,
+      wtTicket: `+${amount||0} билетов поддержки`,
+      wtTour:   `+${amount||0} очков турне`,
+      offside:  `+${amount||0} Offside-токенов`,
+      train:    `+${amount||0} очков тренировки`,
+      ovr:      `+${amount||0} очков OVR`,
+    };
+    return labels[type] || `+${amount||0}`;
+  }
+
+  function renderSingleCard(r, idx) {
+    const isWalkout = r.pool === 'A' || r.pool === 'B';
+    const poolColor = r.pool === 'A' ? '#c0392b' : r.pool === 'B' ? '#2980b9' : '#7d8e9e';
+    const poolLabel = r.pool === 'A' ? '👑 ПУЛ A — WALKOUT!' : r.pool === 'B' ? '⭐ ПУЛ B — WALKOUT!' : '⚪ Пул C';
+    const hasImg = r.player && (r.player.squadImage || r.player.image);
+    const imgUrl = hasImg ? (r.player.squadImage || r.player.image) : null;
+    const color = r.player ? getPositionColor(r.player.position) : '#7d8e9e';
+
+    if (r.player) {
+      // Карточка игрока
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:20px;">
+          <div style="font-size:13px;font-weight:700;color:${poolColor};margin-bottom:16px;text-align:center;">${poolLabel}</div>
+          <div style="position:relative;width:180px;height:240px;border-radius:16px;overflow:hidden;
+            border:3px solid ${poolColor};box-shadow:0 0 30px ${poolColor}66;margin-bottom:20px;">
+            ${imgUrl
+              ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;object-position:center top;">`
+              : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2f45,#1e3550);"></div>`}
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.1),rgba(0,0,0,0.6));"></div>
+            <div style="position:absolute;top:10px;left:10px;background:${color};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#fff;">
+              ${r.player.position}
+            </div>
+            <div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.7);border-radius:8px;padding:3px 8px;font-size:16px;font-weight:900;color:#f0c040;">
+              ${r.ovr}
+            </div>
+            <div style="position:absolute;bottom:10px;left:10px;right:10px;">
+              <div style="font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.8);">${r.player.name}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.7);">${r.player.club||''}</div>
+            </div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:#f0c040;">OVR ${r.ovr}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;">${r.player.name}</div>
+        </div>`;
+    } else {
+      // Ресурс (на всякий случай)
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:30px;">
+          <div style="font-size:64px;margin-bottom:16px;">${getResourceIcon(r.type)}</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;">${getResourceLabel(r.type, r.amount)}</div>
+        </div>`;
+    }
+  }
+
+  function renderAllCards() {
+    let html = `
+      <div style="background:linear-gradient(135deg,#c0392b,#e67e22,#2980b9);
+        padding:14px 16px;flex-shrink:0;
+        padding-top:calc(14px + env(safe-area-inset-top,0px));
+        display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:16px;font-weight:700;color:#fff;">⚽ Все награды</div>
+        <button onclick="document.getElementById('wt-cell-results').remove();openWTCell();"
+          style="background:rgba(0,0,0,0.3);border:none;color:#fff;padding:6px 12px;
+          border-radius:8px;cursor:pointer;font-family:inherit;">✕ Закрыть</button>
+      </div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">`;
+
+    // Walkouts крупно
+    for (const r of walkouts) {
+      const poolColor = r.pool === 'A' ? '#c0392b' : '#2980b9';
+      const poolLabel = r.pool === 'A' ? '👑 Пул A — WALKOUT!' : '⭐ Пул B — WALKOUT!';
       const hasImg = r.player && (r.player.squadImage || r.player.image);
       const imgStyle = hasImg
         ? `background-image:url(${r.player.squadImage||r.player.image});background-size:cover;background-position:center top;`
         : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
-      const overlayStyle = hasImg ? 'background:rgba(0,0,0,0.45);' : '';
-      const name = r.player ? r.player.name : 'OVR '+r.ovr;
-      const nameParts = name.trim().split(' ');
-      const lastName = nameParts[nameParts.length-1];
 
       html += `
-        <div style="${imgStyle}border:2px solid ${color};border-radius:8px;
-          position:relative;overflow:hidden;aspect-ratio:3/4;">
-          <div style="${overlayStyle}position:absolute;inset:0;display:flex;
-            flex-direction:column;padding:3px;">
-            <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
-              <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;
-                background:${color};display:flex;align-items:center;justify-content:center;
-                font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">
-                ${r.player ? r.player.position : '?'}
-              </div>
-              <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${r.ovr}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
-              <div style="font-size:9px;font-weight:700;color:#fff;text-align:center;
-                line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${lastName}
+        <div style="background:linear-gradient(135deg,${poolColor}33,rgba(0,0,0,0.5));
+          border:2px solid ${poolColor};border-radius:14px;overflow:hidden;">
+          <div style="padding:8px 12px;background:${poolColor};
+            font-size:13px;font-weight:700;color:#fff;text-align:center;">${poolLabel}</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;">
+            <div style="${imgStyle}width:70px;height:70px;border-radius:10px;flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div style="font-size:16px;font-weight:900;color:#fff;">${r.player ? r.player.name : 'OVR '+r.ovr}</div>
+              <div style="font-size:13px;color:#f0c040;font-weight:700;margin-top:2px;">OVR ${r.ovr}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">
+                ${r.player ? r.player.position+' · '+r.player.club : ''}
               </div>
             </div>
+            <div style="font-size:36px;font-weight:900;color:#f0c040;">${r.ovr}</div>
           </div>
         </div>`;
     }
-    html += `</div>`;
+
+    // Обычные сеткой
+    if (regular.length > 0) {
+      html += `<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px;">⚪ Пул C</div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">`;
+      for (const r of regular) {
+        const color = getPositionColor(r.player ? r.player.position : 'CM');
+        const hasImg = r.player && (r.player.squadImage || r.player.image);
+        const imgStyle = hasImg
+          ? `background-image:url(${r.player.squadImage||r.player.image});background-size:cover;background-position:center top;`
+          : `background:linear-gradient(135deg,#1a2f45,#1e3550);`;
+        const overlayStyle = hasImg ? 'background:rgba(0,0,0,0.45);' : '';
+        const name = r.player ? r.player.name : 'OVR '+r.ovr;
+        const nameParts = name.trim().split(' ');
+        const lastName = nameParts[nameParts.length-1];
+
+        html += `
+          <div style="${imgStyle}border:2px solid ${color};border-radius:8px;
+            position:relative;overflow:hidden;aspect-ratio:3/4;">
+            <div style="${overlayStyle}position:absolute;inset:0;display:flex;
+              flex-direction:column;padding:3px;">
+              <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:auto;">
+                <div style="min-width:20px;height:16px;padding:0 3px;border-radius:8px;
+                  background:${color};display:flex;align-items:center;justify-content:center;
+                  font-size:6px;font-weight:900;color:#fff;flex-shrink:0;line-height:1;white-space:nowrap;">
+                  ${r.player ? r.player.position : '?'}
+                </div>
+                <div style="font-size:11px;font-weight:900;color:#f0c040;line-height:1;">${r.ovr}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+                <div style="font-size:9px;font-weight:700;color:#fff;text-align:center;
+                  line-height:1.2;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  ${lastName}
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+      html += `</div>`;
+    }
+
+    html += `
+        <button onclick="document.getElementById('wt-cell-results').remove();openWTCell();"
+          style="width:100%;padding:14px;background:linear-gradient(135deg,#c0392b,#e67e22);
+          border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;
+          cursor:pointer;font-family:inherit;margin-top:6px;">
+          ⚽ Открыть ещё
+        </button>
+      </div>`;
+    return html;
   }
 
-  html += `
-      <button onclick="document.getElementById('wt-cell-results').remove();openWTCell();"
-        style="width:100%;padding:14px;background:linear-gradient(135deg,#c0392b,#e67e22);
-        border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;
-        cursor:pointer;font-family:inherit;margin-top:6px;">
-        ⚽ Открыть ещё
-      </button>
-    </div>
-  `;
+  function renderStep(idx) {
+    const r = ordered[idx];
+    const isLast = idx === total - 1;
 
-  modal.innerHTML = html;
+    modal.innerHTML = `
+      <div style="background:linear-gradient(135deg,#c0392b,#e67e22,#2980b9);
+        padding:14px 16px;flex-shrink:0;
+        padding-top:calc(14px + env(safe-area-inset-top,0px));
+        display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;color:rgba(255,255,255,0.8);">${idx+1} / ${total}</div>
+        <div style="font-size:15px;font-weight:700;color:#fff;">⚽ Открытие WT</div>
+        <button id="wt-show-all-btn"
+          style="background:rgba(0,0,0,0.3);border:none;color:#fff;padding:6px 10px;
+          border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;">
+          Показать всё
+        </button>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        ${renderSingleCard(r, idx)}
+      </div>
+      <div style="padding:14px;flex-shrink:0;">
+        <button id="wt-next-btn"
+          style="width:100%;padding:16px;
+            background:linear-gradient(135deg,#c0392b,#e67e22);
+            border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:700;
+            cursor:pointer;font-family:inherit;">
+          ${isLast ? '🎉 Показать всё' : 'Далее →'}
+        </button>
+      </div>`;
+
+    document.getElementById('wt-next-btn').addEventListener('click', function() {
+      if (isLast) {
+        modal.innerHTML = renderAllCards();
+      } else {
+        currentIdx++;
+        renderStep(currentIdx);
+      }
+    });
+
+    document.getElementById('wt-show-all-btn').addEventListener('click', function() {
+      modal.innerHTML = renderAllCards();
+    });
+  }
+
   document.body.appendChild(modal);
+
+  if (total === 0) {
+    modal.innerHTML = renderAllCards();
+  } else {
+    renderStep(0);
+  }
 }
 
 // ── ТРЕНИРОВОЧНАЯ БАЗА ────────────────────────────────────────────────────
