@@ -570,6 +570,7 @@ body {
     <div class="resource-item"><img src="https://i.ibb.co/JRnypxvR/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-coins">0</span></div>
     <div class="resource-item"><img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-rubins">0</span></div>
     <div class="resource-item"><img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-offside">0</span></div>
+    <div class="resource-item" title="Премиум-токены"><img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="header-premium">0</span></div>
   </div>
   <div class="resources-row" style="display:none;">
     <div class="resource-item"><img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:16px;height:16px;vertical-align:middle;" /><span class="val" id="hdr-xp">0</span></div>
@@ -606,6 +607,7 @@ const STORAGE_KEY = 'footballManager_gameState';
 const DEFAULT_STATE = {
   rubins: 1500, offsideTokens: 0, trainingPoints: 1000, ovrUpgradePoints: 500,
   passCredits: 0, fragments: 500, draftTokens: 10, xp: 0, level: 0, coins: 50000,
+  premiumTokens: 0,        // Премиум-токены (только через промокод/администратора)
   nickname: '', playerId: '', stars: 0, matchesPlayed: 0, goalsScored: 0,
   registered: false, awaitingNickname: false, awaitingClubName: false, clubName: '',
   customDataUrl: '',
@@ -617,6 +619,7 @@ const DEFAULT_STATE = {
   kitColor: '#3a7bd5',       // цвет полевых игроков
   kitColorGK: '#f0c040',     // цвет вратаря
   marketWatchlist: [],
+  premiumOffersPurchased: {},   // сколько раз куплено каждое спецпредложение { 'pt_double_a': 1, ... }
 };
 
 let gameState = {};
@@ -663,6 +666,8 @@ function updateHeaderResources() {
 
   document.getElementById('hdr-rubins').textContent  = fmtNum(gameState.rubins);
   document.getElementById('hdr-offside').textContent = fmtNum(gameState.offsideTokens);
+  var premEl = document.getElementById('header-premium');
+  if (premEl) premEl.textContent = gameState.premiumTokens || 0;
   document.getElementById('hdr-coins').textContent   = fmtNum(gameState.coins);
 
   const totalXp  = gameState.xp ?? 0;
@@ -3300,8 +3305,10 @@ function renderShopScreen() {
     } else {
       html += '<div style="display:flex;flex-direction:column;gap:10px;">';
       for (const pack of packs) {
-        const currencyIcon = pack.currency === 'rubins'
-          ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
+      const currencyIcon = pack.currency === 'rubins'
+        ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
+        : pack.currency === 'premiumTokens'
+          ? '<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:14px;height:14px;vertical-align:middle;" />'
           : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
         html += `<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px;cursor:pointer;" onclick="shopState.screen={packInfo:'${pack.id}',returnTo:'${category}'};renderShopScreen();">`;
         if (pack.label) html += `<div style="font-size:10px;color:#f0c040;margin-bottom:4px;">${pack.label}</div>`;
@@ -3319,7 +3326,9 @@ function renderShopScreen() {
     if (!pack) { shopState.screen = 'packs'; renderShopScreen(); return; }
     const currencyIcon = pack.currency === 'rubins'
       ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
-      : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+      : pack.currency === 'premiumTokens'
+        ? '<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:14px;height:14px;vertical-align:middle;" />'
+        : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
     html = backBtn + `<h3 style="margin:0 0 12px;">${pack.emoji} ${pack.name}</h3>`;
     html += `<div style="font-size:12px;color:#7d8e9e;margin-bottom:8px;">${pack.description || ''}</div>`;
     if (pack.type === 'players') {
@@ -3377,7 +3386,22 @@ async function purchasePack(packId) {
   const pack = SHOP_PACKS.find(p => p.id === packId);
   if (!pack) { await botReply('❌ Пак не найден.', 300); return; }
 
-  const currencyKey = pack.currency === 'rubins' ? 'rubins' : 'offsideTokens';
+  const currencyKey = pack.currency === 'rubins' 
+    ? 'rubins' 
+    : pack.currency === 'premiumTokens' 
+      ? 'premiumTokens' 
+      : 'offsideTokens';
+
+  // ── Проверка лимита покупок ───────────────────────────────────────────
+  if (pack.buyLimit) {
+    gameState.packBuyCount = gameState.packBuyCount || {};
+    const bought = gameState.packBuyCount[pack.id] || 0;
+    if (bought >= pack.buyLimit) {
+      await botReply(`❌ Это предложение можно купить только ${pack.buyLimit} раз.`, 400);
+      return;
+    }
+  }
+  
   if ((gameState[currencyKey] || 0) < pack.price) {
     await botReply(`❌ Недостаточно средств.`, 400);
     return;
@@ -3408,6 +3432,12 @@ async function purchasePack(packId) {
   }
 
   gameState[currencyKey] -= pack.price;
+
+  // ── Фиксируем покупку (лимит) ─────────────────────────────────────────
+  if (pack.buyLimit) {
+    gameState.packBuyCount = gameState.packBuyCount || {};
+    gameState.packBuyCount[pack.id] = (gameState.packBuyCount[pack.id] || 0) + 1;
+  }
 
   // ── Ресурсный пак ──────────────────────────────────────────────────────
   if (pack.type === 'resources') {
@@ -3482,7 +3512,9 @@ async function purchasePack(packId) {
   // Сообщение об остатке средств
   const currencyIcon = pack.currency === 'rubins'
     ? '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" />'
-    : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
+    : pack.currency === 'premiumTokens'
+      ? '🔑'
+      : '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" />';
   await botReply(`${currencyIcon} Остаток: <b>${gameState[currencyKey] || 0}</b>`, 400, { html: true });
 
   await showReturnToShopButton();
@@ -4600,6 +4632,144 @@ const SHOP_PACKS = [
       { minOvr:95, maxOvr:99, chance:5  }
     ]
   },
+  // ── Offside-токены (одиночные) ────────────────────────────────────────
+{
+  id: 'special_offside_100',
+  name: '100 Offside-токенов',
+  emoji: '🪙',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 10,
+  count: 1,
+  label: '',
+  description: '100 Offside-токенов',
+  resourceReward: { offsideTokens: 100 }
+},
+{
+  id: 'special_offside_500',
+  name: '500 Offside-токенов',
+  emoji: '🪙',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 45,
+  count: 1,
+  label: 'Скидка 10%',
+  description: '500 Offside-токенов — выгоднее на 10%',
+  resourceReward: { offsideTokens: 500 }
+},
+{
+  id: 'special_offside_1000',
+  name: '1.000 Offside-токенов',
+  emoji: '🪙',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 80,
+  count: 1,
+  label: 'Скидка 20%',
+  description: '1.000 Offside-токенов — выгоднее на 20%',
+  resourceReward: { offsideTokens: 1000 }
+},
+{
+  id: 'special_offside_5000',
+  name: '5.000 Offside-токенов',
+  emoji: '🪙',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 300,
+  count: 1,
+  label: 'Скидка 40%',
+  description: '5.000 Offside-токенов — выгоднее на 40%',
+  resourceReward: { offsideTokens: 5000 }
+},
+{
+  id: 'special_offside_10000',
+  name: '10.000 Offside-токенов',
+  emoji: '🪙',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 500,
+  count: 1,
+  label: 'Скидка 50%',
+  description: '10.000 Offside-токенов — выгоднее на 50%',
+  resourceReward: { offsideTokens: 10000 }
+},
+
+// ── Двойные предложения ───────────────────────────────────────────────
+{
+  id: 'special_double_a',
+  name: 'Двойное предложение A',
+  emoji: '🎁',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 10,
+  count: 1,
+  label: 'Скидка 200%',
+  description: '100 + 100 Offside-токенов (бонус)',
+  buyLimit: 1,
+  resourceReward: { offsideTokens: 200 }
+},
+{
+  id: 'special_double_b',
+  name: 'Двойное предложение B',
+  emoji: '🎁',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 45,
+  count: 1,
+  label: 'Скидка 200%',
+  description: '500 + 500 Offside-токенов (бонус)',
+  buyLimit: 1,
+  resourceReward: { offsideTokens: 1000 }
+},
+{
+  id: 'special_double_c',
+  name: 'Двойное предложение C',
+  emoji: '🎁',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 80,
+  count: 1,
+  label: 'Скидка 200%',
+  description: '1.000 + 1.000 Offside-токенов (бонус)',
+  buyLimit: 1,
+  resourceReward: { offsideTokens: 2000 }
+},
+{
+  id: 'special_double_d',
+  name: 'Двойное предложение D',
+  emoji: '🎁',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 300,
+  count: 1,
+  label: 'Скидка 200%',
+  description: '5.000 + 5.000 Offside-токенов (бонус)',
+  buyLimit: 1,
+  resourceReward: { offsideTokens: 10000 }
+},
+{
+  id: 'special_double_e',
+  name: 'Двойное предложение E',
+  emoji: '🎁',
+  category: 'special',
+  type: 'resources',
+  currency: 'premiumTokens',
+  price: 500,
+  count: 1,
+  label: 'Скидка 200%',
+  description: '10.000 + 10.000 Offside-токенов (бонус)',
+  buyLimit: 1,
+  resourceReward: { offsideTokens: 20000 }
+},
   // ── Ресурсный пак (фиксированная награда) ────────────────────
   {
     id: 'resource_training',
@@ -4842,44 +5012,59 @@ async function redeemPromoCode() {
   if (!input) { await botReply('⚠️ Ошибка интерфейса.', 300); return; }
   const code = input.value.trim().toUpperCase();
   if (!code) { await botReply('❌ Введи промокод.', 300); return; }
-  const def = PROMO_CODES.find(p=>p.code.toUpperCase()===code);
+  const def = PROMO_CODES.find(p => p.code.toUpperCase() === code);
   if (!def) { await botReply('❌ Неверный промокод.', 400); return; }
   if (!gameState.promoUsed) gameState.promoUsed = [];
-  if (def.limit==='once_per_player' && gameState.promoUsed.includes(code)) { await botReply('❌ Ты уже использовал этот код.', 400); return; }
-  if (typeof def.globalLimit==='number') {
+  if (def.limit === 'once_per_player' && gameState.promoUsed.includes(code)) {
+    await botReply('❌ Ты уже использовал этот код.', 400); return;
+  }
+  if (typeof def.globalLimit === 'number') {
     const gk = `promo_global_${code}`;
-    let gc = parseInt(localStorage.getItem(gk)||'0',10);
+    let gc = parseInt(localStorage.getItem(gk) || '0', 10);
     if (gc >= def.globalLimit) { await botReply('❌ Лимит использований исчерпан.', 400); return; }
-    gc++; localStorage.setItem(gk, String(gc));
+    gc++;
+    localStorage.setItem(gk, String(gc));
   }
   gameState.promoUsed.push(code);
-  const r = def.rewards||{};
-  if (r.rubins) gameState.rubins = (gameState.rubins||0)+r.rubins;
-  if (r.offsideTokens) gameState.offsideTokens = (gameState.offsideTokens||0)+r.offsideTokens;
-  if (r.trainingPoints) gameState.trainingPoints = (gameState.trainingPoints||0)+r.trainingPoints;
-  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints||0)+r.ovrUpgradePoints;
-  if (r.fragments) gameState.fragments = (gameState.fragments||0)+r.fragments;
-  if (r.draftTokens) gameState.draftTokens = (gameState.draftTokens||0)+r.draftTokens;
-  if (r.passCredits) gameState.passCredits = (gameState.passCredits||0)+r.passCredits;
+  const r = def.rewards || {};
+  if (r.rubins)           gameState.rubins           = (gameState.rubins           || 0) + r.rubins;
+  if (r.offsideTokens)    gameState.offsideTokens    = (gameState.offsideTokens    || 0) + r.offsideTokens;
+  if (r.trainingPoints)   gameState.trainingPoints   = (gameState.trainingPoints   || 0) + r.trainingPoints;
+  if (r.ovrUpgradePoints) gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + r.ovrUpgradePoints;
+  if (r.fragments)        gameState.fragments        = (gameState.fragments        || 0) + r.fragments;
+  if (r.draftTokens)      gameState.draftTokens      = (gameState.draftTokens      || 0) + r.draftTokens;
+  if (r.passCredits)      gameState.passCredits      = (gameState.passCredits      || 0) + r.passCredits;
+  if (r.premiumTokens)    gameState.premiumTokens    = (gameState.premiumTokens    || 0) + r.premiumTokens;
+  if (r.coins)            gameState.coins            = (gameState.coins            || 0) + r.coins;
   if (r.playerIds?.length) {
     for (const pid of r.playerIds) {
-      const tpl = allPlayers.find(p=>p.id===pid);
-      if (tpl) { const np = JSON.parse(JSON.stringify(tpl)); np.trainingLevel=0; np.ovrUpgrade=0; np.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9); gameState.myPlayers.push(np); }
+      const tpl = allPlayers.find(p => p.id === pid);
+      if (tpl) {
+        const np = JSON.parse(JSON.stringify(tpl));
+        np.trainingLevel = 0;
+        np.ovrUpgrade = 0;
+        np.cardId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        gameState.myPlayers.push(np);
+      }
     }
   }
-  saveState(); updateHeaderResources();
+  saveState();
+  updateHeaderResources();
+
   let msg = `✅ Промокод <b>${code}</b> активирован! Получено: `;
   const parts = [];
-  if (r.rubins) parts.push(`<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.rubins} сапфиров`);
-  if (r.offsideTokens) parts.push(`<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.offsideTokens} Offside-токенов`);
-  if (r.trainingPoints) parts.push(`<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.trainingPoints} очк.трен.`);
+  if (r.rubins)           parts.push(`<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.rubins} сапфиров`);
+  if (r.offsideTokens)    parts.push(`<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.offsideTokens} Offside-токенов`);
+  if (r.trainingPoints)   parts.push(`<img src="https://i.ibb.co/gb178dPT/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.trainingPoints} очк.трен.`);
   if (r.ovrUpgradePoints) parts.push(`<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.ovrUpgradePoints} очк.OVR`);
-  if (r.fragments) parts.push(`<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.fragments} фрагм.`);
-  if (r.draftTokens) parts.push(`<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.draftTokens} купонов`);
-  if (r.passCredits) parts.push(`<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.passCredits} очков прогресса`);
+  if (r.fragments)        parts.push(`<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.fragments} фрагм.`);
+  if (r.draftTokens)      parts.push(`<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.draftTokens} купонов`);
+  if (r.passCredits)      parts.push(`<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.passCredits} очков прогресса`);
+  if (r.premiumTokens)    parts.push(`<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.premiumTokens} Премиум-токенов`);
+  if (r.coins)            parts.push(`<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:14px;height:14px;vertical-align:middle;" /> ${r.coins} монет`);
   if (r.playerIds?.length) parts.push(`👤 ${r.playerIds.length} игр.`);
-  msg += parts.join(', ')+'.';
-  await botReply(msg, 600, {html:true});
+  msg += parts.join(', ') + '.';
+  await botReply(msg, 600, { html: true });
   input.value = '';
 }
   // ========== DRAFTS ==========
@@ -10780,6 +10965,9 @@ function wtIsActive() {
 // ── Иконки валют ─────────────────────────────────────────────────────────
 const WT_TICKET_ICON = '<img src="https://i.ibb.co/5x6LKnnF/World-Tournament.png" style="width:14px;height:14px;vertical-align:middle;" />';
 const WT_TOUR_ICON   = '<img src="https://i.ibb.co/0V6DqG3S/World-Tournament.png" style="width:14px;height:14px;vertical-align:middle;" />';
+const PREMIUM_TOKEN_ICON = '<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:14px;height:14px;vertical-align:middle;" />';
+const PREMIUM_TOKEN_ICON_SM = '<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:12px;height:12px;vertical-align:middle;" />';
+const PREMIUM_TOKEN_ICON_LG = '<img src="https://i.ibb.co/SXBQWbPk/Premium-token.png" style="width:20px;height:20px;vertical-align:middle;" />';
 
 // ── Сборные ───────────────────────────────────────────────────────────────
 const WT_TEAMS = [
@@ -10855,6 +11043,115 @@ const WT_PASS_LEVELS = [
 
 // ── Игроки Турне ──────────────────────────────────────────────────────────
 // Заполни playerIds сам — это id из allPlayers (OVR 94-103, program:'World Tournament')
+// ── Иконки Премиум-токена ─────────────────────────────────────────────────
+
+// ── Спецпредложения за Премиум-токены ─────────────────────────────────────
+// discount: число = скидка в %, 'x2' = двойное предложение
+// limit: null = без ограничений, 1 = один раз
+const PREMIUM_SPECIAL_OFFERS = [
+  // ── Обычные (без лимита) ──────────────────────────────────────────────
+  {
+    id: 'pt_offside_100',
+    name: '100 Offside-токенов',
+    price: 10,
+    reward: { offsideTokens: 100 },
+    bonusReward: null,
+    limit: null,
+    discount: null,
+    double: false
+  },
+  {
+    id: 'pt_offside_500',
+    name: '500 Offside-токенов',
+    price: 45,
+    reward: { offsideTokens: 500 },
+    bonusReward: null,
+    limit: null,
+    discount: 10,   // 500 по базе = 50 PT, платим 45 → -10%
+    double: false
+  },
+  {
+    id: 'pt_offside_1000',
+    name: '1.000 Offside-токенов',
+    price: 80,
+    reward: { offsideTokens: 1000 },
+    bonusReward: null,
+    limit: null,
+    discount: 20,   // 1000 по базе = 100 PT, платим 80 → -20%
+    double: false
+  },
+  {
+    id: 'pt_offside_5000',
+    name: '5.000 Offside-токенов',
+    price: 300,
+    reward: { offsideTokens: 5000 },
+    bonusReward: null,
+    limit: null,
+    discount: 40,   // 5000 по базе = 500 PT, платим 300 → -40%
+    double: false
+  },
+  {
+    id: 'pt_offside_10000',
+    name: '10.000 Offside-токенов',
+    price: 500,
+    reward: { offsideTokens: 10000 },
+    bonusReward: null,
+    limit: null,
+    discount: 50,   // 10000 по базе = 1000 PT, платим 500 → -50%
+    double: false
+  },
+  // ── Двойные (лимит 1 покупка) ─────────────────────────────────────────
+  {
+    id: 'pt_double_a',
+    name: 'Двойное предложение A',
+    price: 10,
+    reward: { offsideTokens: 100 },
+    bonusReward: { offsideTokens: 100 },
+    limit: 1,
+    discount: 'x2',
+    double: true
+  },
+  {
+    id: 'pt_double_b',
+    name: 'Двойное предложение B',
+    price: 45,
+    reward: { offsideTokens: 500 },
+    bonusReward: { offsideTokens: 500 },
+    limit: 1,
+    discount: 'x2',
+    double: true
+  },
+  {
+    id: 'pt_double_c',
+    name: 'Двойное предложение C',
+    price: 80,
+    reward: { offsideTokens: 1000 },
+    bonusReward: { offsideTokens: 1000 },
+    limit: 1,
+    discount: 'x2',
+    double: true
+  },
+  {
+    id: 'pt_double_d',
+    name: 'Двойное предложение D',
+    price: 300,
+    reward: { offsideTokens: 5000 },
+    bonusReward: { offsideTokens: 5000 },
+    limit: 1,
+    discount: 'x2',
+    double: true
+  },
+  {
+    id: 'pt_double_e',
+    name: 'Двойное предложение E',
+    price: 500,
+    reward: { offsideTokens: 10000 },
+    bonusReward: { offsideTokens: 10000 },
+    limit: 1,
+    discount: 'x2',
+    double: true
+  },
+];
 const WT_TOUR_PLAYERS = [
   // { id: 207, price: 200 },
   // { id: 206, price: 200 },
@@ -10929,6 +11226,8 @@ Object.assign(DEFAULT_STATE, {
   wtAllQuestsBonusClaimed: false,
   wtTourPointsTotal:   0,      // всего заработано очков турне (для квеста)
   wtMatchesTotal:      0,      // матчей сыграно в дивизионе (для квеста)
+  premiumTokens:       0,       
+  specialOffersBought: [],     // для лимитных покупок
 });
 
 // ── Инициализация квестов WT ──────────────────────────────────────────────
