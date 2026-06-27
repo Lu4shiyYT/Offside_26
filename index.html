@@ -10995,17 +10995,24 @@ function wtApplyPassReward(rewardDef) {
       var p = wtGetRandomPlayer(minOvr, maxOvr);
       if (p) wtAddPlayerToCollection(p, 0);
       break;
-    case 'coins':        gameState.coins            = (gameState.coins || 0)            + amt; break;
-    case 'rubins':       gameState.rubins           = (gameState.rubins || 0)           + amt; break;
-    case 'frags':        gameState.fragments        = (gameState.fragments || 0)        + amt; break;
-    case 'draft':        gameState.draftTokens      = (gameState.draftTokens || 0)      + amt; break;
-    case 'xp':           gameState.xp               = (gameState.xp || 0)               + amt; break;
-    case 'wtTicket':     gameState.wtTickets        = (gameState.wtTickets || 0)        + amt; break;
-    case 'wtTour':       gameState.wtTourPoints     = (gameState.wtTourPoints || 0)     + amt; break;
-    case 'offside':      gameState.offsideTokens    = (gameState.offsideTokens || 0)    + amt; break;
-    case 'train':        gameState.trainingPoints   = (gameState.trainingPoints || 0)   + amt; break;
-    case 'ovr':          gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
-    case 'passCredits':  gameState.wtPassCredits    = (gameState.wtPassCredits || 0)    + amt; break;
+    // ─── Полные названия (из WT_PASS_LEVELS) ─────────────────────────
+    case 'coins':            gameState.coins            = (gameState.coins            || 0) + amt; break;
+    case 'rubins':           gameState.rubins           = (gameState.rubins           || 0) + amt; break;
+    case 'fragments':        gameState.fragments        = (gameState.fragments        || 0) + amt; break;
+    case 'draftTokens':      gameState.draftTokens      = (gameState.draftTokens      || 0) + amt; break;
+    case 'trainingPoints':   gameState.trainingPoints   = (gameState.trainingPoints   || 0) + amt; break;
+    case 'ovrUpgradePoints': gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
+    case 'passCredits':      gameState.wtPassCredits    = (gameState.wtPassCredits    || 0) + amt; break;
+    // ─── Короткие алиасы ─────────────────────────────────────────────
+    case 'frags':       gameState.fragments        = (gameState.fragments        || 0) + amt; break;
+    case 'draft':       gameState.draftTokens      = (gameState.draftTokens      || 0) + amt; break;
+    case 'train':       gameState.trainingPoints   = (gameState.trainingPoints   || 0) + amt; break;
+    case 'ovr':         gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
+    // ─── Прочие ──────────────────────────────────────────────────────
+    case 'xp':          gameState.xp               = (gameState.xp               || 0) + amt; break;
+    case 'wtTicket':    gameState.wtTickets        = (gameState.wtTickets        || 0) + amt; break;
+    case 'wtTour':      gameState.wtTourPoints     = (gameState.wtTourPoints     || 0) + amt; break;
+    case 'offside':     gameState.offsideTokens    = (gameState.offsideTokens    || 0) + amt; break;
   }
 }
 
@@ -11019,17 +11026,24 @@ function wtPassRewardIcon(reward) {
   }
 
   var icons = {
-    coins:       '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:24px;height:24px;object-fit:contain;">',
-    rubins:      '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:24px;height:24px;object-fit:contain;">',
-    frags:       '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:24px;height:24px;object-fit:contain;">',
-    draft:       '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    // ─── Основные типы из WT_PASS_LEVELS ───────────────────────────────
+    coins:            '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    rubins:           '<img src="https://i.ibb.co/5gkW9zFJ/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    fragments:        '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    draftTokens:      '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    trainingPoints:   '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    ovrUpgradePoints: '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:24px;height:24px;object-fit:contain;">',
+    passCredits:      '<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    // ─── Алиасы (короткие) ─────────────────────────────────────────────
+    frags:            '<img src="https://i.ibb.co/xtBftkpX/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    draft:            '<img src="https://i.ibb.co/6RTT8K1z/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    train:            '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:24px;height:24px;object-fit:contain;">',
+    ovr:              '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:24px;height:24px;object-fit:contain;">',
+    // ─── Прочие ────────────────────────────────────────────────────────
     xp:          '<img src="https://i.ibb.co/TxwKYZVc/XP.png" style="width:24px;height:24px;object-fit:contain;">',
     wtTicket:    '<img src="https://i.ibb.co/5x6LKnnF/World-Tournament.png" style="width:24px;height:24px;object-fit:contain;">',
     wtTour:      '<img src="https://i.ibb.co/0V6DqG3S/World-Tournament.png" style="width:24px;height:24px;object-fit:contain;">',
-    offside:     '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:24px;height:24px;object-fit:contain;">',
-    train:       '<img src="https://i.ibb.co/gb178dPT/image.png" style="width:24px;height:24px;object-fit:contain;">',
-    ovr:         '<img src="https://i.ibb.co/jv3KsbMx/OVR.png" style="width:24px;height:24px;object-fit:contain;">',
-    passCredits: '<img src="https://i.ibb.co/zVW0z5nQ/image.png" style="width:24px;height:24px;object-fit:contain;">'
+    offside:     '<img src="https://i.ibb.co/Cpq33M9q/Offside.png" style="width:24px;height:24px;object-fit:contain;">'
   };
 
   return icons[type] || '<img src="https://i.ibb.co/JRnypxvR/image.png" style="width:24px;height:24px;object-fit:contain;">';
@@ -11044,17 +11058,24 @@ function wtPassRewardLabel(reward) {
   if (type === 'finalPlayer') return 'Игрок ' + (reward.minOvr || 98) + '–' + (reward.maxOvr || 101) + ' OVR';
 
   var labels = {
-    coins:       '+' + amt.toLocaleString('ru-RU') + ' монет',
-    rubins:      '+' + amt + ' сапфиров',
-    frags:       '+' + amt + ' фрагментов',
-    draft:       '+' + amt + ' купонов',
+    // ─── Основные типы из WT_PASS_LEVELS ───────────────────────────────
+    coins:            '+' + amt.toLocaleString('ru-RU') + ' монет',
+    rubins:           '+' + amt + ' сапфиров',
+    fragments:        '+' + amt + ' фрагментов',
+    draftTokens:      '+' + amt + ' купонов',
+    trainingPoints:   '+' + amt + ' оч. трен.',
+    ovrUpgradePoints: '+' + amt + ' оч. OVR',
+    passCredits:      '+' + amt + ' оч. абон.',
+    // ─── Алиасы (короткие) ─────────────────────────────────────────────
+    frags:            '+' + amt + ' фрагментов',
+    draft:            '+' + amt + ' купонов',
+    train:            '+' + amt + ' оч. трен.',
+    ovr:              '+' + amt + ' оч. OVR',
+    // ─── Прочие ────────────────────────────────────────────────────────
     xp:          '+' + amt + ' XP',
     wtTicket:    '+' + amt + ' билетов',
     wtTour:      '+' + amt + ' оч. турне',
-    offside:     '+' + amt + ' Offside',
-    train:       '+' + amt + ' оч. трен.',
-    ovr:         '+' + amt + ' оч. OVR',
-    passCredits: '+' + amt + ' оч. абон.'
+    offside:     '+' + amt + ' Offside'
   };
 
   return labels[type] || ('+' + amt);
@@ -12563,17 +12584,24 @@ function wtShowPackAnimation(rewards, onDone) {
   function getResIconImg(type, size) {
     size = size || 32;
     var urls = {
-      coins:       'https://i.ibb.co/JRnypxvR/image.png',
-      rubins:      'https://i.ibb.co/5gkW9zFJ/image.png',
-      frags:       'https://i.ibb.co/xtBftkpX/image.png',
-      draft:       'https://i.ibb.co/6RTT8K1z/image.png',
+      // ─── Основные типы из WT_PASS_LEVELS ─────────────────────────────
+      coins:            'https://i.ibb.co/JRnypxvR/image.png',
+      rubins:           'https://i.ibb.co/5gkW9zFJ/image.png',
+      fragments:        'https://i.ibb.co/xtBftkpX/image.png',
+      draftTokens:      'https://i.ibb.co/6RTT8K1z/image.png',
+      trainingPoints:   'https://i.ibb.co/gb178dPT/image.png',
+      ovrUpgradePoints: 'https://i.ibb.co/jv3KsbMx/OVR.png',
+      passCredits:      'https://i.ibb.co/zVW0z5nQ/image.png',
+      // ─── Алиасы (короткие) ───────────────────────────────────────────
+      frags:            'https://i.ibb.co/xtBftkpX/image.png',
+      draft:            'https://i.ibb.co/6RTT8K1z/image.png',
+      train:            'https://i.ibb.co/gb178dPT/image.png',
+      ovr:              'https://i.ibb.co/jv3KsbMx/OVR.png',
+      // ─── Прочие ──────────────────────────────────────────────────────
       xp:          'https://i.ibb.co/TxwKYZVc/XP.png',
       wtTicket:    'https://i.ibb.co/5x6LKnnF/World-Tournament.png',
       wtTour:      'https://i.ibb.co/0V6DqG3S/World-Tournament.png',
-      offside:     'https://i.ibb.co/Cpq33M9q/Offside.png',
-      train:       'https://i.ibb.co/gb178dPT/image.png',
-      ovr:         'https://i.ibb.co/jv3KsbMx/OVR.png',
-      passCredits: 'https://i.ibb.co/zVW0z5nQ/image.png'
+      offside:     'https://i.ibb.co/Cpq33M9q/Offside.png'
     };
     var url = urls[type];
     if (!url) return '<span style="font-size:' + size + 'px;">🎁</span>';
@@ -12584,17 +12612,24 @@ function wtShowPackAnimation(rewards, onDone) {
   function getResLabel(type, amount) {
     var amt = amount || 0;
     var map = {
-      coins:       '+' + amt.toLocaleString('ru-RU') + ' монет',
-      rubins:      '+' + amt + ' сапфиров',
-      frags:       '+' + amt + ' фрагментов',
-      draft:       '+' + amt + ' купонов',
+      // ─── Основные типы из WT_PASS_LEVELS ─────────────────────────────
+      coins:            '+' + amt.toLocaleString('ru-RU') + ' монет',
+      rubins:           '+' + amt + ' сапфиров',
+      fragments:        '+' + amt + ' фрагментов',
+      draftTokens:      '+' + amt + ' купонов',
+      trainingPoints:   '+' + amt + ' оч. трен.',
+      ovrUpgradePoints: '+' + amt + ' оч. OVR',
+      passCredits:      '+' + amt + ' оч. абон.',
+      // ─── Алиасы (короткие) ───────────────────────────────────────────
+      frags:            '+' + amt + ' фрагментов',
+      draft:            '+' + amt + ' купонов',
+      train:            '+' + amt + ' оч. трен.',
+      ovr:              '+' + amt + ' оч. OVR',
+      // ─── Прочие ──────────────────────────────────────────────────────
       xp:          '+' + amt + ' XP',
       wtTicket:    '+' + amt + ' билетов',
       wtTour:      '+' + amt + ' оч. турне',
-      offside:     '+' + amt + ' Offside',
-      train:       '+' + amt + ' оч. трен.',
-      ovr:         '+' + amt + ' оч. OVR',
-      passCredits: '+' + amt + ' оч. абон.'
+      offside:     '+' + amt + ' Offside'
     };
     return map[type] || ('+' + amt);
   }
@@ -12995,44 +13030,25 @@ function wtClaimPassLevel(lvlNum, track) {
     });
 
     // Начисляем ресурс
+    // Начисляем ресурс
     switch (rewardDef.type) {
-      case 'coins':
-        gameState.coins = (gameState.coins || 0) + amt;
-        break;
-      case 'rubins':
-        gameState.rubins = (gameState.rubins || 0) + amt;
-        break;
-      case 'frags':
-        gameState.fragments = (gameState.fragments || 0) + amt;
-        break;
-      case 'draft':
-        gameState.draftTokens = (gameState.draftTokens || 0) + amt;
-        break;
+      case 'coins':            gameState.coins            = (gameState.coins            || 0) + amt; break;
+      case 'rubins':           gameState.rubins           = (gameState.rubins           || 0) + amt; break;
+      case 'fragments':        gameState.fragments        = (gameState.fragments        || 0) + amt; break;
+      case 'draftTokens':      gameState.draftTokens      = (gameState.draftTokens      || 0) + amt; break;
+      case 'trainingPoints':   gameState.trainingPoints   = (gameState.trainingPoints   || 0) + amt; break;
+      case 'ovrUpgradePoints': gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
+      case 'passCredits':      gameState.wtPassCredits    = (gameState.wtPassCredits    || 0) + amt; break;
+      case 'frags':            gameState.fragments        = (gameState.fragments        || 0) + amt; break;
+      case 'draft':            gameState.draftTokens      = (gameState.draftTokens      || 0) + amt; break;
+      case 'train':            gameState.trainingPoints   = (gameState.trainingPoints   || 0) + amt; break;
+      case 'ovr':              gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt; break;
       case 'xp':
-        if (typeof addXP === 'function') {
-          addXP(amt);
-        } else {
-          gameState.xp = (gameState.xp || 0) + amt;
-        }
+        if (typeof addXP === 'function') { addXP(amt); } else { gameState.xp = (gameState.xp || 0) + amt; }
         break;
-      case 'wtTicket':
-        gameState.wtTickets = (gameState.wtTickets || 0) + amt;
-        break;
-      case 'wtTour':
-        gameState.wtTourPoints = (gameState.wtTourPoints || 0) + amt;
-        break;
-      case 'offside':
-        gameState.offsideTokens = (gameState.offsideTokens || 0) + amt;
-        break;
-      case 'train':
-        gameState.trainingPoints = (gameState.trainingPoints || 0) + amt;
-        break;
-      case 'ovr':
-        gameState.ovrUpgradePoints = (gameState.ovrUpgradePoints || 0) + amt;
-        break;
-      case 'passCredits':
-        gameState.wtPassCredits = (gameState.wtPassCredits || 0) + amt;
-        break;
+      case 'wtTicket':         gameState.wtTickets        = (gameState.wtTickets        || 0) + amt; break;
+      case 'wtTour':           gameState.wtTourPoints     = (gameState.wtTourPoints     || 0) + amt; break;
+      case 'offside':          gameState.offsideTokens    = (gameState.offsideTokens    || 0) + amt; break;
     }
   }
 
